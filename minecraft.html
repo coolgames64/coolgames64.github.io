@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft - Cool Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #87ceeb; font-family: Arial, sans-serif; }
+        canvas { display: block; }
+        #hud { position: fixed; top: 10px; left: 10px; color: white; font-size: 12px; text-shadow: 1px 1px 2px black; z-index: 100; }
+        #hotbar { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; background: rgba(0,0,0,0.6); padding: 6px; border-radius: 6px; z-index: 100; }
+        .slot { width: 40px; height: 40px; background: rgba(80,80,80,0.7); border: 2px solid #444; border-radius: 3px; display: flex; justify-content: center; align-items: center; font-size: 20px; cursor: pointer; }
+        .slot.sel { border-color: #fff; transform: scale(1.1); }
+        #crosshair { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 15px; height: 15px; z-index: 100; pointer-events: none; }
+        #crosshair::before, #crosshair::after { content: ''; position: absolute; background: white; }
+        #crosshair::before { width: 2px; height: 15px; left: 6.5px; top: 0; }
+        #crosshair::after { width: 15px; height: 2px; top: 6.5px; left: 0; }
+        #start { position: fixed; inset: 0; background: rgba(0,0,0,0.85); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 200; text-align: center; padding: 20px; }
+        #start h1 { font-size: 2rem; margin-bottom: 20px; color: #5d8c3e; }
+        #start p { margin: 6px 0; font-size: 14px; }
+        #start button { margin-top: 20px; padding: 12px 30px; font-size: 16px; background: #5d8c3e; border: none; color: white; border-radius: 25px; cursor: pointer; }
+        #dayNight { position: fixed; top: 10px; right: 10px; font-size: 30px; z-index: 100; }
+        #genStatus { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); color: white; font-size: 14px; text-shadow: 1px 1px 2px black; z-index: 100; }
+    </style>
+</head>
+<body>
+    <div id="start">
+        <h1>⛏️ Minecraft</h1>
+        <p>⬆️ Arrow Keys = Move</p>
+        <p>Space = Jump</p>
+        <p>1-9 = Select Block</p>
+        <p>Left Click = Break Block</p>
+        <p>Right Click = Place Block</p>
+        <button onclick="startGame()">🎮 Play!</button>
+    </div>
+
+    <canvas id="c"></canvas>
+    <div id="hud"><div id="time">☀️ Day 1</div><div id="pos">X:0 Y:0 Z:0</div></div>
+    <div id="dayNight">☀️</div>
+    <div id="genStatus">Generating world: 0%</div>
+    <div id="hotbar"></div>
+    <div id="crosshair"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+    const BLOCKS = [
+        {id:1,name:'Grass',c:0x5d8c3e},{id:2,name:'Dirt',c:0x8b6914},{id:3,name:'Stone',c:0x808080},
+        {id:4,name:'Wood',c:0x8b4513},{id:5,name:'Leaves',c:0x228b22,a:true},{id:6,name:'Sand',c:0xf4d03f},
+        {id:7,name:'Water',c:0x3498db,a:true},{id:8,name:'Cobble',c:0x696969},{id:9,name:'Planks',c:0xdeb887}
+    ];
+    const DAY = 15 * 60000, NIGHT = 15 * 60000;
+
+    let scene, cam, rend, player = {x:0,y:20,z:0,vy:0,g:true}, blocks = new Map(), sel = 0, on = false;
+    let keys = {}, meshes = [], steve, time = 0, day = 1, night = false, sun;
+    let genChunks = [], genDone = 0, totalChunks = 25, genPaused = false;
+
+    function rand(s) { let x = Math.sin(s) * 10000; return x - Math.floor(x); }
+    function noise2D(x, y) {
+        let ix = Math.floor(x), iy = Math.floor(y);
+        let fx = x - ix, fy = y - iy;
+        let a = rand(ix + iy * 57), b = rand(ix+1 + iy * 57);
+        let c = rand(ix + (iy+1) * 57), d = rand(ix+1 + (iy+1) * 57);
+        let ux = fx*fx*(3-2*fx), uy = fy*fy*(3-2*fy);
+        return a + (b-a)*ux + (c-a)*uy + (a-b-c+d)*ux*uy;
+    }
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x87ceeb, 30, 100);
+        cam = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 400);
+        cam.position.set(0, 25, 0);
+        rend = new THREE.WebGLRenderer({canvas: document.getElementById('c'), antialias: true});
+        rend.setSize(innerWidth, innerHeight);
+        rend.setClearColor(0x87ceeb);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        sun = new THREE.DirectionalLight(0xffffff, 0.7);
+        sun.position.set(50, 100, 50);
+        scene.add(sun);
+        makeSky();
+        makeStarfield();
+        setupHotbar();
+        spawnP();
+        prepareChunks();
+        addEventListener('resize', () => { cam.aspect = innerWidth/innerHeight; cam.updateProjectionMatrix(); rend.setSize(innerWidth, innerHeight); });
+        addEventListener('keydown', e => { keys[e.key] = true; if(e.key>='1'&&e.key<='9') selBlock(parseInt(e.key)-1); });
+        addEventListener('keyup', e => keys[e.key] = false);
+        addEventListener('click', onClick);
+        addEventListener('contextmenu', e => e.preventDefault());
+        loop();
+    }
+
+    function makeSky() {
+        let g = new THREE.SphereGeometry(300, 16, 16);
+        let m = new THREE.ShaderMaterial({
+            uniforms: { t:{value:new THREE.Color(0x0077ff)}, b:{value:new THREE.Color(0x87ceeb)} },
+            vertexShader: `varying vec3 v; void main() { v = (modelMatrix*vec4(pos,1)).xyz; gl_Position = projectionMatrix*modelViewMatrix*vec4(pos,1); }`,
+            fragmentShader: `uniform vec3 t, b; varying vec3 v; void main() { float h = normalize(v).y; gl_FragColor = vec4(mix(b,t,max(h,0.)),1.); }`,
+            side: THREE.BackSide
+        });
+        scene.add(new THREE.Mesh(g, m));
+        scene.userData.sky = m;
+    }
+
+    function makeStarfield() {
+        let geo = new THREE.BufferGeometry();
+        let verts = [];
+        for(let i=0; i<1000; i++) {
+            let theta = Math.random() * Math.PI * 2;
+            let phi = Math.random() * Math.PI;
+            let r = 250;
+            verts.push(r*Math.sin(phi)*Math.cos(theta), r*Math.cos(phi), r*Math.sin(phi)*Math.sin(theta));
+        }
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+        let mat = new THREE.PointsMaterial({color: 0xffffff, size: 1});
+        scene.add(new THREE.Points(geo, mat));
+    }
+
+    function setB(x,y,z,t) { blocks.set(`${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`, t); }
+    function getB(x,y,z) { return blocks.get(`${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`); }
+
+    function prepareChunks() {
+        genChunks = [];
+        for(let cx=-2; cx<=2; cx++) for(let cz=-2; cz<=2; cz++) genChunks.push({cx, cz, done: false});
+        totalChunks = genChunks.length;
+    }
+
+    function genChunk(cx, cz) {
+        let CSIZE = 32;
+        for(let x=0;x<CSIZE;x++) for(let z=0;z<CSIZE;z++) {
+            let wx=cx*CSIZE+x, wz=cz*CSIZE+z;
+            let h = Math.floor(noise2D(wx*.02,wz*.02)*12+noise2D(wx*.08,wz*.08)*4+16);
+            for(let y=0;y<=h;y++) {
+                if(y===h) setB(wx,y,wz,1);
+                else if(y>h-3) setB(wx,y,wz,2);
+                else setB(wx,y,wz,3);
+            }
+            if(h<12) for(let y=8;y<h;y++) setB(wx,y,wz,7);
+            if(h<14&&h>10) for(let y=h-2;y<h;y++) if(getB(wx,y,wz)===2) setB(wx,y,wz,6);
+            if(noise2D(wx*.5,wz*.5)>.6&&h>15) {
+                for(let t=1;t<5;t++) setB(wx,h+t,wz,4);
+                for(let lx=-2;lx<=2;lx++) for(let lz=-2;lz<=2;lz++) for(let ly=0;ly<3;ly++)
+                    if(Math.abs(lx)+Math.abs(lz)+Math.abs(ly)<5) setB(wx+lx,h+5+ly,wz+lz,5);
+            }
+        }
+    }
+
+    function spawnP() {
+        for(let y=50;y>0;y--) { if(getB(0,y,0)) { player.y=y+2; break; } }
+        renderSteve();
+    }
+
+    function buildMesh() {
+        meshes.forEach(m=>scene.remove(m));
+        meshes = [];
+        let geo = new THREE.BoxGeometry(1,1,1);
+        let px = Math.floor(player.x/32), pz = Math.floor(player.z/32);
+        for(let x=px*32-48;x<=px*32+48;x++) for(let y=0;y<64;y++) for(let z=pz*32-48;z<=pz*32+48;z++) {
+            let t=getB(x,y,z);
+            if(t&&t!==7) {
+                let b=BLOCKS[t-1];
+                if(b) {
+                    let m=new THREE.MeshLambertMaterial({color:b.c,transparent:b.a||false,opacity:b.a?.5:1});
+                    let mesh=new THREE.Mesh(geo,m);
+                    mesh.position.set(x+.5,y+.5,z+.5);
+                    scene.add(mesh);
+                    meshes.push(mesh);
+                }
+            }
+        }
+    }
+
+    function renderSteve() {
+        let g=new THREE.Group();
+        let bodyM=new THREE.MeshLambertMaterial({color:0x4a90d9});
+        let headM=new THREE.MeshLambertMaterial({color:0xffdbac});
+        let legM=new THREE.MeshLambertMaterial({color:0x1a237e});
+        let body=new THREE.Mesh(new THREE.BoxGeometry(.6,.8,.3),bodyM); body.position.y=.4; g.add(body);
+        let head=new THREE.Mesh(new THREE.BoxGeometry(.5,.5,.5),headM); head.position.y=1.1; g.add(head);
+        let eyeM=new THREE.MeshLambertMaterial({color:0xfff});
+        let lE=new THREE.Mesh(new THREE.BoxGeometry(.1,.1,.05),eyeM); lE.position.set(-.12,1.15,.25); g.add(lE);
+        let rE=new THREE.Mesh(new THREE.BoxGeometry(.1,.1,.05),eyeM); rE.position.set(.12,1.15,.25); g.add(rE);
+        let pick=new THREE.Mesh(new THREE.BoxGeometry(.6,.1,.1),new THREE.MeshLambertMaterial({color:0x888}));
+        pick.position.set(.4,.5,.2); pick.rotation.z=-.3; g.add(pick);
+        let ll=new THREE.Mesh(new THREE.BoxGeometry(.25,.5,.25),legM); ll.position.set(-.15,-.25,0); g.add(ll);
+        let rl=new THREE.Mesh(new THREE.BoxGeometry(.25,.5,.25),legM); rl.position.set(.15,-.25,0); g.add(rl);
+        g.position.set(player.x,player.y-.9,player.z);
+        scene.add(g);
+        steve=g;
+    }
+
+    function setupHotbar() {
+        let h=document.getElementById('hotbar');
+        h.innerHTML='';
+        BLOCKS.slice(0,9).forEach((b,i)=>{
+            let s=document.createElement('div');
+            s.className='slot'+(i===sel?' sel':'');
+            s.textContent=['🟩','🟫','⬜','🟫','🌿','🟨','💧','🪨','🟫'][i];
+            s.onclick=()=>selBlock(i);
+            h.appendChild(s);
+        });
+    }
+
+    function selBlock(i) { sel=i; document.querySelectorAll('.slot').forEach((s,j)=>s.classList.toggle('sel',j===i)); }
+
+    function updateP() {
+        if(!on) return;
+        let mx=0,mz=0;
+        if(keys['ArrowUp']||keys['w']) mz=-1;
+        if(keys['ArrowDown']||keys['s']) mz=1;
+        if(keys['ArrowLeft']||keys['a']) mx=-1;
+        if(keys['ArrowRight']||keys['d']) mx=1;
+        if(mx||mz) { let l=Math.sqrt(mx*mx+mz*mz); player.x+=(mx/l)*.12; player.z+=(mz/l)*.12; }
+        if((keys[' ']||keys['Space'])&&player.g) { player.vy=.2; player.g=false; }
+        player.vy-=.012; player.y+=player.vy;
+        let gy=getGround(player.x,player.z);
+        if(player.y<=gy+1.8) { player.y=gy+1.8; player.vy=0; player.g=true; }
+        if(player.y<-10) { player.y=50; player.vy=0; }
+        cam.position.set(player.x,player.y+.5,player.z);
+        if(steve) steve.position.set(player.x,player.y-.9,player.z);
+        document.getElementById('pos').textContent=`X:${Math.floor(player.x)} Y:${Math.floor(player.y)} Z:${Math.floor(player.z)}`;
+    }
+
+    function getGround(x,z) {
+        for(let y=63;y>=0;y--) { let b=getB(Math.floor(x),y,Math.floor(z)); if(b&&b!==7) return y+1; }
+        return 0;
+    }
+
+    function updateDay() {
+        if(!on) return;
+        time+=16;
+        let cyc=DAY+NIGHT, pos=(time%cyc)/cyc;
+        night=pos>.5;
+        let dp=night?(pos-.5)*2:pos*2;
+        let sky=scene.userData.sky;
+        if(sky) sky.uniforms.t.value.setHex(night?0x001133:0x0077ff);
+        if(sun) sun.position.y=Math.cos(dp*Math.PI*2)*100;
+        scene.fog.color.setHex(night?0x001133:0x87ceeb);
+        document.getElementById('dayNight').textContent=night?'🌙':'☀️';
+        day=Math.floor(time/cyc)+1;
+        document.getElementById('time').textContent=(night?'🌙 ':'☀️ ')+`Day ${day}`;
+    }
+
+    function onClick(e) {
+        if(!on) return;
+        let mx=Math.floor(player.x), my=Math.floor(player.y+1), mz=Math.floor(player.z);
+        if(e.button===0) {
+            for(let dy=2;dy>=-3;dy--) for(let dx=-2;dx<=2;dx++) for(let dz=-2;dz<=2;dz++) {
+                let b=getB(mx+dx,my+dy,mz+dz);
+                if(b) { blocks.delete(`${mx+dx},${my+dy},${mz+dz}`); buildMesh(); return; }
+            }
+        } else if(e.button===2) {
+            let bl=BLOCKS[sel];
+            for(let dy=2;dy>=-3;dy--) for(let dx=-2;dx<=2;dx++) for(let dz=-2;dz<=2;dz++) {
+                if(!getB(mx+dx,my+dy,mz+dz)) { setB(mx+dx,my+dy,mz+dz,bl.id); buildMesh(); return; }
+            }
+        }
+    }
+
+    function startGame() {
+        on=true;
+        document.getElementById('start').style.display='none';
+    }
+
+    let lastGenTime = 0;
+    function genWorldParts(ts) {
+        if(genDone >= totalChunks) {
+            document.getElementById('genStatus').textContent = 'World ready!';
+            document.getElementById('genStatus').style.display = 'none';
+            buildMesh();
+            return;
+        }
+        if(ts - lastGenTime < 50) { requestAnimationFrame(genWorldParts); return; }
+        lastGenTime = ts;
+        let toGen = genChunks.splice(0, 1)[0];
+        if(toGen) {
+            genChunk(toGen.cx, toGen.cz);
+            genDone++;
+            document.getElementById('genStatus').textContent = `Generating world: ${Math.floor(genDone/totalChunks*100)}%`;
+            buildMesh();
+        }
+        requestAnimationFrame(genWorldParts);
+    }
+
+    function loop() {
+        requestAnimationFrame(ts => {
+            updateDay();
+            updateP();
+            if(on && genDone < totalChunks) genWorldParts(ts);
+            rend.render(scene,cam);
+            loop();
+        });
+    }
+
+    init();
+    requestAnimationFrame(genWorldParts);
+    </script>
+</body>
+</html>

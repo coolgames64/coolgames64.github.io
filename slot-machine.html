@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎰 Slot Machine</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #f1c40f; text-shadow: 0 0 20px rgba(241,196,15,0.5); }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(241,196,15,0.2); padding: 5px 15px; border-radius: 15px; margin: 0 10px; }
+        canvas { border: 4px solid #f1c40f; border-radius: 15px; background: #000; cursor: pointer; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #f1c40f; padding: 3px 10px; border-radius: 5px; color: #000; }
+        .message { font-size: 1.5rem; margin: 15px 0; min-height: 40px; text-align: center; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🎰 SLOT MACHINE</h1>
+    <div class="score-board">
+        <span>Coins: <strong id="coins">100</strong></span>
+        <span>Bet: <strong id="bet">10</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="350" height="250"></canvas>
+    <div class="message" id="message">🎲 Place your bet and SPIN! 🎲</div>
+    <div class="instructions">
+        <span>↑</span><span>↓</span> Change bet | <span>CLICK</span> or <span>SPACE</span> to SPIN
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Symbol indices: 0=cherry, 1=lemon, 2=orange, 3=grape, 4=star, 5=diamond, 6=seven, 7=bell
+        const symbols = ['🍒', '🍋', '🍊', '🍇', '⭐', '💎', '7️⃣', '🔔'];
+        
+        let coins = 100;
+        let bet = 10;
+        let reels = [0, 0, 0]; // Final stopped positions
+        let displayReels = [0, 0, 0]; // Visual display positions
+        let spinning = [false, false, false];
+        let spinStartTime = [0, 0, 0];
+        let message = "🎲 Place your bet and SPIN! 🎲";
+        
+        const REEL_HEIGHT = 80;
+        const SYMBOL_SIZE = 70;
+        
+        function drawSymbol(x, y, symbolIndex, size) {
+            ctx.font = size + 'px Arial';
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(symbols[symbolIndex], x, y);
+        }
+        
+        function draw() {
+            // Background
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Machine frame
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(25, 25, canvas.width - 50, canvas.height - 50);
+            
+            // Reel backgrounds
+            const reelWidth = 90;
+            const reelHeight = 200;
+            const startX = (canvas.width - 3 * reelWidth - 20) / 2;
+            const centerY = 130;
+            
+            for (let i = 0; i < 3; i++) {
+                // Reel shadow
+                ctx.fillStyle = '#000';
+                ctx.fillRect(startX + i * (reelWidth + 10) - 3, 40, reelWidth + 6, reelHeight + 6);
+                
+                // Reel background
+                ctx.fillStyle = '#1a1a1a';
+                ctx.fillRect(startX + i * (reelWidth + 10), 37, reelWidth, reelHeight);
+                
+                // Draw visible symbols (3 positions: top, middle, bottom)
+                for (let pos = -1; pos <= 1; pos++) {
+                    const symbolIndex = displayReels[i];
+                    const yOffset = pos * SYMBOL_SIZE;
+                    
+                    // Draw symbol
+                    const alpha = pos === 0 ? 1 : 0.4;
+                    ctx.globalAlpha = alpha;
+                    drawSymbol(
+                        startX + i * (reelWidth + 10) + reelWidth / 2,
+                        centerY + yOffset,
+                        symbolIndex,
+                        60
+                    );
+                }
+                ctx.globalAlpha = 1;
+                
+                // WIN LINE for middle reel
+                if (i === 1) {
+                    ctx.strokeStyle = '#f1c40f';
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(startX + i * (reelWidth + 10) - 2, centerY - SYMBOL_SIZE/2 - 2, reelWidth + 4, SYMBOL_SIZE + 4);
+                }
+            }
+            
+            // Divider lines between reels
+            ctx.fillStyle = '#f1c40f';
+            for (let i = 0; i < 2; i++) {
+                ctx.fillRect(startX + (i + 1) * (reelWidth + 10) - 5, 37, 5, reelHeight);
+            }
+            
+            // Bottom panel
+            ctx.fillStyle = '#7f8c8d';
+            ctx.fillRect(canvas.width/2 - 50, 215, 100, 30);
+            
+            // Decorative lights
+            const time = Date.now() / 100;
+            for (let i = 0; i < 10; i++) {
+                const x = 40 + i * 30;
+                const hue = (time + i * 36) % 360;
+                ctx.fillStyle = `hsl(${hue}, 80%, 60%)`;
+                ctx.beginPath();
+                ctx.arc(x, 15, 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // "JACKPOT" text
+            ctx.fillStyle = '#f1c40f';
+            ctx.font = 'bold 18px Arial';
+            ctx.fillText('💰 JACKPOT 💰', canvas.width / 2, canvas.height - 15);
+        }
+        
+        function getRandomSymbol() {
+            return Math.floor(Math.random() * symbols.length);
+        }
+        
+        function easeOut(t) {
+            return 1 - Math.pow(1 - t, 3);
+        }
+        
+        function spin() {
+            if (spinning.some(s => s)) return;
+            if (coins < bet) {
+                message = "❌ Not enough coins! ❌";
+                document.getElementById('message').textContent = message;
+                return;
+            }
+            
+            coins -= bet;
+            document.getElementById('coins').textContent = coins;
+            
+            // Set final positions (random)
+            reels[0] = getRandomSymbol();
+            reels[1] = getRandomSymbol();
+            reels[2] = getRandomSymbol();
+            
+            // Start spinning animation
+            spinning = [true, true, true];
+            spinStartTime = [Date.now(), Date.now() + 600, Date.now() + 1200];
+            message = "🎰 SPINNING! 🎰";
+            document.getElementById('message').textContent = message;
+            
+            // Determine stop times (in ms)
+            const stopTimes = [1500, 2500, 3500];
+            
+            // Animate each reel
+            function animateReel(index) {
+                const startTime = Date.now();
+                const duration = stopTimes[index];
+                
+                function animate() {
+                    const elapsed = Date.now() - startTime;
+                    
+                    if (elapsed < duration) {
+                        // Still spinning - rapid cycling through symbols
+                        displayReels[index] = Math.floor(Math.random() * symbols.length);
+                        requestAnimationFrame(animate);
+                    } else {
+                        // Stopped - show final symbol
+                        displayReels[index] = reels[index];
+                        spinning[index] = false;
+                        
+                        // Check win when all stopped
+                        if (!spinning.some(s => s)) {
+                            checkWin();
+                        }
+                    }
+                }
+                animate();
+            }
+            
+            animateReel(0);
+            animateReel(1);
+            animateReel(2);
+        }
+        
+        function checkWin() {
+            const a = reels[0], b = reels[1], c = reels[2];
+            let win = 0;
+            
+            if (a === b && b === c) {
+                if (a === 6) { // Triple 7
+                    win = bet * 100;
+                    message = "🎊🎊🎊 MEGA JACKPOT! x100! $" + win + " 🎊🎊🎊";
+                } else if (a === 5) { // Triple diamond
+                    win = bet * 50;
+                    message = "💎💎💎 DIAMOND! x50! $" + win + " 💎💎💎";
+                } else {
+                    win = bet * 20;
+                    message = "🎉🎉🎉 THREE OF A KIND! x20! $" + win + " 🎉🎉🎉";
+                }
+            } else if (a === b || b === c || a === c) {
+                win = bet * 5;
+                message = "🎊 TWO MATCH! x5! $" + win + " 🎊";
+            } else if (a === 4 || b === 4 || c === 4) {
+                win = bet * 2;
+                message = "⭐ Star Bonus! x2! $" + win + " ⭐";
+            } else {
+                message = "❌ No win - Try again! ❌";
+            }
+            
+            if (win > 0) {
+                coins += win;
+                document.getElementById('coins').textContent = coins;
+            }
+            
+            document.getElementById('message').textContent = message;
+        }
+        
+        function changeBet(amount) {
+            bet = Math.max(5, Math.min(50, bet + amount));
+            document.getElementById('bet').textContent = bet;
+        }
+        
+        function gameLoop() {
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                spin();
+            } else if (e.code === 'ArrowUp') {
+                e.preventDefault();
+                changeBet(5);
+            } else if (e.code === 'ArrowDown') {
+                e.preventDefault();
+                changeBet(-5);
+            }
+        });
+        
+        canvas.addEventListener('click', spin);
+        
+        document.getElementById('message').textContent = message;
+        gameLoop();
+    </script>
+</body>
+</html>

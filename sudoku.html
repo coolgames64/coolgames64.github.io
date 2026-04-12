@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔢 Sudoku</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .status { font-size: 1.3rem; margin-bottom: 15px; }
+        canvas { border: 3px solid #fff; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🔢 SUDOKU</h1>
+    <div class="status" id="status">Select a cell</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const SIZE = 9;
+        const CELL = 45;
+        const TOTAL = SIZE * CELL;
+        
+        canvas.width = TOTAL;
+        canvas.height = TOTAL;
+        
+        let board = [];
+        let solution = [];
+        let selected = null;
+        let gameOver = false;
+        
+        function generateSudoku() {
+            // Simple Sudoku generator
+            board = Array(SIZE).fill(null).map(() => Array(SIZE).fill(0));
+            solution = Array(SIZE).fill(null).map(() => Array(SIZE).fill(0));
+            
+            // Fill diagonal 3x3 boxes first
+            for (let i = 0; i < 3; i++) {
+                fillBox(i * 3, i * 3);
+            }
+            
+            // Solve the rest
+            solveSudoku(board);
+            
+            // Copy to solution
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE; j++) {
+                    solution[i][j] = board[i][j];
+                }
+            }
+            
+            // Remove some numbers (leave about 35)
+            let toRemove = 81 - 35;
+            while (toRemove > 0) {
+                const r = Math.floor(Math.random() * SIZE);
+                const c = Math.floor(Math.random() * SIZE);
+                if (board[r][c] !== 0) {
+                    board[r][c] = 0;
+                    toRemove--;
+                }
+            }
+        }
+        
+        function fillBox(row, col) {
+            let nums = [1,2,3,4,5,6,7,8,9];
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    const idx = Math.floor(Math.random() * nums.length);
+                    board[row + i][col + j] = nums[idx];
+                    nums.splice(idx, 1);
+                }
+            }
+        }
+        
+        function isValid(board, row, col, num) {
+            // Check row
+            for (let c = 0; c < SIZE; c++) {
+                if (board[row][c] === num) return false;
+            }
+            
+            // Check column
+            for (let r = 0; r < SIZE; r++) {
+                if (board[r][col] === num) return false;
+            }
+            
+            // Check 3x3 box
+            const boxRow = Math.floor(row / 3) * 3;
+            const boxCol = Math.floor(col / 3) * 3;
+            for (let r = boxRow; r < boxRow + 3; r++) {
+                for (let c = boxCol; c < boxCol + 3; c++) {
+                    if (board[r][c] === num) return false;
+                }
+            }
+            
+            return true;
+        }
+        
+        function solveSudoku(board) {
+            for (let row = 0; row < SIZE; row++) {
+                for (let col = 0; col < SIZE; col++) {
+                    if (board[row][col] === 0) {
+                        for (let num = 1; num <= 9; num++) {
+                            if (isValid(board, row, col, num)) {
+                                board[row][col] = num;
+                                if (solveSudoku(board)) return true;
+                                board[row][col] = 0;
+                            }
+                        }
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        
+        function draw() {
+            // Background
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, TOTAL, TOTAL);
+            
+            // Cells
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    const x = c * CELL;
+                    const y = r * CELL;
+                    
+                    // Cell background
+                    if (selected && selected.r === r && selected.c === c) {
+                        ctx.fillStyle = '#3498db';
+                    } else {
+                        ctx.fillStyle = board[r][c] === 0 ? '#2c3e50' : '#34495e';
+                    }
+                    ctx.fillRect(x + 2, y + 2, CELL - 4, CELL - 4);
+                    
+                    // Number
+                    if (board[r][c] !== 0) {
+                        ctx.fillStyle = solution[r][c] === board[r][c] ? '#ecf0f1' : '#f1c40f';
+                        ctx.font = 'bold 24px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(board[r][c], x + CELL/2, y + CELL/2);
+                    }
+                }
+            }
+            
+            // Grid lines
+            ctx.strokeStyle = '#7f8c8d';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= SIZE; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * CELL, 0);
+                ctx.lineTo(i * CELL, TOTAL);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * CELL);
+                ctx.lineTo(TOTAL, i * CELL);
+                ctx.stroke();
+            }
+            
+            // Thicker lines for 3x3 boxes
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            for (let i = 0; i <= 3; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * 3 * CELL, 0);
+                ctx.lineTo(i * 3 * CELL, TOTAL);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * 3 * CELL);
+                ctx.lineTo(TOTAL, i * 3 * CELL);
+                ctx.stroke();
+            }
+        }
+        
+        function checkWin() {
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    if (board[r][c] !== solution[r][c]) return false;
+                }
+            }
+            return true;
+        }
+        
+        canvas.addEventListener('click', (e) => {
+            if (gameOver) {
+                generateSudoku();
+                gameOver = false;
+                draw();
+                return;
+            }
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const c = Math.floor(x / CELL);
+            const r = Math.floor(y / CELL);
+            
+            if (r >= 0 && r < SIZE && c >= 0 && c < SIZE && solution[r][c] !== board[r][c]) {
+                selected = { r, c };
+            } else {
+                selected = null;
+            }
+            draw();
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (!selected || gameOver) return;
+            
+            const num = parseInt(e.key);
+            if (num >= 1 && num <= 9) {
+                // Check if valid
+                if (isValid(board, selected.r, selected.c, num)) {
+                    board[selected.r][selected.c] = num;
+                    
+                    if (checkWin()) {
+                        gameOver = true;
+                        document.getElementById('status').textContent = '🎉 You Win!';
+                    }
+                }
+            } else if (e.key === 'Backspace' || e.key === '0') {
+                board[selected.r][selected.c] = 0;
+            }
+            draw();
+        });
+        
+        generateSudoku();
+        draw();
+    </script>
+</body>
+</html>

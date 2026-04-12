@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏃 Stickman Run</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #87CEEB;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: #333;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #333; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(0,0,0,0.1); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #333; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #666; font-size: 1rem; }
+        .instructions span { background: #333; color: white; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: #333; color: white;
+            border: none; padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: #555; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🏃 STICKMAN RUN</h1>
+    <div class="score-board">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Coins: <strong id="coins">0</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="600" height="300"></canvas>
+    <div class="instructions">Press <span>SPACE</span> or <span>UP</span> to jump! Collect coins!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let player = { x: 100, y: 200, vy: 0, jumping: false, runPhase: 0 };
+        let obstacles = [];
+        let coins = [];
+        let score = 0;
+        let coinCount = 0;
+        let gameOver = false;
+        let gameLoop;
+        let speed = 6;
+        let groundY = 220;
+        
+        function init() {
+            player = { x: 100, y: groundY - 50, vy: 0, jumping: false, runPhase: 0 };
+            obstacles = [];
+            coins = [];
+            score = 0;
+            coinCount = 0;
+            gameOver = false;
+            speed = 6;
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('coins').textContent = '0';
+        }
+        
+        function drawStickman(x, y, phase, running = true) {
+            ctx.strokeStyle = '#333';
+            ctx.fillStyle = '#333';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            
+            const legAngle = running ? Math.sin(phase) * 0.5 : 0;
+            const armAngle = running ? Math.cos(phase) * 0.4 : 0;
+            
+            // Head
+            ctx.beginPath();
+            ctx.arc(x, y - 35, 12, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Body
+            ctx.beginPath();
+            ctx.moveTo(x, y - 23);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            
+            // Arms
+            ctx.beginPath();
+            ctx.moveTo(x - 15 * Math.sin(armAngle), y - 18 + 10 * Math.cos(armAngle));
+            ctx.lineTo(x, y - 18);
+            ctx.lineTo(x + 15 * Math.sin(armAngle), y - 18 - 10 * Math.cos(armAngle));
+            ctx.stroke();
+            
+            // Legs
+            if (running) {
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + 12 * Math.sin(legAngle), y + 25);
+                ctx.lineTo(x + 12 * Math.sin(legAngle) + 8, y + 25 + 10 * Math.cos(legAngle));
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x - 12 * Math.sin(legAngle), y + 25);
+                ctx.lineTo(x - 12 * Math.sin(legAngle) - 8, y + 25 - 10 * Math.cos(legAngle));
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + 10, y + 25);
+                ctx.lineTo(x + 15, y + 25);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x - 10, y + 25);
+                ctx.lineTo(x - 15, y + 25);
+                ctx.stroke();
+            }
+        }
+        
+        function drawObstacle(obs) {
+            ctx.fillStyle = obs.color;
+            
+            if (obs.type === 'spike') {
+                ctx.beginPath();
+                ctx.moveTo(obs.x, obs.y + obs.height);
+                ctx.lineTo(obs.x + obs.width / 2, obs.y);
+                ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+                ctx.closePath();
+                ctx.fill();
+            } else if (obs.type === 'barrel') {
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+            } else if (obs.type === 'bird') {
+                ctx.font = '30px Arial';
+                ctx.fillText('🦅', obs.x, obs.y + 20);
+            }
+        }
+        
+        function drawCoin(coin) {
+            ctx.font = '25px Arial';
+            ctx.fillText('🪙', coin.x, coin.y + 8);
+        }
+        
+        function draw() {
+            // Sky
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Clouds
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.beginPath();
+            ctx.arc(100, 50, 30, 0, Math.PI * 2);
+            ctx.arc(140, 40, 25, 0, Math.PI * 2);
+            ctx.arc(180, 50, 30, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(400, 70, 35, 0, Math.PI * 2);
+            ctx.arc(450, 60, 28, 0, Math.PI * 2);
+            ctx.arc(490, 70, 35, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Mountains
+            ctx.fillStyle = '#228B22';
+            ctx.beginPath();
+            ctx.moveTo(0, 200);
+            ctx.lineTo(100, 120);
+            ctx.lineTo(200, 200);
+            ctx.lineTo(300, 100);
+            ctx.lineTo(400, 200);
+            ctx.lineTo(500, 130);
+            ctx.lineTo(600, 200);
+            ctx.fill();
+            
+            // Ground
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, groundY, canvas.width, 10);
+            
+            // Ground texture
+            ctx.fillStyle = '#6B3E0A';
+            for (let i = 0; i < 30; i++) {
+                ctx.fillRect(i * 25 + ((Date.now() * 0.1) % 25), groundY + 3, 15, 4);
+            }
+            
+            // Draw coins
+            coins.forEach(drawCoin);
+            
+            // Draw obstacles
+            obstacles.forEach(drawObstacle);
+            
+            // Draw player
+            drawStickman(player.x, player.y, player.runPhase, !player.jumping);
+        }
+        
+        function update() {
+            if (gameOver) return;
+            
+            player.runPhase += 0.3;
+            speed += 0.001;
+            
+            // Gravity
+            if (player.jumping) {
+                player.vy += 0.6;
+                player.y += player.vy;
+                
+                if (player.y > groundY - 50) {
+                    player.y = groundY - 50;
+                    player.jumping = false;
+                    player.vy = 0;
+                }
+            }
+            
+            // Spawn obstacles
+            if (Math.random() < 0.02) {
+                const types = ['spike', 'barrel', 'spike', 'spike'];
+                const type = types[Math.floor(Math.random() * types.length)];
+                
+                let obs = { x: canvas.width + 50, type };
+                if (type === 'spike') {
+                    obs.width = 30;
+                    obs.height = 35;
+                    obs.y = groundY - obs.height;
+                    obs.color = '#666';
+                } else if (type === 'barrel') {
+                    obs.width = 35;
+                    obs.height = 45;
+                    obs.y = groundY - obs.height;
+                    obs.color = '#8B4513';
+                }
+                
+                obstacles.push(obs);
+            }
+            
+            // Spawn coins
+            if (Math.random() < 0.03) {
+                coins.push({
+                    x: canvas.width + 50,
+                    y: groundY - 80 - Math.random() * 60,
+                    collected: false
+                });
+            }
+            
+            // Update obstacles
+            obstacles.forEach(obs => {
+                obs.x -= speed;
+            });
+            obstacles = obstacles.filter(obs => obs.x > -100);
+            
+            // Update coins
+            coins.forEach(coin => {
+                coin.x -= speed;
+            });
+            coins = coins.filter(coin => coin.x > -50 && !coin.collected);
+            
+            // Collision with obstacles
+            obstacles.forEach(obs => {
+                const playerBox = {
+                    x: player.x - 10,
+                    y: player.y - 40,
+                    width: 25,
+                    height: 50
+                };
+                
+                let obsBox = { x: obs.x, y: obs.y, width: obs.width, height: obs.height };
+                
+                if (obs.type === 'spike') {
+                    obsBox = { x: obs.x + 5, y: obs.y + 10, width: obs.width - 10, height: obs.height - 10 };
+                }
+                
+                if (playerBox.x < obsBox.x + obsBox.width &&
+                    playerBox.x + playerBox.width > obsBox.x &&
+                    playerBox.y < obsBox.y + obsBox.height &&
+                    playerBox.y + playerBox.height > obsBox.y) {
+                    endGame();
+                }
+            });
+            
+            // Collision with coins
+            coins.forEach(coin => {
+                const dist = Math.sqrt((player.x - coin.x) ** 2 + (player.y - 25 - coin.y) ** 2);
+                if (dist < 35) {
+                    coin.collected = true;
+                    coinCount++;
+                    score += 50;
+                    document.getElementById('coins').textContent = coinCount;
+                    document.getElementById('score').textContent = score;
+                }
+            });
+            
+            // Score increases with distance
+            score += 1;
+            document.getElementById('score').textContent = score;
+        }
+        
+        function jump() {
+            if (!player.jumping) {
+                player.jumping = true;
+                player.vy = -14;
+            }
+        }
+        
+        function endGame() {
+            gameOver = true;
+            clearInterval(gameLoop);
+            
+            setTimeout(() => {
+                alert(`Game Over!\nScore: ${score}\nCoins: ${coinCount}\n\nClick OK to play again!`);
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        // Controls
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                if (gameOver) {
+                    init();
+                } else {
+                    jump();
+                }
+            }
+        });
+        
+        canvas.addEventListener('click', () => {
+            if (gameOver) {
+                init();
+            } else {
+                jump();
+            }
+        });
+        
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameOver) {
+                init();
+            } else {
+                jump();
+            }
+        });
+        
+        // Start
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

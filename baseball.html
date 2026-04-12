@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚾ Baseball</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #e74c3c; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(231,76,60,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #e74c3c; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #e74c3c; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>⚾ BASEBALL</h1>
+    <div class="score-board">
+        <span>Runs: <strong id="runs">0</strong></span>
+        <span>Outs: <strong id="outs">0</strong>/2</span>
+        <span>Innings: <strong id="innings">1</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="500" height">400"></canvas>
+    <div class="instructions"><span>CLICK</span> to swing! Time it right!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let ball = { x: 250, y: -30, speed: 6, pitching: false };
+        let batAngle = 0;
+        let runs = 0;
+        let outs = 0;
+        let innings = 1;
+        let swinging = false;
+        let swingTimer = 0;
+        let gameLoop;
+        
+        function init() {
+            ball = { x: 250, y: -30, speed: 6, pitching: false };
+            runs = 0;
+            outs = 0;
+            swinging = false;
+            swingTimer = 0;
+            batAngle = 0;
+            
+            document.getElementById('runs').textContent = '0';
+            document.getElementById('outs').textContent = '0';
+            document.getElementById('innings').textContent = '1';
+        }
+        
+        function draw() {
+            // Sky
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Field
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, 150, canvas.width, 250);
+            
+            // Dirt
+            ctx.fillStyle = '#c4a676';
+            ctx.beginPath();
+            ctx.arc(250, 350, 80, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Bases
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(200, 280, 20, 20);  // First base
+            ctx.fillRect(300, 280, 20, 20);  // Third base
+            ctx.fillRect(245, 220, 10, 60);  // Home plate
+            
+            // Pitcher's mound
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.arc(250, 150, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Ball
+            if (ball.pitching) {
+                ctx.fillStyle = '#fff';
+                ctx.shadowColor = '#fff';
+                ctx.shadowBlur = 5;
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                
+                // Ball seams
+                ctx.strokeStyle = '#e74c3c';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, 8, 0, Math.PI);
+                ctx.stroke();
+            }
+            
+            // Batter
+            ctx.save();
+            ctx.translate(250, 320);
+            ctx.rotate(batAngle);
+            
+            // Bat
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(-4, -70, 8, 60);
+            ctx.fillStyle = '#654321';
+            ctx.fillRect(-6, -70, 12, 8);
+            
+            ctx.restore();
+            
+            // Batter body
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.arc(250, 330, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(240, 345, 20, 35);
+            
+            // Helmet
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(250, 325, 18, Math.PI, 0);
+            ctx.fill();
+            
+            if (!ball.pitching && outs < 2) {
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#fff';
+                ctx.font = '24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Click to pitch!', canvas.width/2, 50);
+            }
+        }
+        
+        function update() {
+            if (!ball.pitching) return;
+            
+            ball.y += ball.speed;
+            
+            // Swing animation
+            if (swinging) {
+                swingTimer++;
+                batAngle = Math.sin(swingTimer * 0.4) * 1.2;
+                if (swingTimer > 15) {
+                    swinging = false;
+                    swingTimer = 0;
+                    batAngle = 0;
+                }
+            }
+            
+            // Hit detection
+            if (ball.y > 280 && ball.y < 370 && swinging) {
+                const timing = Math.abs(ball.y - 330);
+                if (timing < 40) {
+                    // Hit!
+                    const hitPower = 5 + Math.random() * 5;
+                    ball.pitching = false;
+                    ball.y = -30;
+                    
+                    // Score based on timing
+                    let scored = 0;
+                    if (timing < 15) scored = 4;  // Home run!
+                    else if (timing < 25) scored = 3;
+                    else if (timing < 35) scored = 2;
+                    else scored = 1;
+                    
+                    runs += scored;
+                    document.getElementById('runs').textContent = runs;
+                }
+            }
+            
+            // Strike
+            if (ball.y > 380) {
+                outs++;
+                document.getElementById('outs').textContent = outs;
+                ball.pitching = false;
+                ball.y = -30;
+                
+                if (outs >= 2) {
+                    innings++;
+                    outs = 0;
+                    document.getElementById('outs').textContent = '0';
+                    document.getElementById('innings').textContent = Math.min(innings, 9);
+                    
+                    if (innings > 9) {
+                        endGame();
+                    }
+                }
+            }
+        }
+        
+        function pitch() {
+            if (ball.pitching || outs >= 2) return;
+            ball.pitching = true;
+            ball.y = -30;
+            ball.x = 250 + (Math.random() - 0.5) * 40;
+            ball.speed = 5 + Math.random() * 3;
+        }
+        
+        function swing() {
+            if (swinging || !ball.pitching) return;
+            swinging = true;
+            swingTimer = 0;
+        }
+        
+        function endGame() {
+            clearInterval(gameLoop);
+            setTimeout(() => {
+                alert(`Game Over!\nFinal Score: ${runs} runs\nInnings: ${innings}\n\nClick OK to play again!`);
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        canvas.addEventListener('click', () => {
+            if (!ball.pitching) {
+                pitch();
+            } else {
+                swing();
+            }
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

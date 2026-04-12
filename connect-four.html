@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Connect Four</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px #f97316;
+        }
+        .status {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            height: 40px;
+        }
+        .player-indicator {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+        .player1-color { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
+        .player2-color { background: #fbbf24; box-shadow: 0 0 10px #fbbf24; }
+        canvas {
+            border: 4px solid #3b82f6;
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.4);
+            cursor: pointer;
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #2563eb;
+            transform: scale(1.05);
+        }
+        .mode-select {
+            margin-bottom: 15px;
+        }
+        .mode-select button {
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.3);
+            margin: 0 5px;
+        }
+        .mode-select button.active {
+            background: #f97316;
+            border-color: #f97316;
+        }
+        .instructions {
+            margin-top: 15px;
+            font-size: 1rem;
+            color: #aaa;
+        }
+        .instructions span {
+            color: #fbbf24;
+        }
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 1rem;
+        }
+        .back-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        #winnerModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            border: 3px solid #f97316;
+        }
+        .modal-content h2 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+        .modal-content p {
+            font-size: 1.2rem;
+            margin-bottom: 25px;
+        }
+        .winner-circle {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+        }
+        .winner-circle.red { background: #ef4444; box-shadow: 0 0 20px #ef4444; }
+        .winner-circle.yellow { background: #fbbf24; box-shadow: 0 0 20px #fbbf24; }
+        .winner-circle.ai { background: #8b5cf6; box-shadow: 0 0 20px #8b5cf6; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🎮 Connect Four</h1>
+    
+    <div class="mode-select">
+        <button id="twoPlayerBtn" class="active" onclick="setMode('twoPlayer')">2 Players 👥</button>
+        <button id="vsAIBtn" onclick="setMode('vsAI')">vs Computer 🤖</button>
+    </div>
+    
+    <div class="status">
+        <span class="player-indicator player1-color" id="turnIndicator"></span>
+        <span id="statusText">Red's Turn</span>
+    </div>
+    
+    <canvas id="gameCanvas" width="420" height="360"></canvas>
+    
+    <div class="controls">
+        <button onclick="resetGame()">🔄 New Game</button>
+    </div>
+    
+    <div class="instructions">
+        Click a column to drop your piece | <span>Red</span> goes first | Connect <span>4 in a row</span> to win!
+    </div>
+    
+    <div id="winnerModal">
+        <div class="modal-content">
+            <div class="winner-circle red" id="winnerCircle"></div>
+            <h2 id="winnerTitle">🎉 Red Wins! 🎉</h2>
+            <p id="winnerText">Amazing! Red connected 4 in a row!</p>
+            <button onclick="resetGame(); closeModal();">Play Again 🔄</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const COLS = 7;
+        const ROWS = 6;
+        const CELL_SIZE = 60;
+        const PADDING = 10;
+        
+        let board = [];
+        let currentPlayer = 1; // 1 = Red, 2 = Yellow
+        let gameOver = false;
+        let vsAI = false;
+        let isAIThinking = false;
+        
+        const EMPTY = 0;
+        const PLAYER1 = 1;
+        const PLAYER2 = 2;
+        
+        const RED = '#ef4444';
+        const YELLOW = '#fbbf24';
+        const BLUE = '#3b82f6';
+        const DARK_BLUE = '#1e3a5f';
+        
+        function initBoard() {
+            board = [];
+            for (let row = 0; row < ROWS; row++) {
+                board[row] = [];
+                for (let col = 0; col < COLS; col++) {
+                    board[row][col] = EMPTY;
+                }
+            }
+        }
+        
+        function drawBoard() {
+            // Background
+            ctx.fillStyle = BLUE;
+            ctx.beginPath();
+            ctx.roundRect(0, 0, canvas.width, canvas.height, 15);
+            ctx.fill();
+            
+            // Draw slots
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    const x = col * CELL_SIZE + PADDING;
+                    const y = row * CELL_SIZE + PADDING;
+                    const radius = CELL_SIZE / 2 - 5;
+                    
+                    // Empty slot (dark circle)
+                    ctx.fillStyle = DARK_BLUE;
+                    ctx.beginPath();
+                    ctx.arc(x + CELL_SIZE / 2, y + CELL_SIZE / 2, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Draw piece if occupied
+                    if (board[row][col] === PLAYER1) {
+                        drawPiece(x + CELL_SIZE / 2, y + CELL_SIZE / 2, RED);
+                    } else if (board[row][col] === PLAYER2) {
+                        drawPiece(x + CELL_SIZE / 2, y + CELL_SIZE / 2, YELLOW);
+                    }
+                }
+            }
+            
+            // Draw hover preview for current column
+            if (!gameOver && !isAIThinking) {
+                const hoverCol = getHoverColumn();
+                if (hoverCol !== -1 && canDropInCol(hoverCol)) {
+                    const x = hoverCol * CELL_SIZE + PADDING + CELL_SIZE / 2;
+                    ctx.globalAlpha = 0.5;
+                    drawPiece(x, CELL_SIZE / 2, currentPlayer === 1 ? RED : YELLOW);
+                    ctx.globalAlpha = 1;
+                }
+            }
+        }
+        
+        function drawPiece(x, y, color) {
+            // Main piece
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(x, y, CELL_SIZE / 2 - 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Shine effect
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.beginPath();
+            ctx.arc(x - 5, y - 5, 8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function canDropInCol(col) {
+            return board[0][col] === EMPTY;
+        }
+        
+        function dropPiece(col) {
+            if (gameOver || isAIThinking) return;
+            
+            if (!canDropInCol(col)) return;
+            
+            // Find lowest empty row
+            let targetRow = -1;
+            for (let row = ROWS - 1; row >= 0; row--) {
+                if (board[row][col] === EMPTY) {
+                    targetRow = row;
+                    break;
+                }
+            }
+            
+            if (targetRow === -1) return;
+            
+            board[targetRow][col] = currentPlayer;
+            
+            // Check for win
+            if (checkWin(targetRow, col)) {
+                gameOver = true;
+                drawBoard();
+                showWinner(currentPlayer);
+                return;
+            }
+            
+            // Check for draw
+            if (checkDraw()) {
+                gameOver = true;
+                drawBoard();
+                showDraw();
+                return;
+            }
+            
+            // Switch player
+            currentPlayer = currentPlayer === PLAYER1 ? PLAYER2 : PLAYER1;
+            updateStatus();
+            drawBoard();
+            
+            // AI move
+            if (vsAI && currentPlayer === PLAYER2 && !gameOver) {
+                isAIThinking = true;
+                setTimeout(makeAIMove, 500);
+            }
+        }
+        
+        function makeAIMove() {
+            if (gameOver) {
+                isAIThinking = false;
+                return;
+            }
+            
+            // Simple AI: prioritize winning, then blocking, then center
+            let col = findBestMove();
+            isAIThinking = false;
+            dropPiece(col);
+        }
+        
+        function findBestMove() {
+            // Check if AI can win
+            for (let col = 0; col < COLS; col++) {
+                if (canDropInCol(col)) {
+                    const row = getDropRow(col);
+                    board[row][col] = PLAYER2;
+                    if (checkWin(row, col)) {
+                        board[row][col] = EMPTY;
+                        return col;
+                    }
+                    board[row][col] = EMPTY;
+                }
+            }
+            
+            // Check if player can win (block)
+            for (let col = 0; col < COLS; col++) {
+                if (canDropInCol(col)) {
+                    const row = getDropRow(col);
+                    board[row][col] = PLAYER1;
+                    if (checkWin(row, col)) {
+                        board[row][col] = EMPTY;
+                        return col;
+                    }
+                    board[row][col] = EMPTY;
+                }
+            }
+            
+            // Prefer center
+            const centerCol = 3;
+            if (canDropInCol(centerCol)) return centerCol;
+            
+            // Try adjacent to center
+            for (let offset of [1, 2, -1, -2]) {
+                const col = centerCol + offset;
+                if (col >= 0 && col < COLS && canDropInCol(col)) return col;
+            }
+            
+            // Random valid column
+            let validCols = [];
+            for (let col = 0; col < COLS; col++) {
+                if (canDropInCol(col)) validCols.push(col);
+            }
+            return validCols[Math.floor(Math.random() * validCols.length)];
+        }
+        
+        function getDropRow(col) {
+            for (let row = ROWS - 1; row >= 0; row--) {
+                if (board[row][col] === EMPTY) return row;
+            }
+            return -1;
+        }
+        
+        function checkWin(row, col) {
+            const player = board[row][col];
+            const directions = [
+                { dr: 0, dc: 1 },   // Horizontal
+                { dr: 1, dc: 0 },   // Vertical
+                { dr: 1, dc: 1 },   // Diagonal down-right
+                { dr: 1, dc: -1 }    // Diagonal down-left
+            ];
+            
+            for (const { dr, dc } of directions) {
+                let count = 1;
+                count += countInDirection(row, col, dr, dc, player);
+                count += countInDirection(row, col, -dr, -dc, player);
+                if (count >= 4) return true;
+            }
+            return false;
+        }
+        
+        function countInDirection(row, col, dr, dc, player) {
+            let count = 0;
+            let r = row + dr;
+            let c = col + dc;
+            while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
+                count++;
+                r += dr;
+                c += dc;
+            }
+            return count;
+        }
+        
+        function checkDraw() {
+            return board[0].every(cell => cell !== EMPTY);
+        }
+        
+        function updateStatus() {
+            const indicator = document.getElementById('turnIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            indicator.className = 'player-indicator ' + (currentPlayer === 1 ? 'player1-color' : 'player2-color');
+            
+            if (vsAI && currentPlayer === PLAYER2) {
+                statusText.textContent = "Computer's Turn 🤖";
+            } else {
+                statusText.textContent = (currentPlayer === 1 ? 'Red' : 'Yellow') + "'s Turn";
+            }
+        }
+        
+        function showWinner(player) {
+            const modal = document.getElementById('winnerModal');
+            const circle = document.getElementById('winnerCircle');
+            const title = document.getElementById('winnerTitle');
+            const text = document.getElementById('winnerText');
+            
+            if (player === PLAYER1) {
+                circle.className = 'winner-circle red';
+                title.textContent = '🎉 Red Wins! 🎉';
+                text.textContent = 'Amazing! Red connected 4 in a row!';
+            } else if (player === PLAYER2) {
+                if (vsAI) {
+                    circle.className = 'winner-circle ai';
+                    title.textContent = '🤖 Computer Wins! 🤖';
+                    text.textContent = 'The computer beat you! Try again!';
+                } else {
+                    circle.className = 'winner-circle yellow';
+                    title.textContent = '🎉 Yellow Wins! 🎉';
+                    text.textContent = 'Amazing! Yellow connected 4 in a row!';
+                }
+            }
+            
+            modal.style.display = 'flex';
+        }
+        
+        function showDraw() {
+            const modal = document.getElementById('winnerModal');
+            const circle = document.getElementById('winnerCircle');
+            const title = document.getElementById('winnerTitle');
+            const text = document.getElementById('winnerText');
+            
+            circle.className = 'winner-circle';
+            circle.style.background = '#3b82f6';
+            circle.style.boxShadow = '0 0 20px #3b82f6';
+            title.textContent = "🤝 It's a Draw! 🤝";
+            text.textContent = 'Nobody won this time!';
+            
+            modal.style.display = 'flex';
+        }
+        
+        function closeModal() {
+            document.getElementById('winnerModal').style.display = 'none';
+        }
+        
+        function resetGame() {
+            gameOver = false;
+            currentPlayer = 1;
+            isAIThinking = false;
+            initBoard();
+            updateStatus();
+            drawBoard();
+        }
+        
+        function setMode(mode) {
+            vsAI = (mode === 'vsAI');
+            document.getElementById('twoPlayerBtn').classList.toggle('active', mode === 'twoPlayer');
+            document.getElementById('vsAIBtn').classList.toggle('active', mode === 'vsAI');
+            resetGame();
+        }
+        
+        function getHoverColumn() {
+            return -1; // Simplified - can be enhanced with mouse tracking
+        }
+        
+        // Click handler
+        canvas.addEventListener('click', (e) => {
+            if (isAIThinking) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const col = Math.floor(x / CELL_SIZE);
+            
+            if (col >= 0 && col < COLS) {
+                dropPiece(col);
+            }
+        });
+        
+        // Mouse move for hover effect
+        let hoverCol = -1;
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const newHoverCol = Math.floor(x / CELL_SIZE);
+            if (newHoverCol !== hoverCol) {
+                hoverCol = newHoverCol;
+                if (!gameOver && !isAIThinking) drawBoard();
+            }
+        });
+        
+        // Touch support
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const x = touch.clientX - rect.left;
+            const col = Math.floor(x / CELL_SIZE);
+            
+            if (col >= 0 && col < COLS && !isAIThinking) {
+                dropPiece(col);
+            }
+        });
+        
+        // Initialize
+        initBoard();
+        updateStatus();
+        drawBoard();
+    </script>
+</body>
+</html>

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎱 Pool</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #fff; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(255,255,255,0.1); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #8B4513; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #3498db; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🎱 POOL</h1>
+    <div class="score-board">
+        <span>Pocketed: <strong id="pocketed">0</strong></span>
+        <span>Balls Left: <strong id="left">15</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="600" height">400"></canvas>
+    <div class="instructions"><span>DRAG</span> from cue ball to aim and set power! Release to shoot!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let balls = [];
+        let cueBall = { x: 200, y: 200, vx: 0, vy: 0 };
+        let pockets = [
+            {x: 30, y: 30}, {x: 300, y: 10}, {x: 570, y: 30},
+            {x: 30, y: 370}, {x: 300, y: 390}, {x: 570, y: 370}
+        ];
+        let pocketed = 0;
+        let dragging = false;
+        let dragStart = { x: 0, y: 0 };
+        let gameLoop;
+        
+        function init() {
+            balls = [];
+            pocketed = 0;
+            
+            // Triangle formation
+            const startX = 400;
+            const startY = 200;
+            let num = 1;
+            for (let row = 0; row < 5; row++) {
+                for (let col = 0; col <= row; col++) {
+                    balls.push({
+                        x: startX + row * 30,
+                        y: startY + (col - row/2) * 30,
+                        vx: 0, vy: 0,
+                        color: `hsl(${num * 30}, 80%, 50%)`,
+                        number: num,
+                        pocketed: false
+                    });
+                    num++;
+                }
+            }
+            
+            cueBall = { x: 200, y: 200, vx: 0, vy: 0 };
+            
+            document.getElementById('pocketed').textContent = '0';
+            document.getElementById('left').textContent = '15';
+        }
+        
+        function drawPocket(p) {
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 25, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function drawBall(b) {
+            if (b.pocketed) return;
+            
+            ctx.fillStyle = b.color;
+            ctx.shadowColor = b.color;
+            ctx.shadowBlur = 5;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Number
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(b.number, b.x, b.y);
+        }
+        
+        function drawCueBall() {
+            ctx.fillStyle = '#fff';
+            ctx.shadowColor = '#fff';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(cueBall.x, cueBall.y, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        
+        function drawAimLine() {
+            if (!dragging) return;
+            
+            const dx = dragStart.x - cueBall.x;
+            const dy = dragStart.y - cueBall.y;
+            
+            // Aim line
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(cueBall.x, cueBall.y);
+            ctx.lineTo(cueBall.x + dx * 2, cueBall.y + dy * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Power indicator
+            const power = Math.sqrt(dx * dx + dy * dy);
+            ctx.fillStyle = power > 100 ? '#e74c3c' : power > 50 ? '#f1c40f' : '#27ae60';
+            ctx.fillRect(20, canvas.height - 30, Math.min(power, 150), 15);
+        }
+        
+        function draw() {
+            // Table
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Rails
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 20;
+            ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+            
+            // Felt
+            ctx.fillStyle = '#229954';
+            ctx.fillRect(30, 30, canvas.width - 60, canvas.height - 60);
+            
+            pockets.forEach(drawPocket);
+            balls.forEach(drawBall);
+            drawCueBall();
+            drawAimLine();
+        }
+        
+        function update() {
+            // Move balls
+            let moving = cueBall.vx !== 0 || cueBall.vy !== 0;
+            
+            [cueBall, ...balls].forEach(ball => {
+                if (ball.pocketed) return;
+                
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+                
+                // Friction
+                ball.vx *= 0.98;
+                ball.vy *= 0.98;
+                
+                if (Math.abs(ball.vx) < 0.1 && Math.abs(ball.vy) < 0.1) {
+                    ball.vx = 0;
+                    ball.vy = 0;
+                } else {
+                    moving = true;
+                }
+                
+                // Wall bounces
+                if (ball.x < 35) { ball.x = 35; ball.vx *= -0.8; }
+                if (ball.x > canvas.width - 35) { ball.x = canvas.width - 35; ball.vx *= -0.8; }
+                if (ball.y < 35) { ball.y = 35; ball.vy *= -0.8; }
+                if (ball.y > canvas.height - 35) { ball.y = canvas.height - 35; ball.vy *= -0.8; }
+            });
+            
+            // Ball-ball collisions
+            for (let i = 0; i < balls.length; i++) {
+                if (balls[i].pocketed) continue;
+                
+                // Cue ball
+                let dx = cueBall.x - balls[i].x;
+                let dy = cueBall.y - balls[i].y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < 24) {
+                    const angle = Math.atan2(dy, dx);
+                    const speed = Math.sqrt(cueBall.vx ** 2 + cueBall.vy ** 2);
+                    cueBall.vx = Math.cos(angle) * speed * 0.9;
+                    cueBall.vy = Math.sin(angle) * speed * 0.9;
+                    balls[i].vx = -Math.cos(angle) * speed * 0.5;
+                    balls[i].vy = -Math.sin(angle) * speed * 0.5;
+                }
+                
+                // Other balls
+                for (let j = i + 1; j < balls.length; j++) {
+                    if (balls[j].pocketed) continue;
+                    
+                    dx = balls[i].x - balls[j].x;
+                    dy = balls[i].y - balls[j].y;
+                    dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < 24) {
+                        const angle = Math.atan2(dy, dx);
+                        const speed1 = Math.sqrt(balls[i].vx ** 2 + balls[i].vy ** 2);
+                        const speed2 = Math.sqrt(balls[j].vx ** 2 + balls[j].vy ** 2);
+                        
+                        balls[i].vx = Math.cos(angle) * speed2;
+                        balls[i].vy = Math.sin(angle) * speed2;
+                        balls[j].vx = -Math.cos(angle) * speed1;
+                        balls[j].vy = -Math.sin(angle) * speed1;
+                    }
+                }
+            }
+            
+            // Pocket detection
+            pockets.forEach(p => {
+                balls.forEach(ball => {
+                    if (ball.pocketed) return;
+                    const dist = Math.sqrt((ball.x - p.x) ** 2 + (ball.y - p.y) ** 2);
+                    if (dist < 20) {
+                        ball.pocketed = true;
+                        pocketed++;
+                        document.getElementById('pocketed').textContent = pocketed;
+                        document.getElementById('left').textContent = 15 - pocketed;
+                        
+                        if (pocketed >= 15) {
+                            endGame();
+                        }
+                    }
+                });
+                
+                // Cue ball pocket
+                const cueDist = Math.sqrt((cueBall.x - p.x) ** 2 + (cueBall.y - p.y) ** 2);
+                if (cueDist < 20 && (cueBall.vx !== 0 || cueBall.vy !== 0)) {
+                    cueBall = { x: 200, y: 200, vx: 0, vy: 0 };
+                }
+            });
+        }
+        
+        function endGame() {
+            clearInterval(gameLoop);
+            setTimeout(() => {
+                alert(`Congratulations!\nYou pocketed all balls!\n\nClick OK to play again!`);
+                init();
+                gameLoop = setInterval(update, 1000 / 60);
+            }, 100);
+        }
+        
+        canvas.addEventListener('mousedown', (e) => {
+            if (cueBall.vx !== 0 || cueBall.vy !== 0) return;
+            const rect = canvas.getBoundingClientRect();
+            dragStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            dragging = true;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            const rect = canvas.getBoundingClientRect();
+            cueBall.x = e.clientX - rect.left;
+            cueBall.y = e.clientY - rect.top;
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            if (!dragging) return;
+            dragging = false;
+            
+            cueBall.vx = (dragStart.x - cueBall.x) * 0.15;
+            cueBall.vy = (dragStart.y - cueBall.y) * 0.15;
+            
+            if (Math.abs(cueBall.vx) < 0.5 && Math.abs(cueBall.vy) < 0.5) {
+                cueBall.x = 200;
+                cueBall.y = 200;
+            }
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

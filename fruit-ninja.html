@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍉 Fruit Ninja</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; text-shadow: 0 0 20px #27ae60; }
+        .score-board { font-size: 1.5rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(39,174,96,0.2); padding: 5px 20px; border-radius: 20px; }
+        canvas { border: 3px solid #27ae60; border-radius: 10px; box-shadow: 0 0 30px rgba(39,174,96,0.4); }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #27ae60; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🍉 FRUIT NINJA</h1>
+    <div class="score-board">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Lives: <strong id="lives">3</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="400" height="550"></canvas>
+    <div class="instructions"><span>SWIPE</span> to slice the fruits! Don't miss them!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const FRUITS = [
+            { emoji: '🍎', color: '#e74c3c', points: 10 },
+            { emoji: '🍊', color: '#f39c12', points: 10 },
+            { emoji: '🍋', color: '#f1c40f', points: 10 },
+            { emoji: '🍇', color: '#9b59b6', points: 15 },
+            { emoji: '🍉', color: '#27ae60', points: 10 },
+            { emoji: '🍓', color: '#e74c3c', points: 10 },
+            { emoji: '🍑', color: '#f5b041', points: 10 },
+            { emoji: '🥝', color: '#27ae60', points: 15 },
+            { emoji: '🍒', color: '#c0392b', points: 20 },
+            { emoji: '🥭', color: '#e67e22', points: 15 }
+        ];
+        
+        const BOMBS = [
+            { emoji: '💣', color: '#333' }
+        ];
+        
+        let fruits = [];
+        let sliceTrail = [];
+        let score = 0;
+        let lives = 3;
+        let gameLoop;
+        let gameRunning = true;
+        let combo = 0;
+        let lastSliceTime = 0;
+        
+        function init() {
+            fruits = [];
+            sliceTrail = [];
+            score = 0;
+            lives = 3;
+            combo = 0;
+            gameRunning = true;
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('lives').textContent = '3';
+            
+            // Start spawning
+            spawnFruit();
+        }
+        
+        function spawnFruit() {
+            if (!gameRunning) return;
+            
+            const isBomb = Math.random() < 0.1;
+            const fruit = isBomb ? BOMBS[0] : FRUITS[Math.floor(Math.random() * FRUITS.length)];
+            
+            fruits.push({
+                x: 50 + Math.random() * 300,
+                y: canvas.height + 50,
+                vx: (Math.random() - 0.5) * 6,
+                vy: -15 - Math.random() * 5,
+                rotation: 0,
+                rotationSpeed: (Math.random() - 0.5) * 0.3,
+                radius: 30,
+                sliced: false,
+                ...fruit
+            });
+            
+            // Spawn more at higher levels
+            if (Math.random() < 0.3 + score * 0.001) {
+                setTimeout(spawnFruit, 200);
+            }
+            
+            setTimeout(spawnFruit, 800 + Math.random() * 600);
+        }
+        
+        function drawFruit(fruit) {
+            ctx.save();
+            ctx.translate(fruit.x, fruit.y);
+            ctx.rotate(fruit.rotation);
+            
+            if (fruit.sliced) {
+                // Draw half
+                ctx.fillStyle = fruit.color;
+                ctx.beginPath();
+                ctx.arc(0, 0, fruit.radius, 0, Math.PI, false);
+                ctx.fill();
+                
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.beginPath();
+                ctx.arc(0, 0, fruit.radius * 0.7, 0, Math.PI, false);
+                ctx.fill();
+            } else {
+                // Draw fruit
+                ctx.font = `${fruit.radius * 1.5}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(fruit.emoji, 0, 0);
+            }
+            
+            ctx.restore();
+        }
+        
+        function drawTrail() {
+            if (sliceTrail.length < 2) return;
+            
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            ctx.beginPath();
+            ctx.moveTo(sliceTrail[0].x, sliceTrail[0].y);
+            
+            for (let i = 1; i < sliceTrail.length; i++) {
+                const point = sliceTrail[i];
+                const prev = sliceTrail[i - 1];
+                const alpha = i / sliceTrail.length;
+                
+                ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.lineWidth = alpha * 4;
+                ctx.lineTo(point.x, point.y);
+            }
+            
+            ctx.stroke();
+        }
+        
+        function draw() {
+            // Background
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#1a1a2e');
+            gradient.addColorStop(1, '#2d3436');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Wood panel
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, canvas.height - 80, canvas.width, 80);
+            
+            // Wood grain
+            ctx.strokeStyle = '#6B3E0A';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 10; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, canvas.height - 70 + i * 8);
+                ctx.lineTo(canvas.width, canvas.height - 70 + i * 8);
+                ctx.stroke();
+            }
+            
+            // Draw fruits
+            fruits.forEach(fruit => {
+                if (!fruit.sliced) {
+                    drawFruit(fruit);
+                }
+            });
+            
+            // Draw slice trail
+            drawTrail();
+            
+            // Draw sliced halves
+            fruits.forEach(fruit => {
+                if (fruit.sliced) {
+                    drawFruit(fruit);
+                }
+            });
+            
+            // Combo display
+            if (combo > 1) {
+                ctx.fillStyle = '#f39c12';
+                ctx.font = 'bold 36px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${combo}x COMBO!`, canvas.width / 2, 80);
+            }
+            
+            // Game over
+            if (!gameRunning) {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 48px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 30);
+                ctx.font = '24px Arial';
+                ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 + 20);
+                ctx.font = '18px Arial';
+                ctx.fillText('Tap to play again', canvas.width / 2, canvas.height / 2 + 60);
+            }
+        }
+        
+        function update() {
+            if (!gameRunning) return;
+            
+            const now = Date.now();
+            
+            // Update fruits
+            fruits.forEach(fruit => {
+                fruit.x += fruit.vx;
+                fruit.y += fruit.vy;
+                fruit.vy += 0.4; // Gravity
+                fruit.rotation += fruit.rotationSpeed;
+                
+                // Bounce off walls
+                if (fruit.x < fruit.radius || fruit.x > canvas.width - fruit.radius) {
+                    fruit.vx *= -0.8;
+                }
+                
+                // Missed fruit (fell below)
+                if (fruit.y > canvas.height + 50 && !fruit.sliced) {
+                    if (!fruit.isBomb) {
+                        lives--;
+                        document.getElementById('lives').textContent = lives;
+                        
+                        if (lives <= 0) {
+                            gameRunning = false;
+                        }
+                    }
+                    fruit.remove = true;
+                }
+                
+                // Remove old sliced fruits
+                if (fruit.sliced && fruit.y > canvas.height + 100) {
+                    fruit.remove = true;
+                }
+            });
+            
+            // Remove marked fruits
+            fruits = fruits.filter(f => !f.remove);
+            
+            // Fade trail
+            sliceTrail = sliceTrail.filter(point => now - point.time < 100);
+            
+            // Reset combo
+            if (now - lastSliceTime > 500) {
+                combo = 0;
+            }
+        }
+        
+        function checkSlice(x1, y1, x2, y2) {
+            if (!gameRunning) return;
+            
+            const now = Date.now();
+            let slicedAny = false;
+            
+            fruits.forEach(fruit => {
+                if (fruit.sliced) return;
+                
+                // Check if line intersects fruit
+                const dist = pointToLineDistance(fruit.x, fruit.y, x1, y1, x2, y2);
+                
+                if (dist < fruit.radius + 10) {
+                    fruit.sliced = true;
+                    fruit.vy = Math.abs(fruit.vy) * 0.5;
+                    slicedAny = true;
+                    
+                    if (fruit.isBomb) {
+                        // Hit bomb - lose life
+                        lives--;
+                        document.getElementById('lives').textContent = lives;
+                        if (lives <= 0) {
+                            gameRunning = false;
+                        }
+                    } else {
+                        combo++;
+                        lastSliceTime = now;
+                        const points = fruit.points * combo;
+                        score += points;
+                        document.getElementById('score').textContent = score;
+                    }
+                }
+            });
+        }
+        
+        function pointToLineDistance(px, py, x1, y1, x2, y2) {
+            const A = px - x1;
+            const B = py - y1;
+            const C = x2 - x1;
+            const D = y2 - y1;
+            
+            const dot = A * C + B * D;
+            const lenSq = C * C + D * D;
+            let param = -1;
+            
+            if (lenSq !== 0) param = dot / lenSq;
+            
+            let xx, yy;
+            
+            if (param < 0) {
+                xx = x1;
+                yy = y1;
+            } else if (param > 1) {
+                xx = x2;
+                yy = y2;
+            } else {
+                xx = x1 + param * C;
+                yy = y1 + param * D;
+            }
+            
+            const dx = px - xx;
+            const dy = py - yy;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        
+        let lastX, lastY;
+        
+        canvas.addEventListener('mousedown', (e) => {
+            if (!gameRunning) {
+                init();
+                return;
+            }
+            const rect = canvas.getBoundingClientRect();
+            lastX = e.clientX - rect.left;
+            lastY = e.clientY - rect.top;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!lastX) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            sliceTrail.push({ x, y, time: Date.now() });
+            checkSlice(lastX, lastY, x, y);
+            
+            lastX = x;
+            lastY = y;
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            lastX = lastY = null;
+        });
+        
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!gameRunning) {
+                init();
+                return;
+            }
+            const rect = canvas.getBoundingClientRect();
+            lastX = e.touches[0].clientX - rect.left;
+            lastY = e.touches[0].clientY - rect.top;
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!lastX) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.touches[0].clientX - rect.left;
+            const y = e.touches[0].clientY - rect.top;
+            
+            sliceTrail.push({ x, y, time: Date.now() });
+            checkSlice(lastX, lastY, x, y);
+            
+            lastX = x;
+            lastY = y;
+        });
+        
+        canvas.addEventListener('touchend', () => {
+            lastX = lastY = null;
+        });
+        
+        // Start
+        init();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

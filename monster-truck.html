@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚗 Monster Truck</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #e74c3c; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(231,76,60,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #e74c3c; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #e74c3c; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🚗 MONSTER TRUCK</h1>
+    <div class="score-board">
+        <span>Distance: <strong id="dist">0</strong>m</span>
+        <span>Fuel: <strong id="fuel">100</strong>%</span>
+    </div>
+    <canvas id="gameCanvas" width="500" height="400"></canvas>
+    <div class="instructions"><span>← →</span> to steer | <span>↑</span> boost</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let truck = { x: 250, y: 300, vx: 0, angle: 0 };
+        let obstacles = [];
+        let distance = 0;
+        let fuel = 100;
+        let gameLoop;
+        let keys = { left: false, right: false, up: false };
+        let speed = 5;
+        
+        function init() {
+            truck = { x: 250, y: 300, vx: 0, angle: 0 };
+            obstacles = [];
+            distance = 0;
+            fuel = 100;
+            speed = 5;
+            
+            document.getElementById('dist').textContent = '0';
+            document.getElementById('fuel').textContent = '100';
+            
+            // Create initial obstacles
+            for (let i = 0; i < 5; i++) {
+                spawnObstacle(300 + i * 150);
+            }
+        }
+        
+        function spawnObstacle(y) {
+            const types = ['rock', 'car', 'truck'];
+            obstacles.push({
+                x: 50 + Math.random() * 400,
+                y: y,
+                type: types[Math.floor(Math.random() * types.length)],
+                size: 20 + Math.random() * 20
+            });
+        }
+        
+        function drawTruck() {
+            ctx.save();
+            ctx.translate(truck.x, truck.y);
+            ctx.rotate(truck.angle);
+            
+            // Wheels
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(-20, 15, 15, 0, Math.PI * 2);
+            ctx.arc(20, 15, 15, 0, Math.PI * 2);
+            ctx.arc(-20, -15, 15, 0, Math.PI * 2);
+            ctx.arc(20, -15, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Body
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(-25, -20, 50, 40);
+            
+            // Window
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(-15, -15, 30, 15);
+            
+            ctx.restore();
+        }
+        
+        function drawObstacle(obs) {
+            ctx.fillStyle = '#666';
+            if (obs.type === 'rock') {
+                ctx.beginPath();
+                ctx.moveTo(obs.x - obs.size, obs.y);
+                ctx.lineTo(obs.x, obs.y - obs.size);
+                ctx.lineTo(obs.x + obs.size, obs.y);
+                ctx.lineTo(obs.x, obs.y + obs.size);
+                ctx.closePath();
+                ctx.fill();
+            } else if (obs.type === 'car') {
+                ctx.fillStyle = '#3498db';
+                ctx.fillRect(obs.x - obs.size, obs.y - obs.size/2, obs.size * 2, obs.size);
+                ctx.fillStyle = '#2980b9';
+                ctx.fillRect(obs.x - obs.size/2, obs.y - obs.size/2 - 10, obs.size, obs.size/2);
+            } else {
+                ctx.fillStyle = '#f39c12';
+                ctx.fillRect(obs.x - obs.size, obs.y - obs.size/2, obs.size * 2, obs.size);
+                ctx.fillStyle = '#d68910';
+                ctx.fillRect(obs.x - obs.size/2, obs.y - obs.size/2 - 15, obs.size, obs.size/2);
+            }
+        }
+        
+        function draw() {
+            // Sky
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Road
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 100, canvas.width, 200);
+            
+            // Lane lines
+            ctx.strokeStyle = '#fff';
+            ctx.setLineDash([20, 20]);
+            ctx.beginPath();
+            ctx.moveTo(125, 100);
+            ctx.lineTo(125, 300);
+            ctx.moveTo(250, 100);
+            ctx.lineTo(250, 300);
+            ctx.moveTo(375, 100);
+            ctx.lineTo(375, 300);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Grass
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, 0, 50, 400);
+            ctx.fillRect(450, 0, 50, 400);
+            
+            obstacles.forEach(drawObstacle);
+            drawTruck();
+        }
+        
+        function update() {
+            // Steering
+            if (keys.left) truck.x -= 5;
+            if (keys.right) truck.x += 5;
+            
+            // Boost
+            if (keys.up) {
+                speed = Math.min(15, speed + 0.5);
+                fuel -= 0.3;
+            } else {
+                speed = Math.max(5, speed - 0.1);
+            }
+            
+            // Auto move
+            truck.angle = Math.sin(distance * 0.05) * 0.1;
+            
+            // Move obstacles
+            obstacles.forEach(obs => obs.y -= speed);
+            obstacles = obstacles.filter(obs => obs.y > -50);
+            
+            // Spawn new
+            if (obstacles.length < 5 || obstacles[obstacles.length - 1].y > 200) {
+                spawnObstacle(450);
+            }
+            
+            distance += speed * 0.1;
+            document.getElementById('dist').textContent = Math.floor(distance);
+            document.getElementById('fuel').textContent = Math.max(0, Math.floor(fuel));
+            
+            // Bounds
+            truck.x = Math.max(60, Math.min(440, truck.x));
+            
+            // Collision
+            obstacles.forEach(obs => {
+                const dist = Math.sqrt((truck.x - obs.x) ** 2 + (truck.y - obs.y) ** 2);
+                if (dist < obs.size + 20) {
+                    endGame();
+                }
+            });
+            
+            // Fuel empty
+            if (fuel <= 0) {
+                endGame();
+            }
+        }
+        
+        function endGame() {
+            clearInterval(gameLoop);
+            setTimeout(() => {
+                alert(`Crash! 💥\nDistance: ${Math.floor(distance)}m\n\nClick OK to play again!`);
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'ArrowLeft') keys.left = true;
+            if (e.code === 'ArrowRight') keys.right = true;
+            if (e.code === 'ArrowUp') keys.up = true;
+        });
+        
+        document.addEventListener('keyup', e => {
+            if (e.code === 'ArrowLeft') keys.left = false;
+            if (e.code === 'ArrowRight') keys.right = false;
+            if (e.code === 'ArrowUp') keys.up = false;
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

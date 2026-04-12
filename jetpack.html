@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="LFolYFY1ySO4aIcMbyo8EdJKYLqHW9MS6_B1y7e5MPQ" />
+    <title>Jetpack Joy | Cool Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: linear-gradient(180deg, #0f0f1a, #1a1a2e); min-height: 100vh; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+        .header { display: flex; justify-content: space-between; width: 100%; max-width: 400px; padding: 15px; }
+        .score-box { background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 15px; color: white; font-weight: bold; }
+        #gameCanvas { border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .instructions { color: rgba(255,255,255,0.5); margin-top: 10px; font-size: 0.85rem; }
+        .back-btn { position: fixed; top: 20px; left: 20px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 10px 20px; border-radius: 25px; text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back</a>
+    <div class="header">
+        <div class="score-box">Score: <span id="score">0</span></div>
+        <div class="score-box">Fuel: <span id="fuel">100</span>%</div>
+    </div>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <p class="instructions">Hold SPACE or CLICK to fly up! Collect fuel to keep going!</p>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const fuelEl = document.getElementById('fuel');
+        
+        let player = { x: 100, y: 300, vy: 0, size: 25 };
+        let obstacles = [];
+        let fuels = [];
+        let particles = [];
+        let score = 0;
+        let fuel = 100;
+        let gameOver = false;
+        let thrusting = false;
+        
+        document.addEventListener('mousedown', () => thrusting = true);
+        document.addEventListener('mouseup', () => thrusting = false);
+        document.addEventListener('keydown', e => { if (e.code === 'Space') thrusting = true; });
+        document.addEventListener('keyup', e => { if (e.code === 'Space') thrusting = false; });
+        
+        canvas.addEventListener('touchstart', e => { thrusting = true; e.preventDefault(); });
+        canvas.addEventListener('touchend', e => { thrusting = false; });
+        
+        function createObstacle() {
+            let gap = 150 + Math.random() * 50;
+            let y = -50;
+            obstacles.push({
+                x: 400,
+                y: y,
+                width: 60,
+                gap: gap,
+                speed: 4 + score / 50
+            });
+        }
+        
+        function createFuel() {
+            if (Math.random() < 0.3) {
+                fuels.push({
+                    x: Math.random() * 350 + 25,
+                    y: Math.random() * 400 + 100,
+                    size: 20,
+                    collected: false
+                });
+            }
+        }
+        
+        function createParticle(x, y, color) {
+            for (let i = 0; i < 5; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    life: 30,
+                    color: color
+                });
+            }
+        }
+        
+        function draw() {
+            // Background
+            ctx.fillStyle = '#0f0f1a';
+            ctx.fillRect(0, 0, 400, 600);
+            
+            // Stars
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            for (let i = 0; i < 50; i++) {
+                ctx.beginPath();
+                ctx.arc(Math.random() * 400, Math.random() * 600, 1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Obstacles
+            obstacles.forEach(o => {
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(o.x, 0, o.width, o.y);
+                ctx.fillRect(o.x, o.y + o.gap, o.width, 600 - o.y - o.gap);
+                
+                // Glow
+                ctx.shadowColor = '#e74c3c';
+                ctx.shadowBlur = 20;
+                ctx.fillRect(o.x, 0, o.width, o.y);
+                ctx.fillRect(o.x, o.y + o.gap, o.width, 600 - o.y - o.gap);
+                ctx.shadowBlur = 0;
+            });
+            
+            // Fuel
+            fuels.forEach(f => {
+                if (!f.collected) {
+                    ctx.fillStyle = '#2ecc71';
+                    ctx.beginPath();
+                    ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowColor = '#2ecc71';
+                    ctx.shadowBlur = 15;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 14px Poppins';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('⛽', f.x, f.y + 5);
+                }
+            });
+            
+            // Particles
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 30;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            });
+            
+            // Player
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowColor = '#3498db';
+            ctx.shadowBlur = 20;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Jetpack flame
+            if (thrusting && fuel > 0) {
+                let gradient = ctx.createLinearGradient(player.x, player.y + player.size, player.x, player.y + player.size + 30);
+                gradient.addColorStop(0, '#f39c12');
+                gradient.addColorStop(1, '#e74c3c');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.moveTo(player.x - 8, player.y + player.size);
+                ctx.lineTo(player.x, player.y + player.size + 20 + Math.random() * 10);
+                ctx.lineTo(player.x + 8, player.y + player.size);
+                ctx.fill();
+            }
+            
+            // Game Over
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                ctx.fillRect(0, 0, 400, 600);
+                ctx.fillStyle = '#ff6b6b';
+                ctx.font = 'bold 40px Poppins';
+                ctx.textAlign = 'center';
+                ctx.fillText('💥 CRASH!', 200, 260);
+                ctx.fillStyle = 'white';
+                ctx.font = '24px Poppins';
+                ctx.fillText('Score: ' + score, 200, 320);
+                ctx.font = '18px Poppins';
+                ctx.fillStyle = '#ffd700';
+                ctx.fillText('Click to Restart', 200, 370);
+            }
+        }
+        
+        function update() {
+            if (gameOver) return;
+            
+            // Physics
+            if (thrusting && fuel > 0) {
+                player.vy -= 0.8;
+                fuel -= 0.5;
+                createParticle(player.x, player.y + player.size, '#f39c12');
+            } else {
+                player.vy += 0.3;
+            }
+            player.vy = Math.max(-10, Math.min(player.vy, 10));
+            player.y += player.vy;
+            
+            // Fuel recharge when not thrusting
+            if (!thrusting && fuel < 100) fuel += 0.2;
+            fuelEl.textContent = Math.floor(fuel);
+            
+            // Boundaries
+            if (player.y < player.size) { player.y = player.size; player.vy = 0; }
+            if (player.y > 600 - player.size) { gameOver = true; }
+            
+            // Obstacles
+            obstacles.forEach((o, i) => {
+                o.x -= o.speed;
+                if (o.x + o.width < 0) {
+                    obstacles.splice(i, 1);
+                    score++;
+                    scoreEl.textContent = score;
+                }
+                
+                // Collision
+                if (player.x + player.size > o.x && player.x - player.size < o.x + o.width) {
+                    if (player.y - player.size < o.y || player.y + player.size > o.y + o.gap) {
+                        gameOver = true;
+                    }
+                }
+            });
+            
+            // Fuel collection
+            fuels.forEach((f, i) => {
+                if (!f.collected) {
+                    let dx = player.x - f.x;
+                    let dy = player.y - f.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < player.size + f.size) {
+                        f.collected = true;
+                        fuel = Math.min(100, fuel + 30);
+                        createParticle(f.x, f.y, '#2ecc71');
+                    }
+                }
+            });
+            
+            // Particles
+            particles.forEach((p, i) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                if (p.life <= 0) particles.splice(i, 1);
+            });
+            
+            // Spawn
+            if (Math.random() < 0.02) createObstacle();
+            createFuel();
+        }
+        
+        canvas.addEventListener('click', () => {
+            if (gameOver) {
+                gameOver = false;
+                player.y = 300;
+                player.vy = 0;
+                obstacles = [];
+                fuels = [];
+                particles = [];
+                score = 0;
+                fuel = 100;
+                scoreEl.textContent = 0;
+            }
+        });
+        
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        gameLoop();
+    </script>
+</body>
+</html>

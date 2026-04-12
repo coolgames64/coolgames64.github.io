@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🥊 Fight Club</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #e67e22; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(230,126,34,0.2); padding: 5px 15px; border-radius: 15px; margin: 0 10px; }
+        canvas { border: 3px solid #e67e22; border-radius: 10px; background: #1a1a1a; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #e67e22; padding: 3px 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🥊 FIGHT CLUB</h1>
+    <div class="score-board">
+        <span>Wins: <strong id="wins">0</strong></span>
+        <span>Combo: <strong id="combo">0</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="500" height="350"></canvas>
+    <div class="instructions"><span>J</span> Left Punch | <span>K</span> Right Punch | <span>L</span> Kick | Chain combos for more damage!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let player = { x: 120, y: 250, health: 100, combo: 0, attacking: false, attackType: '', attackFrame: 0, hitEnemy: false };
+        let enemy = { x: 350, y: 250, health: 100, attacking: false, attackType: '', attackFrame: 0, hitPlayer: false, stunTimer: 0 };
+        let score = 0;
+        let gameLoop;
+        let particles = [];
+        let enemySpawnTimer = 0;
+        let enemies = [];
+        
+        function init() {
+            player = { x: 120, y: 250, health: 100, combo: 0, attacking: false, attackType: '', attackFrame: 0, hitEnemy: false };
+            enemy = { x: 350, y: 250, health: 100, attacking: false, attackType: '', attackFrame: 0, hitPlayer: false, stunTimer: 0 };
+            particles = [];
+        }
+        
+        function drawFighter(fighter, color, isPlayer) {
+            ctx.save();
+            ctx.translate(fighter.x, fighter.y);
+            if (!isPlayer) ctx.scale(-1, 1);
+            
+            // Determine pose
+            let punchExtend = 0;
+            let kickExtend = 0;
+            let guardUp = false;
+            
+            if (fighter.attacking) {
+                if (fighter.attackType === 'leftPunch') {
+                    punchExtend = Math.sin(fighter.attackFrame * 0.4) * 40;
+                } else if (fighter.attackType === 'rightPunch') {
+                    punchExtend = Math.sin(fighter.attackFrame * 0.4) * 50;
+                } else if (fighter.attackType === 'kick') {
+                    kickExtend = Math.sin(fighter.attackFrame * 0.3) * 60;
+                }
+            }
+            
+            if (fighter.stunTimer > 0) {
+                ctx.rotate(Math.sin(fighter.stunTimer * 0.5) * 0.2);
+            }
+            
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(0, 40, 25, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Legs
+            ctx.fillStyle = '#2c3e50';
+            if (fighter.attackType === 'kick' && fighter.attacking) {
+                ctx.fillRect(-15, 0, 12, 40);
+                ctx.save();
+                ctx.translate(-5, 0);
+                ctx.rotate(-Math.PI/4 + kickExtend * 0.02);
+                ctx.fillRect(0, 0, 12, 50);
+                ctx.restore();
+            } else {
+                ctx.fillRect(-15, 0, 12, 40);
+                ctx.fillRect(3, 0, 12, 40);
+            }
+            
+            // Body
+            ctx.fillStyle = color;
+            ctx.fillRect(-20, -50, 40, 55);
+            
+            // Head
+            ctx.beginPath();
+            ctx.arc(0, -65, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Face
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(5, -68, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Guard
+            ctx.fillStyle = color;
+            ctx.fillRect(-25, -55, 15, 25);
+            ctx.fillRect(10, -55, 15, 25);
+            
+            // Arms
+            if (fighter.attackType === 'leftPunch' && fighter.attacking) {
+                ctx.fillStyle = color;
+                ctx.fillRect(15, -45, punchExtend + 15, 15);
+            } else if (fighter.attackType === 'rightPunch' && fighter.attacking) {
+                ctx.fillStyle = color;
+                ctx.fillRect(15, -40, punchExtend + 15, 15);
+            } else {
+                ctx.fillStyle = color;
+                ctx.fillRect(-30, -45, 15, 15);
+                ctx.fillRect(15, -45, 15, 15);
+            }
+            
+            ctx.restore();
+            
+            // Health bar
+            const healthWidth = 80;
+            ctx.fillStyle = '#c0392b';
+            ctx.fillRect(fighter.x - healthWidth/2, fighter.y - 110, healthWidth, 10);
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(fighter.x - healthWidth/2, fighter.y - 110, healthWidth * (fighter.health / 100), 10);
+        }
+        
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.3;
+                p.life -= 0.03;
+            });
+            particles = particles.filter(p => p.life > 0);
+        }
+        
+        function createHitParticles(x, y, color) {
+            for (let i = 0; i < 10; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 1) * 8,
+                    size: Math.random() * 4 + 2,
+                    life: 1,
+                    color: color
+                });
+            }
+        }
+        
+        function draw() {
+            // Arena background
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#2c3e50');
+            gradient.addColorStop(1, '#1a1a2e');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Ring
+            ctx.fillStyle = '#8B0000';
+            ctx.fillRect(0, 290, canvas.width, 60);
+            
+            // Ring ropes
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(0, 200);
+            ctx.lineTo(canvas.width, 200);
+            ctx.moveTo(0, 220);
+            ctx.lineTo(canvas.width, 220);
+            ctx.stroke();
+            
+            // Corner posts
+            ctx.fillStyle = '#7f8c8d';
+            ctx.fillRect(-10, 180, 20, 120);
+            ctx.fillRect(canvas.width - 10, 180, 20, 120);
+            
+            drawFighter(player, '#3498db', true);
+            drawFighter(enemy, '#e74c3c', false);
+            drawParticles();
+            
+            // Player health bar (bottom)
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('YOU', 50, canvas.height - 20);
+            ctx.fillStyle = '#c0392b';
+            ctx.fillRect(90, canvas.height - 30, 200, 20);
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(90, canvas.height - 30, 200 * (player.health / 100), 20);
+            
+            // Enemy health bar
+            ctx.fillStyle = '#fff';
+            ctx.fillText('ENEMY', canvas.width - 150, canvas.height - 20);
+            ctx.fillStyle = '#c0392b';
+            ctx.fillRect(canvas.width - 240, canvas.height - 30, 200, 20);
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(canvas.width - 240, canvas.height - 30, 200 * (enemy.health / 100), 20);
+        }
+        
+        function update() {
+            // Player attack update
+            if (player.attacking) {
+                player.attackFrame++;
+                
+                // Hit on frame 5
+                if (player.attackFrame === 5 && !player.hitEnemy) {
+                    const dist = Math.abs(player.x + 60 - enemy.x);
+                    if (dist < 100) {
+                        let damage = 5 + player.combo * 2;
+                        if (player.attackType === 'kick') damage *= 1.5;
+                        if (player.attackType === 'rightPunch') damage *= 1.3;
+                        
+                        enemy.health -= damage;
+                        enemy.stunTimer = 15;
+                        player.combo++;
+                        document.getElementById('combo').textContent = player.combo;
+                        createHitParticles(enemy.x - 20, enemy.y - 50, '#e74c3c');
+                        
+                        if (enemy.health <= 0) {
+                            score++;
+                            document.getElementById('wins').textContent = score;
+                            enemy.health = 100;
+                            enemy.x = 350;
+                            player.combo = 0;
+                            document.getElementById('combo').textContent = 0;
+                        }
+                        player.hitEnemy = true;
+                    }
+                }
+                
+                if (player.attackFrame > 20) {
+                    player.attacking = false;
+                    player.attackType = '';
+                    player.attackFrame = 0;
+                    player.hitEnemy = false;
+                }
+            }
+            
+            // Enemy stun
+            if (enemy.stunTimer > 0) {
+                enemy.stunTimer--;
+            }
+            
+            // Enemy attack AI
+            if (!enemy.attacking && enemy.stunTimer === 0 && Math.random() < 0.02) {
+                const attacks = ['leftPunch', 'rightPunch', 'kick'];
+                enemy.attackType = attacks[Math.floor(Math.random() * attacks.length)];
+                enemy.attacking = true;
+                enemy.attackFrame = 0;
+                enemy.hitPlayer = false;
+            }
+            
+            if (enemy.attacking) {
+                enemy.attackFrame++;
+                
+                if (enemy.attackFrame === 8 && !enemy.hitPlayer) {
+                    const dist = Math.abs(enemy.x - 60 - player.x);
+                    if (dist < 100) {
+                        let damage = 8;
+                        if (enemy.attackType === 'kick') damage *= 1.5;
+                        if (enemy.attackType === 'rightPunch') damage *= 1.3;
+                        
+                        player.health -= damage;
+                        player.combo = 0;
+                        document.getElementById('combo').textContent = 0;
+                        createHitParticles(player.x + 20, player.y - 50, '#3498db');
+                        
+                        if (player.health <= 0) {
+                            setTimeout(() => {
+                                alert(`💀 KNOCKOUT! 💀\n\nYou won ${score} fights!\nClick OK to play again!`);
+                                score = 0;
+                                player.health = 100;
+                                document.getElementById('wins').textContent = score;
+                            }, 100);
+                            player.health = 100;
+                            player.combo = 0;
+                        }
+                        enemy.hitPlayer = true;
+                    }
+                }
+                
+                if (enemy.attackFrame > 20) {
+                    enemy.attacking = false;
+                    enemy.attackType = '';
+                    enemy.attackFrame = 0;
+                    enemy.hitPlayer = false;
+                }
+            }
+        }
+        
+        function leftPunch() {
+            if (player.attacking || enemy.stunTimer > 0) return;
+            player.attacking = true;
+            player.attackType = 'leftPunch';
+            player.attackFrame = 0;
+            player.hitEnemy = false;
+        }
+        
+        function rightPunch() {
+            if (player.attacking || enemy.stunTimer > 0) return;
+            player.attacking = true;
+            player.attackType = 'rightPunch';
+            player.attackFrame = 0;
+            player.hitEnemy = false;
+        }
+        
+        function kick() {
+            if (player.attacking || enemy.stunTimer > 0) return;
+            player.attacking = true;
+            player.attackType = 'kick';
+            player.attackFrame = 0;
+            player.hitEnemy = false;
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'KeyJ') leftPunch();
+            else if (e.code === 'KeyK') rightPunch();
+            else if (e.code === 'KeyL') kick();
+        });
+        
+        canvas.addEventListener('click', rightPunch);
+        
+        init();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

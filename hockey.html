@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏒 Hockey</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #3498db; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(52,152,219,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #3498db; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #3498db; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🏒 HOCKEY</h1>
+    <div class="score-board">
+        <span>Player: <strong id="p1">0</strong></span>
+        <span>CPU: <strong id="p2">0</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <div class="instructions">Move with <span>MOUSE</span>! First to 5 wins!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let player = { x: 200, y: 500 };
+        let cpu = { x: 200, y: 100 };
+        let puck = { x: 200, y: 300, vx: 0, vy: 0 };
+        let p1Score = 0;
+        let p2Score = 0;
+        let gameLoop;
+        
+        function init() {
+            player = { x: 200, y: 500 };
+            cpu = { x: 200, y: 100 };
+            puck = { x: 200, y: 300, vx: 2, vy: 2 };
+            p1Score = 0;
+            p2Score = 0;
+            
+            document.getElementById('p1').textContent = '0';
+            document.getElementById('p2').textContent = '0';
+        }
+        
+        function draw() {
+            // Ice
+            ctx.fillStyle = '#d5f5f5';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Ice texture
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            for (let i = 0; i < 50; i++) {
+                ctx.fillRect(Math.random() * 400, Math.random() * 600, 30, 2);
+            }
+            
+            // Center line
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(0, 300);
+            ctx.lineTo(400, 300);
+            ctx.stroke();
+            
+            // Center circle
+            ctx.beginPath();
+            ctx.arc(200, 300, 50, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Goals
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(150, 0, 100, 25);
+            ctx.fillRect(150, 575, 100, 25);
+            
+            // Goal lines
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(150, 25);
+            ctx.lineTo(250, 25);
+            ctx.moveTo(150, 575);
+            ctx.lineTo(250, 575);
+            ctx.stroke();
+            
+            // Puck
+            ctx.fillStyle = '#333';
+            ctx.shadowColor = '#333';
+            ctx.shadowBlur = 5;
+            ctx.beginPath();
+            ctx.arc(puck.x, puck.y, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Player paddle
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, 25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#2980b9';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // CPU paddle
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(cpu.x, cpu.y, 25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#c0392b';
+            ctx.beginPath();
+            ctx.arc(cpu.x, cpu.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function update() {
+            // Puck physics
+            puck.x += puck.vx;
+            puck.y += puck.vy;
+            
+            // Friction
+            puck.vx *= 0.995;
+            puck.vy *= 0.995;
+            
+            // Wall bounces
+            if (puck.x < 15 || puck.x > 385) {
+                puck.vx *= -0.9;
+                puck.x = puck.x < 15 ? 15 : 385;
+            }
+            
+            // Goal detection
+            if (puck.y < 15 && puck.x > 150 && puck.x < 250) {
+                p1Score++;
+                document.getElementById('p1').textContent = p1Score;
+                checkWin();
+                resetPuck();
+            }
+            if (puck.y > 585 && puck.x > 150 && puck.x < 250) {
+                p2Score++;
+                document.getElementById('p2').textContent = p2Score;
+                checkWin();
+                resetPuck();
+            }
+            
+            // Side walls
+            if (puck.x < 15) { puck.vx *= -0.9; puck.x = 15; }
+            if (puck.x > 385) { puck.vx *= -0.9; puck.x = 385; }
+            
+            // Player collision
+            let dx = puck.x - player.x;
+            let dy = puck.y - player.y;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 35) {
+                const angle = Math.atan2(dy, dx);
+                const speed = Math.sqrt(puck.vx ** 2 + puck.vy ** 2) + 3;
+                puck.vx = Math.cos(angle) * speed;
+                puck.vy = Math.sin(angle) * speed;
+                puck.x = player.x + Math.cos(angle) * 35;
+                puck.y = player.y + Math.sin(angle) * 35;
+            }
+            
+            // CPU AI
+            if (puck.vy > 0) {
+                if (puck.x < cpu.x - 10) cpu.x -= 4;
+                else if (puck.x > cpu.x + 10) cpu.x += 4;
+            } else {
+                if (cpu.x < 195) cpu.x += 2;
+                else if (cpu.x > 205) cpu.x -= 2;
+            }
+            
+            cpu.x = Math.max(35, Math.min(365, cpu.x));
+            cpu.y = Math.max(35, Math.min(130, cpu.y));
+            
+            // CPU collision
+            dx = puck.x - cpu.x;
+            dy = puck.y - cpu.y;
+            dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 35) {
+                const angle = Math.atan2(dy, dx);
+                const speed = Math.sqrt(puck.vx ** 2 + puck.vy ** 2);
+                puck.vx = -Math.cos(angle) * speed;
+                puck.vy = -Math.sin(angle) * speed;
+            }
+        }
+        
+        function resetPuck() {
+            puck = { x: 200, y: 300, vx: (Math.random() > 0.5 ? 1 : -1) * 2, vy: (Math.random() - 0.5) * 4 };
+        }
+        
+        function checkWin() {
+            if (p1Score >= 5) {
+                clearInterval(gameLoop);
+                setTimeout(() => {
+                    alert('🏆 YOU WIN! 🏆\n\nClick OK to play again!');
+                    init();
+                    gameLoop = setInterval(() => {
+                        update();
+                        draw();
+                    }, 1000 / 60);
+                }, 100);
+            } else if (p2Score >= 5) {
+                clearInterval(gameLoop);
+                setTimeout(() => {
+                    alert('😢 CPU WINS! 😢\n\nClick OK to play again!');
+                    init();
+                    gameLoop = setInterval(() => {
+                        update();
+                        draw();
+                    }, 1000 / 60);
+                }, 100);
+            }
+        }
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            player.x = e.clientX - rect.left;
+            player.y = e.clientY - rect.top;
+            
+            player.x = Math.max(35, Math.min(365, player.x));
+            player.y = Math.max(340, Math.min(565, player.y));
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

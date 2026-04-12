@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏍️ Highway Rider</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #9b59b6; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(155,89,182,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #9b59b6; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #9b59b6; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🏍️ HIGHWAY RIDER</h1>
+    <div class="score-board">
+        <span>Distance: <strong id="dist">0</strong>m</span>
+        <span>Coins: <strong id="coins">0</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="400" height="500"></canvas>
+    <div class="instructions"><span>← →</span> change lanes | Collect coins!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let rider = { lane: 1, x: 200 };
+        let obstacles = [];
+        let coins = [];
+        let distance = 0;
+        let coinCount = 0;
+        let gameLoop;
+        let speed = 5;
+        
+        const LANES = [100, 200, 300];
+        
+        function init() {
+            rider = { lane: 1, x: 200 };
+            obstacles = [];
+            coins = [];
+            distance = 0;
+            coinCount = 0;
+            speed = 5;
+            
+            document.getElementById('dist').textContent = '0';
+            document.getElementById('coins').textContent = '0';
+            
+            for (let i = 0; i < 3; i++) spawnObstacle(200 + i * 150);
+            for (let i = 0; i < 2; i++) spawnCoin(300 + i * 200);
+        }
+        
+        function spawnObstacle(y) {
+            obstacles.push({
+                x: LANES[Math.floor(Math.random() * 3)],
+                y: y,
+                type: Math.random() > 0.5 ? 'car' : 'truck'
+            });
+        }
+        
+        function spawnCoin(y) {
+            coins.push({
+                x: LANES[Math.floor(Math.random() * 3)],
+                y: y,
+                collected: false
+            });
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Road
+            ctx.fillStyle = '#34495e';
+            ctx.fillRect(50, 0, 300, 500);
+            
+            // Lane markers
+            ctx.strokeStyle = '#fff';
+            ctx.setLineDash([30, 20]);
+            for (let l = 0; l < 2; l++) {
+                ctx.beginPath();
+                ctx.moveTo(50 + (l + 1) * 100, 0);
+                ctx.lineTo(50 + (l + 1) * 100, 500);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+            
+            // Edge lines
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(50, 0);
+            ctx.lineTo(50, 500);
+            ctx.moveTo(350, 0);
+            ctx.lineTo(350, 500);
+            ctx.stroke();
+            
+            // Rider
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.arc(rider.x, 420, 20, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#f39c12';
+            ctx.beginPath();
+            ctx.arc(rider.x, 400, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Obstacles
+            obstacles.forEach(obs => {
+                ctx.fillStyle = obs.type === 'car' ? '#e74c3c' : '#9b59b6';
+                ctx.fillRect(obs.x - 25, obs.y - 30, 50, 60);
+                ctx.fillStyle = '#333';
+                ctx.beginPath();
+                ctx.arc(obs.x - 15, obs.y + 25, 10, 0, Math.PI * 2);
+                ctx.arc(obs.x + 15, obs.y + 25, 10, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // Coins
+            coins.forEach(coin => {
+                if (coin.collected) return;
+                ctx.fillStyle = '#f1c40f';
+                ctx.shadowColor = '#f1c40f';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(coin.x, coin.y, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#d4ac0d';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('$', coin.x, coin.y);
+            });
+        }
+        
+        function update() {
+            speed += 0.005;
+            
+            obstacles.forEach(obs => obs.y -= speed);
+            coins.forEach(coin => coin.y -= speed);
+            
+            obstacles = obstacles.filter(o => o.y > -50);
+            coins = coins.filter(c => c.y > -50 && !c.collected);
+            
+            if (obstacles.length < 3 || obstacles[obstacles.length - 1].y > 200) {
+                spawnObstacle(550);
+            }
+            if (coins.length < 2 || (coins.length > 0 && coins[coins.length - 1].y > 300)) {
+                spawnCoin(550);
+            }
+            
+            distance += speed * 0.1;
+            document.getElementById('dist').textContent = Math.floor(distance);
+            document.getElementById('coins').textContent = coinCount;
+            
+            // Collision with obstacles
+            obstacles.forEach(obs => {
+                if (Math.abs(rider.x - obs.x) < 30 && Math.abs(420 - obs.y) < 50) {
+                    endGame();
+                }
+            });
+            
+            // Collect coins
+            coins.forEach(coin => {
+                if (!coin.collected && Math.abs(rider.x - coin.x) < 30 && Math.abs(420 - coin.y) < 30) {
+                    coin.collected = true;
+                    coinCount++;
+                }
+            });
+        }
+        
+        function endGame() {
+            clearInterval(gameLoop);
+            setTimeout(() => {
+                alert(`Crash! 💥\nDistance: ${Math.floor(distance)}m\nCoins: ${coinCount}\n\nClick OK to play again!`);
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'ArrowLeft' && rider.lane > 0) {
+                rider.lane--;
+                rider.x = LANES[rider.lane];
+            }
+            if (e.code === 'ArrowRight' && rider.lane < 2) {
+                rider.lane++;
+                rider.x = LANES[rider.lane];
+            }
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

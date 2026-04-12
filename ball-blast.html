@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔴 Ball Blast</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #ff6b6b; text-shadow: 0 0 20px #ff6b6b; }
+        .score-board { font-size: 1.5rem; margin-bottom: 15px; color: #ffd700; }
+        canvas { border: 3px solid #ff6b6b; border-radius: 10px; background: #000; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { color: #ff6b6b; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+        #gameOver {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            justify-content: center; align-items: center; z-index: 100;
+        }
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: 40px; border-radius: 20px;
+            text-align: center; border: 3px solid #ff6b6b;
+        }
+        .modal-content h2 { color: #ff6b6b; font-size: 2rem; margin-bottom: 15px; }
+        .modal-content p { font-size: 1.5rem; margin-bottom: 20px; }
+        .modal-content button {
+            background: #ff6b6b; color: white; border: none;
+            padding: 15px 40px; font-size: 1.2rem; border-radius: 30px;
+            cursor: pointer; font-weight: bold;
+        }
+        .modal-content button:hover { background: #ff5252; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🔴 BALL BLAST</h1>
+    <div class="score-board">Score: <span id="score">0</span> | Coins: <span id="coins">0</span></div>
+    <canvas id="gameCanvas" width="350" height="500"></canvas>
+    <div class="instructions">Click or tap to shoot! <span>Destroy blocks!</span></div>
+    
+    <div id="gameOver">
+        <div class="modal-content">
+            <h2>💥 GAME OVER 💥</h2>
+            <p>Score: <span id="finalScore">0</span></p>
+            <p>Coins Earned: <span id="finalCoins">0</span></p>
+            <button onclick="restartGame()">PLAY AGAIN 🔄</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let player = { x: 175, y: 450, radius: 15, color: '#ff6b6b' };
+        let balls = [];
+        let blocks = [];
+        let particles = [];
+        let score = 0;
+        let coins = 0;
+        let gameOver = false;
+        let gameLoop;
+        let shootCooldown = 0;
+        let combo = 0;
+        let lastShot = 0;
+        
+        const COLORS = ['#ff6b6b', '#ffd700', '#4ecdc4', '#ff8e53', '#a855f7', '#22c55e'];
+        
+        function init() {
+            player = { x: canvas.width / 2, y: 450, radius: 15, color: '#ff6b6b' };
+            balls = [];
+            blocks = [];
+            particles = [];
+            score = 0;
+            coins = 0;
+            gameOver = false;
+            combo = 0;
+            
+            // Create initial blocks
+            for (let row = 0; row < 5; row++) {
+                for (let col = 0; col < 6; col++) {
+                    createBlock(col * 55 + 25, row * 40 + 50);
+                }
+            }
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('coins').textContent = '0';
+            document.getElementById('gameOver').style.display = 'none';
+        }
+        
+        function createBlock(x, y) {
+            blocks.push({
+                x: x,
+                y: y,
+                width: 50,
+                height: 35,
+                hp: 1 + Math.floor(score / 500),
+                color: COLORS[Math.floor(Math.random() * COLORS.length)],
+                alive: true
+            });
+        }
+        
+        function shoot() {
+            const now = Date.now();
+            if (now - lastShot < 100) return;
+            lastShot = now;
+            
+            // Shoot a ball from player
+            balls.push({
+                x: player.x,
+                y: player.y - player.radius,
+                vx: 0,
+                vy: -10,
+                radius: 8,
+                color: player.color
+            });
+        }
+        
+        function createParticles(x, y, color, count = 10) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    radius: 3 + Math.random() * 3,
+                    color: color,
+                    life: 1
+                });
+            }
+        }
+        
+        function draw() {
+            // Background
+            ctx.fillStyle = '#0a0a15';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Grid lines
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            for (let i = 0; i < canvas.width; i += 30) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+            }
+            for (let i = 0; i < canvas.height; i += 30) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+            
+            // Draw blocks
+            blocks.forEach(block => {
+                if (!block.alive) return;
+                
+                ctx.fillStyle = block.color;
+                ctx.shadowColor = block.color;
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.roundRect(block.x, block.y, block.width, block.height, 5);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                
+                // HP indicator
+                if (block.hp > 1) {
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(block.hp, block.x + block.width/2, block.y + block.height/2 + 5);
+                }
+            });
+            
+            // Draw balls
+            balls.forEach(ball => {
+                ctx.fillStyle = ball.color;
+                ctx.shadowColor = ball.color;
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                
+                // Ball trail
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y - 5, ball.radius * 0.6, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // Draw player
+            ctx.fillStyle = player.color;
+            ctx.shadowColor = player.color;
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Player shine
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.beginPath();
+            ctx.arc(player.x - 3, player.y - 3, player.radius * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw particles
+            particles.forEach(p => {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius * p.life, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+        }
+        
+        function update() {
+            if (gameOver) return;
+            
+            // Move player towards mouse/touch
+            // Player stays at bottom
+            
+            // Update balls
+            balls.forEach(ball => {
+                ball.y += ball.vy;
+                
+                // Check collision with blocks
+                blocks.forEach(block => {
+                    if (!block.alive) return;
+                    
+                    if (ball.x > block.x && ball.x < block.x + block.width &&
+                        ball.y > block.y && ball.y < block.y + block.height) {
+                        
+                        block.hp--;
+                        createParticles(ball.x, ball.y, block.color, 5);
+                        
+                        if (block.hp <= 0) {
+                            block.alive = false;
+                            score += 10;
+                            coins += 1;
+                            combo++;
+                            createParticles(block.x + block.width/2, block.y + block.height/2, block.color, 15);
+                            
+                            // Combo bonus
+                            if (combo > 5) {
+                                score += combo;
+                            }
+                        }
+                        
+                        // Ball bounces back
+                        ball.vy = Math.abs(ball.vy);
+                    }
+                });
+            });
+            
+            // Remove off-screen balls
+            balls = balls.filter(b => b.y > -20);
+            
+            // If no balls left, game continues (player can shoot more)
+            
+            // Add new blocks row when all blocks destroyed or when blocks reach certain point
+            const aliveBlocks = blocks.filter(b => b.alive);
+            if (aliveBlocks.length < 5 || (aliveBlocks.length > 0 && aliveBlocks[aliveBlocks.length - 1].y > 100)) {
+                // Push blocks down
+                blocks.forEach(b => {
+                    if (b.alive) b.y += 10;
+                });
+                
+                // Add new row at top
+                if (aliveBlocks.length > 0 && aliveBlocks[0].y > 80) {
+                    for (let col = 0; col < 6; col++) {
+                        createBlock(col * 55 + 25, 30);
+                    }
+                }
+            }
+            
+            // Check if any block reached player
+            aliveBlocks.forEach(block => {
+                if (block.y + block.height > player.y - player.radius) {
+                    endGame();
+                }
+            });
+            
+            // Update particles
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2; // gravity
+                p.life -= 0.03;
+            });
+            particles = particles.filter(p => p.life > 0);
+            
+            // Update score
+            document.getElementById('score').textContent = score;
+            document.getElementById('coins').textContent = coins;
+        }
+        
+        function endGame() {
+            gameOver = true;
+            clearInterval(gameLoop);
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalCoins').textContent = coins;
+            document.getElementById('gameOver').style.display = 'flex';
+        }
+        
+        function restartGame() {
+            clearInterval(gameLoop);
+            init();
+            gameLoop = setInterval(() => {
+                update();
+                draw();
+            }, 1000 / 60);
+        }
+        
+        // Auto shoot
+        setInterval(() => {
+            if (!gameOver && balls.filter(b => b.y > 0).length < 3) {
+                shoot();
+            }
+        }, 200);
+        
+        // Controls
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            player.x = e.clientX - rect.left;
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            player.x = e.touches[0].clientX - rect.left;
+        });
+        
+        canvas.addEventListener('click', () => shoot());
+        canvas.addEventListener('touchstart', () => shoot());
+        
+        // Start
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

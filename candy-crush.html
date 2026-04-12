@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍬 Candy Crush</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #ff6b9d, #c44569);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(255,255,255,0.2); padding: 5px 20px; border-radius: 20px; }
+        canvas { border: 4px solid #fff; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        .instructions { margin-top: 15px; color: rgba(255,255,255,0.8); font-size: 1rem; }
+        .instructions span { background: rgba(255,255,255,0.3); padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.2); color: white;
+            border: 2px solid rgba(255,255,255,0.4); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.3); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🍬 CANDY CRUSH</h1>
+    <div class="score-board">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Moves: <strong id="moves">20</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="360" height="480"></canvas>
+    <div class="instructions">Click two candies to <span>SWAP</span> them! Match 3+ to score!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const ROWS = 8;
+        const COLS = 8;
+        const CANDY_SIZE = 45;
+        const GAP = 4;
+        
+        const CANDY_COLORS = [
+            { color: '#FF6B6B', shape: 'circle' },
+            { color: '#4ECDC4', shape: 'square' },
+            { color: '#FFE66D', shape: 'diamond' },
+            { color: '#95E1D3', shape: 'triangle' },
+            { color: '#DDA0DD', shape: 'star' },
+            { color: '#F7DC6F', shape: 'heart' }
+        ];
+        
+        let grid = [];
+        let selected = null;
+        let score = 0;
+        let moves = 20;
+        let gameLoop;
+        let swapping = false;
+        let falling = false;
+        
+        function init() {
+            grid = [];
+            selected = null;
+            score = 0;
+            moves = 20;
+            swapping = false;
+            falling = false;
+            
+            // Create grid
+            for (let r = 0; r < ROWS; r++) {
+                grid[r] = [];
+                for (let c = 0; c < COLS; c++) {
+                    let candy;
+                    do {
+                        candy = { ...CANDY_COLORS[Math.floor(Math.random() * CANDY_COLORS.length)] };
+                    } while (wouldMatch(r, c, candy));
+                    grid[r][c] = candy;
+                }
+            }
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('moves').textContent = '20';
+        }
+        
+        function wouldMatch(row, col, candy) {
+            // Check horizontal
+            if (col >= 2 && 
+                grid[row][col-1]?.color === candy.color && 
+                grid[row][col-2]?.color === candy.color) {
+                return true;
+            }
+            // Check vertical
+            if (row >= 2 && 
+                grid[row-1]?.[col]?.color === candy.color && 
+                grid[row-2]?.[col]?.color === candy.color) {
+                return true;
+            }
+            return false;
+        }
+        
+        function drawCandy(candy, x, y, size) {
+            ctx.fillStyle = candy.color;
+            ctx.shadowColor = candy.color;
+            ctx.shadowBlur = 5;
+            
+            const cx = x + size / 2;
+            const cy = y + size / 2;
+            const r = size / 2 - 4;
+            
+            switch (candy.shape) {
+                case 'circle':
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                case 'square':
+                    ctx.fillRect(x + 4, y + 4, size - 8, size - 8);
+                    break;
+                case 'diamond':
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy - r);
+                    ctx.lineTo(cx + r, cy);
+                    ctx.lineTo(cx, cy + r);
+                    ctx.lineTo(cx - r, cy);
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+                case 'triangle':
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy - r);
+                    ctx.lineTo(cx + r, cy + r);
+                    ctx.lineTo(cx - r, cy + r);
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+                case 'star':
+                    ctx.beginPath();
+                    for (let i = 0; i < 5; i++) {
+                        const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+                        const px = cx + Math.cos(angle) * r;
+                        const py = cy + Math.sin(angle) * r;
+                        if (i === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+                case 'heart':
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy + r * 0.3);
+                    ctx.bezierCurveTo(cx - r, cy - r * 0.5, cx - r, cy + r * 0.3, cx, cy + r);
+                    ctx.bezierCurveTo(cx + r, cy + r * 0.3, cx + r, cy - r * 0.5, cx, cy + r * 0.3);
+                    ctx.fill();
+                    break;
+            }
+            
+            // Shine
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.beginPath();
+            ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        
+        function draw() {
+            // Background
+            ctx.fillStyle = '#c44569';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const x = c * (CANDY_SIZE + GAP) + 20;
+                    const y = r * (CANDY_SIZE + GAP) + 20;
+                    
+                    // Cell background
+                    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                    ctx.fillRect(x - 2, y - 2, CANDY_SIZE + 4, CANDY_SIZE + 4);
+                    
+                    if (grid[r][c]) {
+                        drawCandy(grid[r][c], x, y, CANDY_SIZE);
+                    }
+                    
+                    // Selected highlight
+                    if (selected && selected.row === r && selected.col === c) {
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(x, y, CANDY_SIZE, CANDY_SIZE);
+                    }
+                }
+            }
+            
+            // Game over message
+            if (moves <= 0) {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 36px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('GAME OVER!', canvas.width / 2, canvas.height / 2 - 20);
+                ctx.font = '24px Arial';
+                ctx.fillText(`Score: ${score}`, canvas.width / 2, canvas.height / 2 + 20);
+            }
+        }
+        
+        function getGridPos(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            const x = clientX - rect.left - 20;
+            const y = clientY - rect.top - 20;
+            
+            const col = Math.floor(x / (CANDY_SIZE + GAP));
+            const row = Math.floor(y / (CANDY_SIZE + GAP));
+            
+            if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
+                return { row, col };
+            }
+            return null;
+        }
+        
+        function handleClick(e) {
+            if (swapping || falling || moves <= 0) return;
+            
+            const pos = getGridPos(e.clientX, e.clientY);
+            if (!pos) return;
+            
+            if (!selected) {
+                selected = pos;
+            } else {
+                // Check if adjacent
+                const dr = Math.abs(selected.row - pos.row);
+                const dc = Math.abs(selected.col - pos.col);
+                
+                if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
+                    // Swap
+                    swapAndCheck(selected, pos);
+                }
+                selected = null;
+            }
+        }
+        
+        function swapAndCheck(pos1, pos2) {
+            swapping = true;
+            
+            // Swap
+            const temp = grid[pos1.row][pos1.col];
+            grid[pos1.row][pos1.col] = grid[pos2.row][pos2.col];
+            grid[pos2.row][pos2.col] = temp;
+            
+            // Check for matches
+            const matches = findMatches();
+            
+            if (matches.length > 0) {
+                moves--;
+                document.getElementById('moves').textContent = moves;
+                processMatches(matches);
+            } else {
+                // Swap back
+                setTimeout(() => {
+                    grid[pos2.row][pos2.col] = grid[pos1.row][pos1.col];
+                    grid[pos1.row][pos1.col] = temp;
+                    swapping = false;
+                    draw();
+                }, 200);
+            }
+        }
+        
+        function findMatches() {
+            const matches = new Set();
+            
+            // Check horizontal
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS - 2; c++) {
+                    if (grid[r][c] && grid[r][c+1] && grid[r][c+2] &&
+                        grid[r][c].color === grid[r][c+1].color &&
+                        grid[r][c].color === grid[r][c+2].color) {
+                        matches.add(`${r},${c}`);
+                        matches.add(`${r},${c+1}`);
+                        matches.add(`${r},${c+2}`);
+                    }
+                }
+            }
+            
+            // Check vertical
+            for (let r = 0; r < ROWS - 2; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c] && grid[r+1][c] && grid[r+2][c] &&
+                        grid[r][c].color === grid[r+1][c].color &&
+                        grid[r][c].color === grid[r+2][c].color) {
+                        matches.add(`${r},${c}`);
+                        matches.add(`${r+1},${c}`);
+                        matches.add(`${r+2},${c}`);
+                    }
+                }
+            }
+            
+            return Array.from(matches).map(s => {
+                const [r, c] = s.split(',').map(Number);
+                return { row: r, col: c };
+            });
+        }
+        
+        function processMatches(matches) {
+            // Add score
+            score += matches.length * 10;
+            document.getElementById('score').textContent = score;
+            
+            // Remove matched candies
+            matches.forEach(m => {
+                grid[m.row][m.col] = null;
+            });
+            
+            // Drop candies
+            falling = true;
+            dropCandies();
+        }
+        
+        function dropCandies() {
+            let dropped = false;
+            
+            // Drop each column
+            for (let c = 0; c < COLS; c++) {
+                for (let r = ROWS - 1; r >= 0; r--) {
+                    if (grid[r][c] === null) {
+                        // Find candy above
+                        for (let above = r - 1; above >= 0; above--) {
+                            if (grid[above][c] !== null) {
+                                grid[r][c] = grid[above][c];
+                                grid[above][c] = null;
+                                dropped = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Fill top with new candies
+                for (let r = 0; r < ROWS; r++) {
+                    if (grid[r][c] === null) {
+                        grid[r][c] = { ...CANDY_COLORS[Math.floor(Math.random() * CANDY_COLORS.length)] };
+                        dropped = true;
+                    }
+                }
+            }
+            
+            draw();
+            
+            if (dropped) {
+                setTimeout(dropCandies, 100);
+            } else {
+                falling = false;
+                swapping = false;
+                
+                // Check for new matches
+                const matches = findMatches();
+                if (matches.length > 0) {
+                    processMatches(matches);
+                }
+            }
+        }
+        
+        // Controls
+        canvas.addEventListener('click', handleClick);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            handleClick({ clientX: touch.clientX, clientY: touch.clientY });
+        });
+        
+        // Start
+        init();
+        draw();
+    </script>
+</body>
+</html>

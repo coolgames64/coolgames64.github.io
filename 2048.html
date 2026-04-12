@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔢 2048</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #faf4e8, #eee1c6);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: #333;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #333; }
+        .score-board { display: flex; gap: 20px; margin-bottom: 15px; font-size: 1.2rem; }
+        .score-box { background: #333; color: white; padding: 8px 20px; border-radius: 8px; text-align: center; }
+        .score-box .label { font-size: 0.8rem; color: #aaa; }
+        .score-box .value { font-size: 1.5rem; font-weight: bold; }
+        canvas { border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .instructions { margin-top: 15px; color: #666; font-size: 1rem; }
+        .instructions span { background: #333; color: white; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: #333; color: white;
+            border: none; padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: #555; }
+        button { cursor: pointer; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🔢 2048</h1>
+    <div class="score-board">
+        <div class="score-box"><div class="label">SCORE</div><div class="value" id="score">0</div></div>
+        <div class="score-box"><div class="label">BEST</div><div class="value" id="best">0</div></div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div class="instructions">Use <span>ARROW KEYS</span> or <span>SWIPE</span> to move tiles!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const SIZE = 4;
+        const TILE_SIZE = 80;
+        const GAP = 10;
+        const BOARD_SIZE = SIZE * TILE_SIZE + (SIZE + 1) * GAP;
+        
+        canvas.width = BOARD_SIZE;
+        canvas.height = BOARD_SIZE;
+        
+        const COLORS = {
+            0: '#cdc1b4',
+            2: '#eee4da',
+            4: '#ede0c8',
+            8: '#f2b179',
+            16: '#f59563',
+            32: '#f67c5f',
+            64: '#f65e3b',
+            128: '#edcf72',
+            256: '#edcc61',
+            512: '#edc850',
+            1024: '#edc53f',
+            2048: '#edc22e',
+            super: '#3c3a32'
+        };
+        
+        const TEXT_COLORS = {
+            0: '#776e65',
+            2: '#776e65',
+            4: '#776e65',
+            8: '#f9f6f2',
+            16: '#f9f6f2',
+            32: '#f9f6f2',
+            64: '#f9f6f2',
+            128: '#f9f6f2',
+            256: '#f9f6f2',
+            512: '#f9f6f2',
+            1024: '#f9f6f2',
+            2048: '#f9f6f2',
+            super: '#f9f6f2'
+        };
+        
+        let grid = [];
+        let score = 0;
+        let best = parseInt(localStorage.getItem('2048best')) || 0;
+        let gameLoop;
+        let canMove = true;
+        
+        function init() {
+            grid = Array(SIZE).fill(null).map(() => Array(SIZE).fill(0));
+            score = 0;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('best').textContent = best;
+            
+            addRandomTile();
+            addRandomTile();
+            draw();
+        }
+        
+        function addRandomTile() {
+            const empty = [];
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    if (grid[r][c] === 0) empty.push({ r, c });
+                }
+            }
+            if (empty.length > 0) {
+                const { r, c } = empty[Math.floor(Math.random() * empty.length)];
+                grid[r][c] = Math.random() > 0.9 ? 4 : 2;
+            }
+        }
+        
+        function drawTile(r, c, value) {
+            const x = GAP + c * (TILE_SIZE + GAP);
+            const y = GAP + r * (TILE_SIZE + GAP);
+            
+            // Tile background
+            ctx.fillStyle = COLORS[value] || COLORS.super;
+            ctx.beginPath();
+            ctx.roundRect(x, y, TILE_SIZE, TILE_SIZE, 6);
+            ctx.fill();
+            
+            // Number
+            if (value !== 0) {
+                ctx.fillStyle = TEXT_COLORS[value] || TEXT_COLORS.super;
+                ctx.font = value < 100 ? 'bold 36px Arial' : 
+                          value < 1000 ? 'bold 28px Arial' : 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(value, x + TILE_SIZE / 2, y + TILE_SIZE / 2);
+            }
+        }
+        
+        function draw() {
+            // Board background
+            ctx.fillStyle = '#bbada0';
+            ctx.beginPath();
+            ctx.roundRect(0, 0, BOARD_SIZE, BOARD_SIZE, 10);
+            ctx.fill();
+            
+            // Tiles
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    drawTile(r, c, grid[r][c]);
+                }
+            }
+        }
+        
+        function move(direction) {
+            if (!canMove) return false;
+            
+            let moved = false;
+            const oldGrid = grid.map(row => [...row]);
+            
+            if (direction === 'left' || direction === 'right') {
+                for (let r = 0; r < SIZE; r++) {
+                    let row = grid[r].filter(v => v !== 0);
+                    if (direction === 'right') row.reverse();
+                    
+                    // Merge
+                    for (let i = 0; i < row.length - 1; i++) {
+                        if (row[i] === row[i + 1]) {
+                            row[i] *= 2;
+                            score += row[i];
+                            row.splice(i + 1, 1);
+                        }
+                    }
+                    
+                    while (row.length < SIZE) row.push(0);
+                    if (direction === 'right') row.reverse();
+                    
+                    grid[r] = row;
+                }
+            } else {
+                for (let c = 0; c < SIZE; c++) {
+                    let col = [];
+                    for (let r = 0; r < SIZE; r++) col.push(grid[r][c]);
+                    col = col.filter(v => v !== 0);
+                    if (direction === 'down') col.reverse();
+                    
+                    // Merge
+                    for (let i = 0; i < col.length - 1; i++) {
+                        if (col[i] === col[i + 1]) {
+                            col[i] *= 2;
+                            score += col[i];
+                            col.splice(i + 1, 1);
+                        }
+                    }
+                    
+                    while (col.length < SIZE) col.push(0);
+                    if (direction === 'down') col.reverse();
+                    
+                    for (let r = 0; r < SIZE; r++) grid[r][c] = col[r];
+                }
+            }
+            
+            // Check if anything moved
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    if (grid[r][c] !== oldGrid[r][c]) {
+                        moved = true;
+                        break;
+                    }
+                }
+                if (moved) break;
+            }
+            
+            if (moved) {
+                canMove = false;
+                setTimeout(() => {
+                    addRandomTile();
+                    draw();
+                    document.getElementById('score').textContent = score;
+                    
+                    if (score > best) {
+                        best = score;
+                        localStorage.setItem('2048best', best);
+                        document.getElementById('best').textContent = best;
+                    }
+                    
+                    // Check for 2048 win
+                    let has2048 = false;
+                    for (let r = 0; r < SIZE; r++) {
+                        for (let c = 0; c < SIZE; c++) {
+                            if (grid[r][c] === 2048) has2048 = true;
+                        }
+                    }
+                    
+                    canMove = true;
+                }, 100);
+            }
+            
+            return moved;
+        }
+        
+        // Controls
+        document.addEventListener('keydown', (e) => {
+            if (!canMove) return;
+            
+            switch (e.code) {
+                case 'ArrowLeft': e.preventDefault(); move('left'); break;
+                case 'ArrowRight': e.preventDefault(); move('right'); break;
+                case 'ArrowUp': e.preventDefault(); move('up'); break;
+                case 'ArrowDown': e.preventDefault(); move('down'); break;
+            }
+        });
+        
+        // Touch controls
+        let touchStartX = 0;
+        let touchStartY = 0;
+        
+        canvas.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+        
+        canvas.addEventListener('touchend', (e) => {
+            if (!canMove) return;
+            
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            
+            const dx = touchEndX - touchStartX;
+            const dy = touchEndY - touchStartY;
+            
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (Math.abs(dx) > 30) {
+                    move(dx > 0 ? 'right' : 'left');
+                }
+            } else {
+                if (Math.abs(dy) > 30) {
+                    move(dy > 0 ? 'down' : 'up');
+                }
+            }
+        });
+        
+        // Initialize
+        init();
+    </script>
+</body>
+</html>

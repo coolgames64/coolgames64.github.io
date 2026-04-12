@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="LFolYFY1ySO4aIcMbyo8EdJKYLqHW9MS6_B1y7e5MPQ" />
+    <title>Balloon Pop | Cool Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: linear-gradient(180deg, #87CEEB, #98D8C8); min-height: 100vh; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+        .header { display: flex; gap: 20px; padding: 15px; }
+        .score-box { background: white; padding: 10px 25px; border-radius: 15px; font-weight: bold; font-size: 1.2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        #gameCanvas { border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .back-btn { position: fixed; top: 20px; left: 20px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 10px 20px; border-radius: 25px; text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back</a>
+    <div class="header">
+        <div class="score-box">🎈 Score: <span id="score">0</span></div>
+        <div class="score-box">⏱️ Time: <span id="time">30</span>s</div>
+    </div>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const timeEl = document.getElementById('time');
+        
+        let balloons = [];
+        let particles = [];
+        let score = 0;
+        let timeLeft = 30;
+        let gameOver = false;
+        let gameStarted = false;
+        
+        const colors = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#95e1d3', '#f8b500', '#ff8e53', '#a855f7', '#ec4899'];
+        
+        function createBalloon() {
+            balloons.push({
+                x: Math.random() * 320 + 40,
+                y: 650,
+                size: 40 + Math.random() * 20,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                speed: 1.5 + Math.random() * 2,
+                wobble: Math.random() * Math.PI * 2,
+                stringLength: 30 + Math.random() * 20
+            });
+        }
+        
+        canvas.addEventListener('click', e => {
+            let rect = canvas.getBoundingClientRect();
+            let x = e.clientX - rect.left;
+            let y = e.clientY - rect.top;
+            
+            if (!gameStarted) { gameStarted = true; }
+            if (gameOver) {
+                gameOver = false;
+                score = 0;
+                timeLeft = 30;
+                balloons = [];
+                particles = [];
+                return;
+            }
+            
+            // Check pop
+            balloons.forEach((b, i) => {
+                let dx = b.x - x;
+                let dy = b.y - y;
+                if (Math.sqrt(dx*dx + dy*dy) < b.size) {
+                    // Pop!
+                    for (let j = 0; j < 20; j++) {
+                        particles.push({
+                            x: b.x, y: b.y,
+                            vx: (Math.random() - 0.5) * 15,
+                            vy: (Math.random() - 0.5) * 15,
+                            color: b.color,
+                            life: 30,
+                            size: 5 + Math.random() * 5
+                        });
+                    }
+                    balloons.splice(i, 1);
+                    score += Math.floor(b.size / 5);
+                    scoreEl.textContent = score;
+                }
+            });
+        });
+        
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            let touch = e.touches[0];
+            let rect = canvas.getBoundingClientRect();
+            let x = touch.clientX - rect.left;
+            let y = touch.clientY - rect.top;
+            
+            if (!gameStarted) gameStarted = true;
+            
+            balloons.forEach((b, i) => {
+                let dx = b.x - x;
+                let dy = b.y - y;
+                if (Math.sqrt(dx*dx + dy*dy) < b.size) {
+                    for (let j = 0; j < 20; j++) {
+                        particles.push({
+                            x: b.x, y: b.y,
+                            vx: (Math.random() - 0.5) * 15,
+                            vy: (Math.random() - 0.5) * 15,
+                            color: b.color,
+                            life: 30,
+                            size: 5 + Math.random() * 5
+                        });
+                    }
+                    balloons.splice(i, 1);
+                    score += Math.floor(b.size / 5);
+                    scoreEl.textContent = score;
+                }
+            });
+        });
+        
+        function draw() {
+            // Sky gradient
+            let gradient = ctx.createLinearGradient(0, 0, 0, 600);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#98D8C8');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 400, 600);
+            
+            // Clouds
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            for (let i = 0; i < 6; i++) {
+                let x = (i * 80 + Date.now() / 100) % 450 - 25;
+                ctx.beginPath();
+                ctx.arc(x, 80 + i * 30, 35, 0, Math.PI * 2);
+                ctx.arc(x + 30, 80 + i * 30, 30, 0, Math.PI * 2);
+                ctx.arc(x + 60, 80 + i * 30, 35, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Balloons
+            balloons.forEach(b => {
+                ctx.save();
+                ctx.translate(b.x, b.y);
+                
+                // String
+                ctx.strokeStyle = '#888';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, b.size);
+                ctx.quadraticCurveTo(Math.sin(b.wobble) * 10, b.size + b.stringLength/2, 0, b.size + b.stringLength);
+                ctx.stroke();
+                
+                // Balloon
+                ctx.beginPath();
+                ctx.ellipse(0, 0, b.size * 0.8, b.size, 0, 0, Math.PI * 2);
+                ctx.fillStyle = b.color;
+                ctx.shadowColor = b.color;
+                ctx.shadowBlur = 15;
+                ctx.fill();
+                
+                // Highlight
+                ctx.beginPath();
+                ctx.ellipse(-b.size * 0.3, -b.size * 0.3, b.size * 0.2, b.size * 0.3, -0.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.fill();
+                
+                // Knot
+                ctx.beginPath();
+                ctx.moveTo(-5, b.size);
+                ctx.lineTo(0, b.size + 8);
+                ctx.lineTo(5, b.size);
+                ctx.fillStyle = b.color;
+                ctx.fill();
+                
+                ctx.restore();
+            });
+            
+            // Particles
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 30;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            });
+            
+            // Start/Game Over
+            if (!gameStarted) {
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(0, 0, 400, 600);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 32px Poppins';
+                ctx.textAlign = 'center';
+                ctx.fillText('🎈 BALLOON POP 🎈', 200, 250);
+                ctx.font = '20px Poppins';
+                ctx.fillText('Pop as many balloons!', 200, 300);
+                ctx.fillText('You have 30 seconds!', 200, 340);
+            }
+            
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0, 0, 400, 600);
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 36px Poppins';
+                ctx.textAlign = 'center';
+                ctx.fillText('⏰ TIME UP!', 200, 250);
+                ctx.fillStyle = 'white';
+                ctx.font = '28px Poppins';
+                ctx.fillText('Score: ' + score, 200, 320);
+                ctx.fillStyle = '#4ade80';
+                ctx.fillText('Click to Play Again', 200, 380);
+            }
+        }
+        
+        function update() {
+            if (!gameStarted || gameOver) return;
+            
+            balloons.forEach(b => {
+                b.y -= b.speed;
+                b.wobble += 0.05;
+                b.x += Math.sin(b.wobble) * 0.5;
+            });
+            
+            balloons = balloons.filter(b => b.y > -b.size);
+            
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.5;
+                p.life--;
+            });
+            particles = particles.filter(p => p.life > 0);
+            
+            if (Math.random() < 0.08) createBalloon();
+        }
+        
+        let timer = setInterval(() => {
+            if (gameStarted && !gameOver) {
+                timeLeft--;
+                timeEl.textContent = timeLeft;
+                if (timeLeft <= 0) gameOver = true;
+            }
+        }, 1000);
+        
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        gameLoop();
+        for (let i = 0; i < 5; i++) setTimeout(createBalloon, i * 300);
+    </script>
+</body>
+</html>

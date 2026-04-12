@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐟 Fish Eat Fish</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(180deg, #006994 0%, #001f3f 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; text-shadow: 0 0 20px #00d4ff; color: #00d4ff; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(0,212,255,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #00d4ff; border-radius: 10px; box-shadow: 0 0 30px rgba(0,212,255,0.3); }
+        .instructions { margin-top: 15px; color: #aaa; font-size: 1rem; }
+        .instructions span { color: #00d4ff; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+        #gameOver {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            justify-content: center; align-items: center; z-index: 100;
+        }
+        .modal-content {
+            background: linear-gradient(135deg, #001f3f, #006994);
+            padding: 40px; border-radius: 20px;
+            text-align: center; border: 3px solid #00d4ff;
+        }
+        .modal-content h2 { color: #ff6b6b; font-size: 2rem; margin-bottom: 15px; }
+        .modal-content p { font-size: 1.5rem; margin-bottom: 15px; }
+        .modal-content button {
+            background: #00d4ff; color: #001f3f; border: none;
+            padding: 15px 40px; font-size: 1.2rem; border-radius: 30px;
+            cursor: pointer; font-weight: bold;
+        }
+        .modal-content button:hover { background: #00b4e6; }
+        .size-indicator {
+            position: absolute; bottom: 20px; right: 20px;
+            background: rgba(0,0,0,0.5); padding: 10px 15px;
+            border-radius: 10px; font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🐟 FISH EAT FISH</h1>
+    <div class="score-board">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Size: <strong id="size">1</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="400" height="550"></canvas>
+    <div class="instructions">Move with <span>MOUSE</span> or <span>ARROW KEYS</span>! Eat <span>SMALLER</span> fish to grow!</div>
+    
+    <div id="gameOver">
+        <div class="modal-content">
+            <h2>🦈 GAME OVER!</h2>
+            <p>Bigger fish ate you!</p>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <p>Max Size Reached: <span id="finalSize">0</span></p>
+            <button onclick="restartGame()">TRY AGAIN 🔄</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let player = { x: 200, y: 275, size: 20, vx: 0, vy: 0 };
+        let fishes = [];
+        let score = 0;
+        let maxSize = 1;
+        let gameOver = false;
+        let gameLoop;
+        let keys = { left: false, right: false, up: false, down: false };
+        
+        const FISH_COLORS = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#FF6BD6', '#9B59B6', '#E67E22'];
+        
+        function init() {
+            player = { x: 200, y: 275, size: 20, vx: 0, vy: 0 };
+            fishes = [];
+            score = 0;
+            maxSize = 1;
+            gameOver = false;
+            
+            // Spawn initial fish
+            for (let i = 0; i < 15; i++) {
+                spawnFish();
+            }
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('size').textContent = '1';
+            document.getElementById('gameOver').style.display = 'none';
+        }
+        
+        function spawnFish(minSize = 5, maxSize = 60) {
+            const side = Math.floor(Math.random() * 4);
+            let x, y, vx, vy;
+            const size = minSize + Math.random() * (maxSize - minSize);
+            const color = FISH_COLORS[Math.floor(Math.random() * FISH_COLORS.length)];
+            
+            if (side === 0) { // Top
+                x = Math.random() * canvas.width;
+                y = -size;
+                vx = (Math.random() - 0.5) * 2;
+                vy = 1 + Math.random() * 2;
+            } else if (side === 1) { // Right
+                x = canvas.width + size;
+                y = Math.random() * canvas.height;
+                vx = -(1 + Math.random() * 2);
+                vy = (Math.random() - 0.5) * 2;
+            } else if (side === 2) { // Bottom
+                x = Math.random() * canvas.width;
+                y = canvas.height + size;
+                vx = (Math.random() - 0.5) * 2;
+                vy = -(1 + Math.random() * 2);
+            } else { // Left
+                x = -size;
+                y = Math.random() * canvas.height;
+                vx = 1 + Math.random() * 2;
+                vy = (Math.random() - 0.5) * 2;
+            }
+            
+            fishes.push({ x, y, size, vx, vy, color, tailPhase: Math.random() * Math.PI * 2 });
+        }
+        
+        function drawFish(fish, isPlayer = false) {
+            const { x, y, size, color } = fish;
+            
+            ctx.save();
+            ctx.translate(x, y);
+            
+            // Face direction
+            if (fish.vx < 0) ctx.scale(-1, 1);
+            
+            // Body
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = isPlayer ? 15 : 5;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, size, size * 0.6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Tail
+            const tailWag = Math.sin(fish.tailPhase || 0) * 0.3;
+            ctx.beginPath();
+            ctx.moveTo(-size * 0.7, 0);
+            ctx.lineTo(-size * 1.3, -size * 0.4 + tailWag * size);
+            ctx.lineTo(-size * 1.3, size * 0.4 + tailWag * size);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Eye
+            ctx.fillStyle = 'white';
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.arc(size * 0.4, -size * 0.15, size * 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(size * 0.45, -size * 0.15, size * 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Player has a smile
+            if (isPlayer) {
+                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(size * 0.3, size * 0.1, size * 0.2, 0.2, Math.PI - 0.2);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+        
+        function draw() {
+            // Water gradient background
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#006994');
+            gradient.addColorStop(1, '#001f3f');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Bubbles
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            for (let i = 0; i < 20; i++) {
+                const bx = (i * 73 + Date.now() * 0.01) % canvas.width;
+                const by = (i * 47 + Date.now() * 0.02) % canvas.height;
+                ctx.beginPath();
+                ctx.arc(bx, by, 3 + (i % 3), 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Seaweed
+            ctx.fillStyle = '#228B22';
+            for (let i = 0; i < 8; i++) {
+                const sx = i * 55 + 20;
+                ctx.beginPath();
+                ctx.moveTo(sx, canvas.height);
+                for (let j = 0; j < 6; j++) {
+                    const wave = Math.sin(Date.now() * 0.002 + i + j * 0.5) * 10;
+                    ctx.lineTo(sx + wave, canvas.height - j * 80 - 40);
+                }
+                ctx.lineTo(sx + 15, canvas.height);
+                ctx.fill();
+            }
+            
+            // Draw fish (sorted by size so big fish appear on top)
+            fishes.sort((a, b) => a.size - b.size);
+            fishes.forEach(fish => drawFish(fish));
+            
+            // Draw player
+            drawFish(player, true);
+            
+            // Size indicator
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(canvas.width - 110, 10, 100, 30);
+            ctx.fillStyle = '#00d4ff';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Size: ${Math.floor(player.size)}`, canvas.width - 60, 30);
+        }
+        
+        function update() {
+            if (gameOver) return;
+            
+            // Player movement
+            const speed = 5;
+            if (keys.left) player.vx = -speed;
+            else if (keys.right) player.vx = speed;
+            else player.vx *= 0.9;
+            
+            if (keys.up) player.vy = -speed;
+            else if (keys.down) player.vy = speed;
+            else player.vy *= 0.9;
+            
+            player.x += player.vx;
+            player.y += player.vy;
+            
+            // Bounds
+            if (player.x < player.size) player.x = player.size;
+            if (player.x > canvas.width - player.size) player.x = canvas.width - player.size;
+            if (player.y < player.size) player.y = player.size;
+            if (player.y > canvas.height - player.size) player.y = canvas.height - player.size;
+            
+            // Update fish
+            fishes.forEach(fish => {
+                fish.x += fish.vx;
+                fish.y += fish.vy;
+                fish.tailPhase += 0.3;
+                
+                // Bounce off walls
+                if (fish.x < fish.size || fish.x > canvas.width - fish.size) fish.vx *= -1;
+                if (fish.y < fish.size || fish.y > canvas.height - fish.size) fish.vy *= -1;
+                
+                // Occasionally change direction
+                if (Math.random() < 0.01) {
+                    fish.vx += (Math.random() - 0.5) * 0.5;
+                    fish.vy += (Math.random() - 0.5) * 0.5;
+                }
+            });
+            
+            // Check collisions
+            fishes.forEach((fish, index) => {
+                const dist = Math.sqrt((player.x - fish.x) ** 2 + (player.y - fish.y) ** 2);
+                
+                if (dist < player.size + fish.size * 0.7) {
+                    if (player.size > fish.size * 1.1) {
+                        // Eat the fish!
+                        const sizeGain = fish.size * 0.15;
+                        player.size += sizeGain;
+                        score += Math.floor(fish.size * 10);
+                        maxSize = Math.max(maxSize, player.size);
+                        
+                        document.getElementById('score').textContent = score;
+                        document.getElementById('size').textContent = Math.floor(maxSize);
+                        
+                        // Remove fish and spawn new one
+                        fishes.splice(index, 1);
+                        spawnFish(5, player.size * 0.8);
+                        
+                        // Check win condition (reach size 100)
+                        if (player.size >= 100) {
+                            score += 1000;
+                            document.getElementById('score').textContent = score;
+                        }
+                    } else if (fish.size > player.size * 1.1) {
+                        // Bigger fish eats you!
+                        endGame();
+                    }
+                }
+            });
+            
+            // Spawn more fish if too few
+            if (fishes.length < 10) {
+                spawnFish(5, player.size * 1.2);
+            }
+        }
+        
+        function endGame() {
+            gameOver = true;
+            clearInterval(gameLoop);
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalSize').textContent = Math.floor(maxSize);
+            document.getElementById('gameOver').style.display = 'flex';
+        }
+        
+        function restartGame() {
+            clearInterval(gameLoop);
+            init();
+            gameLoop = setInterval(() => {
+                update();
+                draw();
+            }, 1000 / 60);
+        }
+        
+        // Controls
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'ArrowLeft') keys.left = true;
+            if (e.code === 'ArrowRight') keys.right = true;
+            if (e.code === 'ArrowUp') keys.up = true;
+            if (e.code === 'ArrowDown') keys.down = true;
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowLeft') keys.left = false;
+            if (e.code === 'ArrowRight') keys.right = false;
+            if (e.code === 'ArrowUp') keys.up = false;
+            if (e.code === 'ArrowDown') keys.down = false;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const targetX = e.clientX - rect.left;
+            const targetY = e.clientY - rect.top;
+            player.vx = (targetX - player.x) * 0.1;
+            player.vy = (targetY - player.y) * 0.1;
+        });
+        
+        // Touch controls
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const targetX = touch.clientX - rect.left;
+            const targetY = touch.clientY - rect.top;
+            player.vx = (targetX - player.x) * 0.15;
+            player.vy = (targetY - player.y) * 0.15;
+        });
+        
+        // Start
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏍️ Motorbike Racing</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #f39c12; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(243,156,18,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #f39c12; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #f39c12; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🏍️ MOTORBIKE</h1>
+    <div class="score-board">
+        <span>Speed: <strong id="speed">0</strong> km/h</span>
+        <span>Distance: <strong id="dist">0</strong>m</span>
+    </div>
+    <canvas id="gameCanvas" width="500" height="400"></canvas>
+    <div class="instructions"><span>← →</span> lean | <span>↑ ↓</span> accelerate/brake</div>
+
+    <script>
+        const canvas = document.getElementByClientRect();
+        const ctx = canvas.getContext('2d');
+        
+        let bike = { x: 250, y: 300, angle: 0, vx: 0, speed: 0 };
+        let obstacles = [];
+        let distance = 0;
+        let gameLoop;
+        let keys = { left: false, right: false, up: false, down: false };
+        
+        function init() {
+            bike = { x: 250, y: 300, angle: 0, vx: 0, speed: 0 };
+            obstacles = [];
+            distance = 0;
+            
+            document.getElementById('speed').textContent = '0';
+            document.getElementById('dist').textContent = '0';
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Road
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 250, canvas.width, 150);
+            
+            // Lines
+            ctx.strokeStyle = '#fff';
+            ctx.setLineDash([30, 20]);
+            ctx.beginPath();
+            ctx.moveTo(0, 325);
+            ctx.lineTo(canvas.width, 325);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Hills
+            ctx.fillStyle = '#27ae60';
+            ctx.beginPath();
+            ctx.moveTo(0, 250);
+            ctx.quadraticCurveTo(100, 200, 200, 250);
+            ctx.quadraticCurveTo(300, 220, 400, 250);
+            ctx.quadraticCurveTo(450, 230, 500, 250);
+            ctx.lineTo(500, 250);
+            ctx.fill();
+            
+            // Bike
+            ctx.save();
+            ctx.translate(bike.x, bike.y);
+            ctx.rotate(bike.angle);
+            
+            // Wheels
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(-20, 15, 12, 0, Math.PI * 2);
+            ctx.arc(20, 15, 12, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Body
+            ctx.fillStyle = '#f39c12';
+            ctx.beginPath();
+            ctx.moveTo(-15, 10);
+            ctx.lineTo(0, -20);
+            ctx.lineTo(15, 10);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Rider
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(0, -25, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillRect(-5, -20, 10, 15);
+            
+            ctx.restore();
+        }
+        
+        function update() {
+            if (keys.left) bike.vx -= 0.5;
+            if (keys.right) bike.vx += 0.5;
+            if (keys.up) bike.speed = Math.min(15, bike.speed + 0.3);
+            if (keys.down) bike.speed = Math.max(0, bike.speed - 0.3);
+            
+            bike.vx *= 0.98;
+            bike.x += bike.vx;
+            bike.angle = bike.vx * 0.05;
+            
+            bike.x -= bike.speed * 0.5;
+            distance += bike.speed * 0.1;
+            
+            document.getElementById('speed').textContent = Math.floor(bike.speed * 20);
+            document.getElementById('dist').textContent = Math.floor(distance);
+            
+            bike.x = Math.max(50, Math.min(450, bike.x));
+            
+            if (bike.x < 60 || bike.x > 440) {
+                endGame();
+            }
+        }
+        
+        function endGame() {
+            clearInterval(gameLoop);
+            setTimeout(() => {
+                alert(`Crash! 💥\nDistance: ${Math.floor(distance)}m\n\nClick OK to play again!`);
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'ArrowLeft') keys.left = true;
+            if (e.code === 'ArrowRight') keys.right = true;
+            if (e.code === 'ArrowUp') keys.up = true;
+            if (e.code === 'ArrowDown') keys.down = true;
+        });
+        
+        document.addEventListener('keyup', e => {
+            if (e.code === 'ArrowLeft') keys.left = false;
+            if (e.code === 'ArrowRight') keys.right = false;
+            if (e.code === 'ArrowUp') keys.up = false;
+            if (e.code === 'ArrowDown') keys.down = false;
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

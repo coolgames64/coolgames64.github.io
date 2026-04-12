@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⛏️ Gold Miner</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #8B4513, #D2691E, #8B4513);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; background: rgba(0,0,0,0.3); padding: 10px 25px; border-radius: 20px; }
+        canvas { border: 4px solid #5D3A1A; border-radius: 10px; background: #DEB887; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+        .instructions { margin-top: 15px; color: #fff; font-size: 1rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+        .instructions span { background: #5D3A1A; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.2); color: white;
+            border: 2px solid rgba(255,255,255,0.4); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.3); }
+        #winModal {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center; align-items: center; z-index: 100;
+        }
+        .modal-content {
+            background: linear-gradient(135deg, #8B4513, #D2691E);
+            padding: 40px; border-radius: 20px;
+            text-align: center; border: 4px solid #FFD700;
+        }
+        .modal-content h2 { color: #FFD700; font-size: 2rem; margin-bottom: 15px; }
+        .modal-content p { font-size: 1.3rem; margin-bottom: 15px; }
+        .modal-content button {
+            background: #FFD700; color: #5D3A1A; border: none;
+            padding: 15px 40px; font-size: 1.2rem; border-radius: 30px;
+            cursor: pointer; font-weight: bold;
+        }
+        .modal-content button:hover { background: #FFC107; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>⛏️ GOLD MINER</h1>
+    <div class="score-board">💰 Gold: $<span id="gold">0</span> | Goal: $<span id="goal">500</span></div>
+    <canvas id="gameCanvas" width="400" height="550"></canvas>
+    <div class="instructions">Hold <span>SPACE</span> or <span>CLICK</span> to shoot rope! Catch gold and gems!</div>
+    
+    <div id="winModal">
+        <div class="modal-content">
+            <h2>🎉 LEVEL COMPLETE! 🎉</h2>
+            <p>You collected: $<span id="finalGold">0</span></p>
+            <p>Time Bonus: +$<span id="timeBonus">0</span></p>
+            <p style="font-size: 2rem; color: #FFD700;">Total: $<span id="totalGold">0</span></p>
+            <button onclick="nextLevel()">NEXT LEVEL 🔄</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const CLAW_X = 200;
+        const CLAW_Y = 60;
+        const MAX_ROPE = 400;
+        
+        let rope = { length: 0, angle: -Math.PI/2, extending: false, retracting: false };
+        let claw = { x: CLAW_X, y: CLAW_Y, open: true };
+        let gold = 0;
+        let level = 1;
+        let goalAmount = 500;
+        let timeLeft = 60;
+        let gameLoop;
+        let timerInterval;
+        let grabbed = null;
+        let rocks = [];
+        
+        const ITEMS = [
+            { type: 'small_gold', value: 50, radius: 12, color: '#FFD700', speed: 1 },
+            { type: 'big_gold', value: 200, radius: 22, color: '#FFD700', speed: 0.5 },
+            { type: 'diamond', value: 600, radius: 10, color: '#00FFFF', speed: 0.3 },
+            { type: 'rock', value: -10, radius: 18, color: '#808080', speed: 1.5 },
+            { type: 'bag', value: 100, radius: 15, color: '#8B4513', speed: 1 }
+        ];
+        
+        function initLevel() {
+            rope = { length: 0, angle: -Math.PI/2, extending: false, retracting: false };
+            claw = { x: CLAW_X, y: CLAW_Y, open: true };
+            grabbed = null;
+            rocks = [];
+            
+            // Generate items
+            for (let i = 0; i < 12; i++) {
+                const item = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+                rocks.push({
+                    x: 30 + Math.random() * 340,
+                    y: 150 + Math.random() * 350,
+                    ...item,
+                    grabbed: false
+                });
+            }
+            
+            timeLeft = 60;
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft <= 0) {
+                    checkWin();
+                }
+            }, 1000);
+            
+            document.getElementById('gold').textContent = gold;
+            document.getElementById('goal').textContent = goalAmount;
+        }
+        
+        function draw() {
+            // Sky
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, 100);
+            
+            // Ground
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, 100, canvas.width, canvas.height - 100);
+            
+            // Grass
+            ctx.fillStyle = '#228B22';
+            ctx.fillRect(0, 95, canvas.width, 10);
+            
+            // Draw ground texture
+            ctx.fillStyle = '#6B3E0A';
+            for (let i = 0; i < 20; i++) {
+                ctx.fillRect(i * 25 + 10, 150 + (i % 3) * 80, 15, 8);
+                ctx.fillRect(i * 25, 200 + (i % 4) * 70, 12, 6);
+            }
+            
+            // Draw items
+            rocks.forEach(rock => {
+                if (rock.grabbed) return;
+                
+                ctx.fillStyle = rock.color;
+                ctx.shadowColor = rock.color;
+                ctx.shadowBlur = 5;
+                
+                if (rock.type === 'diamond') {
+                    // Diamond shape
+                    ctx.beginPath();
+                    ctx.moveTo(rock.x, rock.y - rock.radius);
+                    ctx.lineTo(rock.x + rock.radius, rock.y);
+                    ctx.lineTo(rock.x, rock.y + rock.radius);
+                    ctx.lineTo(rock.x - rock.radius, rock.y);
+                    ctx.closePath();
+                    ctx.fill();
+                } else if (rock.type === 'bag') {
+                    ctx.beginPath();
+                    ctx.ellipse(rock.x, rock.y, rock.radius, rock.radius * 1.2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#5D3A1A';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(rock.x, rock.y - rock.radius * 0.5, 5, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(rock.x, rock.y, rock.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.shadowBlur = 0;
+                
+                // Value label
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('$' + rock.value, rock.x, rock.y + rock.radius + 15);
+            });
+            
+            // Draw rope
+            ctx.strokeStyle = '#4a4a4a';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(CLAW_X, CLAW_Y);
+            const endX = CLAW_X + Math.cos(rope.angle) * rope.length;
+            const endY = CLAW_Y + Math.sin(rope.angle) * rope.length;
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+            
+            // Draw claw
+            ctx.fillStyle = '#333';
+            const clawX = endX;
+            const clawY = endY;
+            
+            if (claw.open) {
+                // Open claw
+                ctx.beginPath();
+                ctx.moveTo(clawX - 12, clawY - 5);
+                ctx.lineTo(clawX - 8, clawY + 15);
+                ctx.lineTo(clawX + 8, clawY + 15);
+                ctx.lineTo(clawX + 12, clawY - 5);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.moveTo(clawX - 15, clawY);
+                ctx.lineTo(clawX - 5, clawY + 10);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(clawX + 15, clawY);
+                ctx.lineTo(clawX + 5, clawY + 10);
+                ctx.stroke();
+            } else {
+                // Closed claw holding something
+                ctx.beginPath();
+                ctx.arc(clawX, clawY + 8, 12, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw grabbed item
+            if (grabbed && !claw.open) {
+                ctx.fillStyle = grabbed.color;
+                ctx.shadowColor = grabbed.color;
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(clawX, clawY + 25, grabbed.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+            
+            // Miner
+            ctx.fillStyle = '#FFE4C4';
+            ctx.beginPath();
+            ctx.arc(CLAW_X, CLAW_Y - 25, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Hard hat
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(CLAW_X, CLAW_Y - 35, 15, Math.PI, 0);
+            ctx.fill();
+            
+            // Face
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(CLAW_X - 6, CLAW_Y - 25, 3, 0, Math.PI * 2);
+            ctx.arc(CLAW_X + 6, CLAW_Y - 25, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Timer display
+            ctx.fillStyle = timeLeft < 10 ? '#ff0000' : 'white';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`⏱ ${timeLeft}s`, canvas.width / 2, 50);
+        }
+        
+        function update() {
+            if (rope.extending) {
+                rope.length += 5;
+                
+                const tipX = CLAW_X + Math.cos(rope.angle) * rope.length;
+                const tipY = CLAW_Y + Math.sin(rope.angle) * rope.length;
+                
+                // Check collision with items
+                if (claw.open) {
+                    rocks.forEach(rock => {
+                        if (rock.grabbed) return;
+                        const dist = Math.sqrt((tipX - rock.x) ** 2 + (tipY - rock.y) ** 2);
+                        if (dist < rock.radius + 15) {
+                            rock.grabbed = true;
+                            grabbed = rock;
+                            claw.open = false;
+                        }
+                    });
+                }
+                
+                // Check bounds
+                if (tipX < 0 || tipX > canvas.width || tipY > canvas.height) {
+                    rope.extending = false;
+                    rope.retracting = true;
+                }
+                
+                // Max rope length
+                if (rope.length > MAX_ROPE) {
+                    rope.extending = false;
+                    rope.retracting = true;
+                }
+            }
+            
+            if (rope.retracting) {
+                rope.length -= 3;
+                
+                if (grabbed && !claw.open) {
+                    // Pull grabbed item
+                    grabbed.x = CLAW_X + Math.cos(rope.angle) * rope.length;
+                    grabbed.y = CLAW_Y + Math.sin(rope.angle) * rope.length;
+                }
+                
+                if (rope.length <= 0) {
+                    rope.retracting = false;
+                    rope.length = 0;
+                    
+                    if (grabbed) {
+                        gold += grabbed.value;
+                        if (gold < 0) gold = 0;
+                        document.getElementById('gold').textContent = gold;
+                        grabbed = null;
+                    }
+                    
+                    claw.open = true;
+                }
+            }
+        }
+        
+        function shootRope() {
+            if (!rope.extending && !rope.retracting) {
+                rope.extending = true;
+                claw.open = true;
+                grabbed = null;
+            }
+        }
+        
+        function checkWin() {
+            clearInterval(timerInterval);
+            if (gold >= goalAmount) {
+                const timeBonus = timeLeft * 5;
+                const total = gold + timeBonus;
+                document.getElementById('finalGold').textContent = gold;
+                document.getElementById('timeBonus').textContent = timeBonus;
+                document.getElementById('totalGold').textContent = total;
+                document.getElementById('winModal').style.display = 'flex';
+            } else {
+                alert(`Time's up! You need $${goalAmount - gold} more! Try again!`);
+                gold = 0;
+                level = 1;
+                goalAmount = 500;
+                initLevel();
+            }
+        }
+        
+        function nextLevel() {
+            document.getElementById('winModal').style.display = 'none';
+            level++;
+            goalAmount = 500 + (level - 1) * 200;
+            initLevel();
+        }
+        
+        // Controls
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                shootRope();
+            }
+            if (e.code === 'ArrowLeft') {
+                rope.angle -= 0.05;
+            }
+            if (e.code === 'ArrowRight') {
+                rope.angle += 0.05;
+            }
+        });
+        
+        canvas.addEventListener('mousedown', shootRope);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            shootRope();
+        });
+        
+        let angleAdjust = 0;
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const diff = mouseX - CLAW_X;
+            rope.angle = -Math.PI/2 + diff * 0.003;
+        });
+        
+        // Start
+        initLevel();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

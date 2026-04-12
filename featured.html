@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="LFolYFY1ySO4aIcMbyo8EdJKYLqHW9MS6_B1y7e5MPQ" />
+    <meta name="description" content="Featured Games - Check out our hottest and most popular games!" />
+    <title>Featured Games ⭐ | Cool Games</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%); min-height: 100vh; color: white; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 30px rgba(0,0,0,0.3); }
+        .header-content { max-width: 1400px; margin: 0 auto; padding: 0 30px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; }
+        .logo { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+        .logo-icon { font-size: 2rem; }
+        .logo-text { font-size: 1.5rem; font-weight: 800; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+        .logo-tag { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 500; }
+        .nav-links { display: flex; gap: 25px; list-style: none; }
+        .nav-links a { color: white; text-decoration: none; font-weight: 500; transition: all 0.3s; position: relative; }
+        .nav-links a:hover, .nav-links a.active { color: #ffd700; }
+        .nav-links a::after { content: ''; position: absolute; bottom: -5px; left: 0; width: 0; height: 2px; background: #ffd700; transition: width 0.3s; }
+        .nav-links a:hover::after, .nav-links a.active::after { width: 100%; }
+        .page-title { padding: 50px 30px 30px; text-align: center; }
+        .page-title h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 10px; background: linear-gradient(135deg, #fff 0%, #ffd700 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .page-title p { color: rgba(255,255,255,0.7); font-size: 1.1rem; }
+        .ad-section { padding: 25px; text-align: center; }
+        .ad-container { max-width: 900px; margin: 0 auto; background: rgba(255,255,255,0.03); border-radius: 15px; padding: 15px; border: 1px solid rgba(255,255,255,0.05); }
+        .featured-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; max-width: 1200px; margin: 0 auto; padding: 0 30px 60px; }
+        .featured-card { background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05)); border-radius: 25px; padding: 30px; border: 2px solid rgba(255,255,255,0.1); transition: all 0.3s; cursor: pointer; position: relative; overflow: hidden; }
+        .featured-card::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); transition: left 0.7s; }
+        .featured-card:hover::before { left: 100%; }
+        .featured-card:hover { transform: translateY(-10px) scale(1.02); border-color: #ffd700; box-shadow: 0 25px 50px rgba(255,215,0,0.2); }
+        .featured-badge { display: inline-block; padding: 6px 16px; border-radius: 25px; font-size: 0.8rem; font-weight: 700; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        .badge-hot { background: linear-gradient(135deg, #ff416c, #ff4b2b); }
+        .badge-new { background: linear-gradient(135deg, #00d2ff, #3a7bd5); }
+        .badge-popular { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #000; }
+        .featured-thumb { font-size: 5rem; text-align: center; padding: 40px; background: rgba(0,0,0,0.3); border-radius: 20px; margin-bottom: 20px; }
+        .featured-name { font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; }
+        .featured-desc { color: rgba(255,255,255,0.7); font-size: 0.95rem; margin-bottom: 15px; line-height: 1.6; }
+        .featured-meta { display: flex; justify-content: space-between; align-items: center; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .featured-rating { font-size: 1.1rem; }
+        .featured-rating span { color: #ffd700; margin-right: 5px; }
+        .featured-cat { background: rgba(102,126,234,0.3); padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; text-transform: capitalize; }
+        .footer { background: rgba(0,0,0,0.3); padding: 50px 30px 25px; margin-top: 40px; text-align: center; }
+        .footer p { color: rgba(255,255,255,0.4); font-size: 0.85rem; }
+        @media (max-width: 768px) { .header-content { flex-direction: column; gap: 12px; } .nav-links { gap: 12px; font-size: 0.85rem; } .featured-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo" onclick="window.location.href='index.html'">
+                <span class="logo-icon">🎮</span>
+                <span class="logo-text">Cool Games</span>
+                <span class="logo-tag">FREE</span>
+            </div>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="games.html">Games</a></li>
+                    <li><a href="featured.html" class="active">Featured</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    
+    <div class="page-title">
+        <h1>⭐ Featured Games</h1>
+        <p>Check out our hottest and most popular games!</p>
+    </div>
+    
+    <section class="ad-section"><div class="ad-container"><ins class="adsbygoogle" style="display:block; width:728px; height:90px; margin:0 auto;" data-ad-client="ca-pub-2848704978790894" data-ad-slot=""></ins></div></section>
+    
+    <div class="featured-grid">
+        <div class="featured-card" onclick="playGame('egg-shooter.html')">
+            <span class="featured-badge badge-hot">🔥 Hot</span>
+            <div class="featured-thumb">🥚</div>
+            <div class="featured-name">Egg Blaster</div>
+            <div class="featured-desc">Blast enemies with your egg! Shoot projectiles and survive as long as you can in this action-packed shooter game.</div>
+            <div class="featured-meta">
+                <span class="featured-rating"><span>⭐</span> 4.8/5</span>
+                <span class="featured-cat">Action</span>
+            </div>
+        </div>
+        
+        <div class="featured-card" onclick="playGame('darts.html')">
+            <span class="featured-badge badge-popular">🎯 Popular</span>
+            <div class="featured-thumb">🎯</div>
+            <div class="featured-name">Darts Championship</div>
+            <div class="featured-desc">Test your aim! Throw darts at the board, hit the bullseye, and master professional darts scoring.</div>
+            <div class="featured-meta">
+                <span class="featured-rating"><span>⭐</span> 4.9/5</span>
+                <span class="featured-cat">Sports</span>
+            </div>
+        </div>
+        
+        <div class="featured-card" onclick="playGame('snake.html')">
+            <span class="featured-badge badge-new">✨ New</span>
+            <div class="featured-thumb">🐍</div>
+            <div class="featured-name">Snake Classic</div>
+            <div class="featured-desc">The classic Snake game! Eat the food, grow longer, and don't hit the walls or yourself!</div>
+            <div class="featured-meta">
+                <span class="featured-rating"><span>⭐</span> 4.7/5</span>
+                <span class="featured-cat">Classic</span>
+            </div>
+        </div>
+        
+        <div class="featured-card" onclick="playGame('hole-io.html')">
+            <span class="featured-badge badge-hot">🔥 Hot</span>
+            <div class="featured-thumb">🕳️</div>
+            <div class="featured-name">Hole.io</div>
+            <div class="featured-desc">Swallow everything! Control your black hole and devour the entire city in this addictive game.</div>
+            <div class="featured-meta">
+                <span class="featured-rating"><span>⭐</span> 4.9/5</span>
+                <span class="featured-cat">Action</span>
+            </div>
+        </div>
+        
+        <div class="featured-card" onclick="playGame('soccer.html')">
+            <span class="featured-badge badge-popular">🎯 Popular</span>
+            <div class="featured-thumb">⚽</div>
+            <div class="featured-name">Soccer</div>
+            <div class="featured-desc">Score goals! Play this exciting soccer game and become a football champion.</div>
+            <div class="featured-meta">
+                <span class="featured-rating"><span>⭐</span> 4.9/5</span>
+                <span class="featured-cat">Sports</span>
+            </div>
+        </div>
+        
+        <div class="featured-card" onclick="playGame('pac-man.html')">
+            <span class="featured-badge badge-new">✨ New</span>
+            <div class="featured-thumb">👻</div>
+            <div class="featured-name">Pac-Man</div>
+            <div class="featured-desc">The classic arcade game! Eat all the dots and avoid the ghosts in this timeless adventure.</div>
+            <div class="featured-meta">
+                <span class="featured-rating"><span>⭐</span> 4.9/5</span>
+                <span class="featured-cat">Classic</span>
+            </div>
+        </div>
+    </div>
+    
+    <section class="ad-section"><div class="ad-container"><ins class="adsbygoogle" style="display:block; width:728px; height:90px; margin:0 auto;" data-ad-client="ca-pub-2848704978790894" data-ad-slot=""></ins></div></section>
+    
+    <footer class="footer">
+        <p>© 2024 Cool Games. Made with ❤️ for gamers everywhere.</p>
+        <p style="margin-top: 10px;">🎮 60+ Free Games | No Downloads | Instant Play</p>
+    </footer>
+    
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2848704978790894" crossorigin="anonymous"></script>
+    <script>
+        function playGame(url) { window.open(url, '_blank'); }
+        (adsbygoogle = window.adsbygoogle || []).push({});
+        (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+</body>
+</html>

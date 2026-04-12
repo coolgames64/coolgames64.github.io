@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎲 Ludo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        canvas { border: 3px solid #f1c40f; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #f1c40f; color: #333; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🎲 LUDO</h1>
+    <div class="score-board">
+        <span>You: <strong id="you">0</strong></span>
+        <span>CPU: <strong id="cpu">0</strong></span>
+        <span>Dice: <strong id="dice">?</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="450" height">450"></canvas>
+    <div class="instructions"><span>CLICK ROLL</span> to roll dice! Race to the finish!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let youPos = 0;
+        let cpuPos = 0;
+        let youScore = 0;
+        let cpuScore = 0;
+        let rolling = false;
+        let gameLoop;
+        
+        const TRACK_LENGTH = 50;
+        
+        function draw() {
+            // Board
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(0, 0, 450, 450);
+            
+            // Track squares
+            const colors = ['#3498db', '#e74c3c', '#f1c40f', '#27ae60'];
+            for (let i = 0; i < TRACK_LENGTH; i++) {
+                const row = Math.floor(i / 10);
+                const col = i % 10;
+                let x, y;
+                
+                if (row % 2 === 0) {
+                    x = col * 45;
+                } else {
+                    x = 405 - col * 45;
+                }
+                y = row * 45;
+                
+                ctx.fillStyle = colors[(i * 4) % 4] + '60';
+                ctx.fillRect(x + 2, y + 2, 40, 40);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x + 2, y + 2, 40, 40);
+                
+                // Number
+                ctx.fillStyle = '#fff';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(i + 1, x + 22, y + 25);
+                
+                // Markers
+                if (youPos === i) {
+                    ctx.fillStyle = '#3498db';
+                    ctx.beginPath();
+                    ctx.arc(x + 22, y + 22, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                if (cpuPos === i) {
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.beginPath();
+                    ctx.arc(x + 22, y + 22, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            // Finish line
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillRect(0, 405, 450, 45);
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 30px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('🏁 FINISH 🏁', 225, 438);
+        }
+        
+        function rollDice() {
+            if (rolling || youPos >= TRACK_LENGTH - 1) return;
+            
+            rolling = true;
+            let rolls = 0;
+            let interval = setInterval(() => {
+                document.getElementById('dice').textContent = Math.floor(Math.random() * 6) + 1;
+                rolls++;
+                if (rolls > 15) {
+                    clearInterval(interval);
+                    
+                    const result = Math.floor(Math.random() * 6) + 1;
+                    document.getElementById('dice').textContent = result;
+                    
+                    youPos += result;
+                    if (youPos >= TRACK_LENGTH - 1) {
+                        youPos = TRACK_LENGTH - 1;
+                        youScore++;
+                        document.getElementById('you').textContent = youScore;
+                        alert('🎉 YOU WIN THIS ROUND! 🎉');
+                        youPos = 0;
+                    }
+                    
+                    // CPU turn
+                    setTimeout(cpuTurn, 500);
+                    rolling = false;
+                }
+            }, 80);
+        }
+        
+        function cpuTurn() {
+            const result = Math.floor(Math.random() * 6) + 1;
+            cpuPos += result;
+            if (cpuPos >= TRACK_LENGTH - 1) {
+                cpuPos = TRACK_LENGTH - 1;
+                cpuScore++;
+                document.getElementById('cpu').textContent = cpuScore;
+                alert('CPU wins this round!');
+                cpuPos = 0;
+            }
+            draw();
+        }
+        
+        canvas.addEventListener('click', rollDice);
+        
+        draw();
+    </script>
+</body>
+</html>

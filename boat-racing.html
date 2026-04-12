@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚤 Boat Racing</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(180deg, #87CEEB 0%, #3498db 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: #333;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(255,255,255,0.5); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #fff; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #555; font-size: 1rem; }
+        .instructions span { background: #3498db; color: white; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.3); color: #333; border: none; padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.5); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🚤 BOAT RACING</h1>
+    <div class="score-board">
+        <span>Speed: <strong id="speed">0</strong></span>
+        <span>Checkpoints: <strong id="cp">0</strong>/5</span>
+    </div>
+    <canvas id="gameCanvas" width="500" height="450"></canvas>
+    <div class="instructions"><span>← →</span> steer | <span>↑</span> accelerate</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let boat = { x: 250, y: 400, angle: -Math.PI/2, vx: 0, vy: 0 };
+        let checkpoints = [];
+        let cpIndex = 0;
+        let speed = 0;
+        let gameLoop;
+        let keys = { left: false, right: false, up: false };
+        
+        function init() {
+            boat = { x: 250, y: 400, angle: -Math.PI/2, vx: 0, vy: 0 };
+            checkpoints = [
+                { x: 250, y: 350, passed: false },
+                { x: 100, y: 250, passed: false },
+                { x: 400, y: 150, passed: false },
+                { x: 150, y: 80, passed: false },
+                { x: 250, y: 30, passed: false }
+            ];
+            cpIndex = 0;
+            speed = 0;
+            
+            document.getElementById('speed').textContent = '0';
+            document.getElementById('cp').textContent = '0';
+        }
+        
+        function draw() {
+            // Water
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Waves
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            for (let i = 0; i < 10; i++) {
+                ctx.beginPath();
+                ctx.arc(50 + i * 55 + Math.sin(Date.now() / 500 + i) * 5, 100, 20, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Checkpoints
+            checkpoints.forEach((cp, i) => {
+                ctx.fillStyle = i === cpIndex ? '#f1c40f' : (cp.passed ? '#27ae60' : '#ecf0f1');
+                ctx.beginPath();
+                ctx.arc(cp.x, cp.y, 25, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(i + 1, cp.x, cp.y);
+            });
+            
+            // Boat
+            ctx.save();
+            ctx.translate(boat.x, boat.y);
+            ctx.rotate(boat.angle + Math.PI / 2);
+            
+            // Hull
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.moveTo(0, -20);
+            ctx.lineTo(-15, 20);
+            ctx.lineTo(15, 20);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Cabin
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-8, -5, 16, 15);
+            
+            ctx.restore();
+            
+            // Wake
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(boat.x - Math.cos(boat.angle) * 20, boat.y - Math.sin(boat.angle) * 20);
+            ctx.lineTo(boat.x - Math.cos(boat.angle) * 50 - 10, boat.y - Math.sin(boat.angle) * 50 + 15);
+            ctx.moveTo(boat.x - Math.cos(boat.angle) * 20, boat.y - Math.sin(boat.angle) * 20);
+            ctx.lineTo(boat.x - Math.cos(boat.angle) * 50 + 10, boat.y - Math.sin(boat.angle) * 50 - 15);
+            ctx.stroke();
+        }
+        
+        function update() {
+            if (keys.left) boat.angle -= 0.05;
+            if (keys.right) boat.angle += 0.05;
+            if (keys.up) speed = Math.min(8, speed + 0.2);
+            else speed = Math.max(0, speed - 0.1);
+            
+            boat.vx = Math.cos(boat.angle) * speed;
+            boat.vy = Math.sin(boat.angle) * speed;
+            boat.x += boat.vx;
+            boat.y += boat.vy;
+            
+            // Bounds
+            boat.x = Math.max(30, Math.min(470, boat.x));
+            boat.y = Math.max(30, Math.min(420, boat.y));
+            
+            document.getElementById('speed').textContent = Math.floor(speed * 10);
+            
+            // Checkpoint
+            const cp = checkpoints[cpIndex];
+            const dist = Math.sqrt((boat.x - cp.x) ** 2 + (boat.y - cp.y) ** 2);
+            if (dist < 30) {
+                cp.passed = true;
+                cpIndex++;
+                document.getElementById('cp').textContent = cpIndex;
+                
+                if (cpIndex >= 5) {
+                    endGame();
+                }
+            }
+        }
+        
+        function endGame() {
+            clearInterval(gameLoop);
+            setTimeout(() => {
+                alert(`🏆 RACE COMPLETE! 🏆\n\nClick OK to play again!`);
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'ArrowLeft') keys.left = true;
+            if (e.code === 'ArrowRight') keys.right = true;
+            if (e.code === 'ArrowUp') keys.up = true;
+        });
+        
+        document.addEventListener('keyup', e => {
+            if (e.code === 'ArrowLeft') keys.left = false;
+            if (e.code === 'ArrowRight') keys.right = false;
+            if (e.code === 'ArrowUp') keys.up = false;
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>♟️ Chess</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        canvas { border: 3px solid #fff; border-radius: 5px; }
+        .status { font-size: 1.3rem; margin-bottom: 15px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>♟️ CHESS</h1>
+    <div class="status" id="status">White's turn</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const SIZE = 50;
+        const BOARD_SIZE = 8 * SIZE;
+        canvas.width = BOARD_SIZE;
+        canvas.height = BOARD_SIZE;
+        
+        let board = [];
+        let selected = null;
+        let turn = 'white';
+        let moves = 0;
+        
+        const PIECES = {
+            r: '♜', n: '♞', b: '♝', q: '♛', k: '♚', p: '♟',
+            R: '♖', N: '♘', B: '♗', Q: '♕', K: '♔', P: '♙'
+        };
+        
+        function init() {
+            board = [
+                ['r','n','b','q','k','b','n','r'],
+                ['p','p','p','p','p','p','p','p'],
+                ['','','','','','','',''],
+                ['','','','','','','',''],
+                ['','','','','','','',''],
+                ['','','','','','','',''],
+                ['P','P','P','P','P','P','P','P'],
+                ['R','N','B','Q','K','B','N','R']
+            ];
+            selected = null;
+            turn = 'white';
+            moves = 0;
+        }
+        
+        function draw() {
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const x = c * SIZE;
+                    const y = r * SIZE;
+                    
+                    // Checkerboard
+                    ctx.fillStyle = (r + c) % 2 === 0 ? '#f0d9b5' : '#b58863';
+                    ctx.fillRect(x, y, SIZE, SIZE);
+                    
+                    // Selected highlight
+                    if (selected && selected.r === r && selected.c === c) {
+                        ctx.fillStyle = 'rgba(255,255,0,0.5)';
+                        ctx.fillRect(x, y, SIZE, SIZE);
+                    }
+                    
+                    // Piece
+                    if (board[r][c]) {
+                        const piece = board[r][c];
+                        const isWhite = piece === piece.toUpperCase();
+                        ctx.fillStyle = isWhite ? '#fff' : '#000';
+                        ctx.font = '36px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(PIECES[piece], x + SIZE/2, y + SIZE/2);
+                    }
+                }
+            }
+        }
+        
+        function getMoves(r, c) {
+            const piece = board[r][c];
+            if (!piece) return [];
+            
+            const isWhite = piece === piece.toUpperCase();
+            const moves = [];
+            const type = piece.toLowerCase();
+            
+            if (type === 'p') {
+                const dir = isWhite ? -1 : 1;
+                const startRow = isWhite ? 6 : 1;
+                
+                // Forward
+                if (board[r + dir] && board[r + dir][c] === '') {
+                    moves.push({r: r + dir, c: c});
+                    // Double move from start
+                    if (r === startRow && board[r + 2 * dir][c] === '') {
+                        moves.push({r: r + 2 * dir, c: c});
+                    }
+                }
+                
+                // Captures
+                for (const dc of [-1, 1]) {
+                    const nc = c + dc;
+                    if (nc >= 0 && nc < 8 && board[r + dir]) {
+                        const target = board[r + dir][nc];
+                        if (target && (isWhite ? target === target.toLowerCase() : target === target.toUpperCase())) {
+                            moves.push({r: r + dir, c: nc});
+                        }
+                    }
+                }
+            } else if (type === 'r') {
+                // Rook - horizontal and vertical
+                for (const [dr, dc] of [[0,1],[0,-1],[1,0],[-1,0]]) {
+                    let nr = r + dr, nc = c + dc;
+                    while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                        if (board[nr][nc] === '') {
+                            moves.push({r: nr, c: nc});
+                        } else {
+                            const target = board[nr][nc];
+                            if (isWhite ? target === target.toLowerCase() : target === target.toUpperCase()) {
+                                moves.push({r: nr, c: nc});
+                            }
+                            break;
+                        }
+                        nr += dr;
+                        nc += dc;
+                    }
+                }
+            } else if (type === 'n') {
+                // Knight
+                for (const [dr, dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) {
+                    const nr = r + dr, nc = c + dc;
+                    if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                        if (board[nr][nc] === '' || (isWhite ? board[nr][nc] === board[nr][nc].toLowerCase() : board[nr][nc] === board[nr][nc].toUpperCase())) {
+                            moves.push({r: nr, c: nc});
+                        }
+                    }
+                }
+            } else if (type === 'b') {
+                // Bishop
+                for (const [dr, dc] of [[1,1],[1,-1],[-1,1],[-1,-1]]) {
+                    let nr = r + dr, nc = c + dc;
+                    while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                        if (board[nr][nc] === '') {
+                            moves.push({r: nr, c: nc});
+                        } else {
+                            const target = board[nr][nc];
+                            if (isWhite ? target === target.toLowerCase() : target === target.toUpperCase()) {
+                                moves.push({r: nr, c: nc});
+                            }
+                            break;
+                        }
+                        nr += dr;
+                        nc += dc;
+                    }
+                }
+            } else if (type === 'q') {
+                // Queen - rook + bishop
+                for (const [dr, dc] of [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]]) {
+                    let nr = r + dr, nc = c + dc;
+                    while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                        if (board[nr][nc] === '') {
+                            moves.push({r: nr, c: nc});
+                        } else {
+                            const target = board[nr][nc];
+                            if (isWhite ? target === target.toLowerCase() : target === target.toUpperCase()) {
+                                moves.push({r: nr, c: nc});
+                            }
+                            break;
+                        }
+                        nr += dr;
+                        nc += dc;
+                    }
+                }
+            } else if (type === 'k') {
+                // King
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        if (dr === 0 && dc === 0) continue;
+                        const nr = r + dr, nc = c + dc;
+                        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                            if (board[nr][nc] === '' || (isWhite ? board[nr][nc] === board[nr][nc].toLowerCase() : board[nr][nc] === board[nr][nc].toUpperCase())) {
+                                moves.push({r: nr, c: nc});
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return moves;
+        }
+        
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const c = Math.floor(x / SIZE);
+            const r = Math.floor(y / SIZE);
+            
+            if (selected) {
+                const moves = getMoves(selected.r, selected.c);
+                const validMove = moves.find(m => m.r === r && m.c === c);
+                
+                if (validMove) {
+                    board[r][c] = board[selected.r][selected.c];
+                    board[selected.r][selected.c] = '';
+                    turn = turn === 'white' ? 'black' : 'white';
+                    moves++;
+                    document.getElementById('status').textContent = turn.charAt(0).toUpperCase() + turn.slice(1) + "'s turn";
+                }
+                selected = null;
+            }
+            
+            const piece = board[r][c];
+            if (piece) {
+                const isWhite = piece === piece.toUpperCase();
+                if ((turn === 'white' && isWhite) || (turn === 'black' && !isWhite)) {
+                    selected = {r, c};
+                }
+            }
+            
+            draw();
+        });
+        
+        init();
+        draw();
+    </script>
+</body>
+</html>

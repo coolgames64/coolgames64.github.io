@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="LFolYFY1ySO4aIcMbyo8EdJKYLqHW9MS6_B1y7e5MPQ" />
+    <title>Space Hurdles | Cool Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: #0a0a1a; min-height: 100vh; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+        .header { display: flex; gap: 20px; padding: 15px; }
+        .score-box { background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 15px; color: white; font-weight: bold; }
+        #gameCanvas { border-radius: 15px; box-shadow: 0 10px 40px rgba(100,100,255,0.2); }
+        .back-btn { position: fixed; top: 20px; left: 20px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 10px 20px; border-radius: 25px; text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back</a>
+    <div class="header">
+        <div class="score-box">Score: <span id="score">0</span></div>
+        <div class="score-box">Best: <span id="best">0</span></div>
+    </div>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const bestEl = document.getElementById('best');
+        
+        let player = { x: 80, y: 450, vy: 0, size: 30, jumping: false };
+        let hurdles = [];
+        let stars = [];
+        let score = 0;
+        let best = localStorage.getItem('spaceHurdlesBest') || 0;
+        let gameOver = false;
+        let gameStarted = false;
+        let groundY = 500;
+        
+        bestEl.textContent = best;
+        
+        // Create stars
+        for (let i = 0; i < 100; i++) {
+            stars.push({
+                x: Math.random() * 400,
+                y: Math.random() * 600,
+                size: Math.random() * 2,
+                twinkle: Math.random() * Math.PI * 2
+            });
+        }
+        
+        function createHurdle() {
+            hurdles.push({
+                x: 450,
+                width: 30,
+                height: 60 + Math.random() * 40,
+                speed: 5 + score * 0.1
+            });
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                if (!gameStarted) gameStarted = true;
+                if (gameOver) return;
+                if (!player.jumping) {
+                    player.vy = -15;
+                    player.jumping = true;
+                }
+            }
+        });
+        
+        canvas.addEventListener('click', () => {
+            if (!gameStarted) gameStarted = true;
+            if (gameOver) {
+                gameOver = false;
+                player.y = 450;
+                player.vy = 0;
+                hurdles = [];
+                score = 0;
+                return;
+            }
+            if (!player.jumping) {
+                player.vy = -15;
+                player.jumping = true;
+            }
+        });
+        
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            if (!gameStarted) gameStarted = true;
+            if (gameOver) {
+                gameOver = false;
+                player.y = 450;
+                player.vy = 0;
+                hurdles = [];
+                score = 0;
+                return;
+            }
+            if (!player.jumping) {
+                player.vy = -15;
+                player.jumping = true;
+            }
+        });
+        
+        function draw() {
+            // Space background
+            ctx.fillStyle = '#0a0a1a';
+            ctx.fillRect(0, 0, 400, 600);
+            
+            // Stars
+            stars.forEach(s => {
+                ctx.fillStyle = `rgba(255,255,255,${0.5 + Math.sin(s.twinkle) * 0.5})`;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                ctx.fill();
+                s.twinkle += 0.05;
+            });
+            
+            // Planets
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(350, 100, 40, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#c0392b';
+            ctx.beginPath();
+            ctx.arc(345, 95, 40, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.arc(50, 150, 25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Ground
+            let groundGradient = ctx.createLinearGradient(0, groundY, 0, 600);
+            groundGradient.addColorStop(0, '#2c3e50');
+            groundGradient.addColorStop(1, '#1a252f');
+            ctx.fillStyle = groundGradient;
+            ctx.fillRect(0, groundY, 400, 100);
+            
+            // Ground line
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(400, groundY);
+            ctx.stroke();
+            
+            // Moon base
+            ctx.fillStyle = '#bdc3c7';
+            ctx.beginPath();
+            ctx.ellipse(300, groundY - 20, 50, 20, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Hurdles
+            hurdles.forEach(h => {
+                // Pillar
+                ctx.fillStyle = '#7f8c8d';
+                ctx.fillRect(h.x, groundY - h.height, h.width, h.height);
+                
+                // Top
+                ctx.fillStyle = '#e74c3c';
+                ctx.beginPath();
+                ctx.arc(h.x + h.width/2, groundY - h.height, h.width/2 + 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Glow
+                ctx.shadowColor = '#e74c3c';
+                ctx.shadowBlur = 15;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+            
+            // Player (astronaut)
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            
+            // Jetpack
+            ctx.fillStyle = '#95a5a6';
+            ctx.fillRect(-15, -5, 10, 25);
+            ctx.fillStyle = '#e74c3c';
+            if (player.jumping && player.vy < 0) {
+                ctx.beginPath();
+                ctx.moveTo(-12, 20);
+                ctx.lineTo(-10, 30 + Math.random() * 10);
+                ctx.lineTo(-8, 20);
+                ctx.fill();
+            }
+            
+            // Suit
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, player.size * 0.8, player.size, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Helmet
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.arc(0, -5, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.beginPath();
+            ctx.arc(-3, -8, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Legs
+            ctx.fillStyle = 'white';
+            ctx.fillRect(-8, player.size - 5, 6, 15);
+            ctx.fillRect(2, player.size - 5, 6, 15);
+            
+            ctx.restore();
+            
+            // Start/Game Over
+            if (!gameStarted) {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0, 0, 400, 600);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 28px Poppins';
+                ctx.textAlign = 'center';
+                ctx.fillText('🚀 SPACE HURDLES 🚀', 200, 250);
+                ctx.font = '18px Poppins';
+                ctx.fillText('Jump over the hurdles!', 200, 300);
+                ctx.fillText('SPACE / TAP / CLICK to jump', 200, 340);
+            }
+            
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                ctx.fillRect(0, 0, 400, 600);
+                ctx.fillStyle = '#e74c3c';
+                ctx.font = 'bold 36px Poppins';
+                ctx.textAlign = 'center';
+                ctx.fillText('💥 CRASH!', 200, 250);
+                ctx.fillStyle = 'white';
+                ctx.font = '24px Poppins';
+                ctx.fillText('Score: ' + score, 200, 320);
+                ctx.font = '18px Poppins';
+                ctx.fillStyle = '#ffd700';
+                ctx.fillText('Click to Restart', 200, 380);
+            }
+        }
+        
+        function update() {
+            if (!gameStarted || gameOver) return;
+            
+            // Physics
+            player.vy += 0.6;
+            player.y += player.vy;
+            
+            if (player.y > groundY - player.size) {
+                player.y = groundY - player.size;
+                player.vy = 0;
+                player.jumping = false;
+            }
+            
+            // Hurdles
+            hurdles.forEach(h => {
+                h.x -= h.speed;
+            });
+            
+            // Collision
+            hurdles.forEach(h => {
+                if (player.x + player.size * 0.5 > h.x && 
+                    player.x - player.size * 0.5 < h.x + h.width &&
+                    player.y + player.size > groundY - h.height) {
+                    gameOver = true;
+                    if (score > best) {
+                        best = score;
+                        localStorage.setItem('spaceHurdlesBest', best);
+                        bestEl.textContent = best;
+                    }
+                }
+            });
+            
+            // Remove and score
+            hurdles = hurdles.filter(h => {
+                if (h.x + h.width < 0) {
+                    score++;
+                    scoreEl.textContent = score;
+                    return false;
+                }
+                return true;
+            });
+            
+            // Spawn
+            if (hurdles.length === 0 || hurdles[hurdles.length - 1].x < 250) {
+                if (Math.random() < 0.03) createHurdle();
+            }
+        }
+        
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        gameLoop();
+    </script>
+</body>
+</html>

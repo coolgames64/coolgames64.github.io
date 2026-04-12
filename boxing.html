@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🥊 Boxing</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #e74c3c; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(231,76,60,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #e74c3c; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #e74c3c; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🥊 BOXING</h1>
+    <div class="score-board">
+        <span>You: <strong id="playerHp">100</strong>%</span>
+        <span>CPU: <strong id="cpuHp">100</strong>%</span>
+    </div>
+    <canvas id="gameCanvas" width="500" height="350"></canvas>
+    <div class="instructions">Click buttons or press <span>J</span> Left | <span>K</span> Right | <span>L</span> Special</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let player = { x: 100, y: 200, hp: 100, attacking: false, attackType: '', animTimer: 0 };
+        let cpu = { x: 400, y: 200, hp: 100, attacking: false, attackType: '', animTimer: 0 };
+        let gameLoop;
+        let gameOver = false;
+        
+        function init() {
+            player = { x: 100, y: 200, hp: 100, attacking: false, attackType: '', animTimer: 0 };
+            cpu = { x: 400, y: 200, hp: 100, attacking: false, attackType: '', animTimer: 0 };
+            gameOver = false;
+            
+            document.getElementById('playerHp').textContent = '100';
+            document.getElementById('cpuHp').textContent = '100';
+        }
+        
+        function drawBoxer(b, color, isPlayer) {
+            ctx.fillStyle = color;
+            
+            // Body
+            ctx.fillRect(b.x - 20, b.y - 30, 40, 60);
+            
+            // Head
+            ctx.beginPath();
+            ctx.arc(b.x, b.y - 50, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Gloves
+            if (b.attacking) {
+                ctx.fillStyle = '#e74c3c';
+                if (b.attackType === 'left') {
+                    ctx.fillRect(b.x + (isPlayer ? 20 : -50), b.y - 30, 30, 25);
+                } else if (b.attackType === 'right') {
+                    ctx.fillRect(b.x + (isPlayer ? 20 : -50), b.y - 10, 30, 25);
+                } else if (b.attackType === 'special') {
+                    ctx.fillRect(b.x + (isPlayer ? 15 : -45), b.y - 35, 40, 35);
+                }
+            } else {
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(b.x + 15, b.y - 30, 20, 25);
+                ctx.fillRect(b.x - 35, b.y - 20, 20, 25);
+            }
+            
+            // Legs
+            ctx.fillStyle = '#333';
+            ctx.fillRect(b.x - 15, b.y + 30, 12, 40);
+            ctx.fillRect(b.x + 3, b.y + 30, 12, 40);
+            
+            // HP bar
+            const hpBarWidth = 60;
+            ctx.fillStyle = '#333';
+            ctx.fillRect(b.x - hpBarWidth/2, b.y - 90, hpBarWidth, 10);
+            ctx.fillStyle = color === '#3498db' ? '#27ae60' : '#e74c3c';
+            ctx.fillRect(b.x - hpBarWidth/2, b.y - 90, hpBarWidth * (b.hp / 100), 10);
+        }
+        
+        function draw() {
+            // Ring
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#654321';
+            ctx.fillRect(30, 30, canvas.width - 60, canvas.height - 60);
+            
+            // Ropes
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.moveTo(30, 80 + i * 80);
+                ctx.lineTo(470, 80 + i * 80);
+                ctx.stroke();
+            }
+            
+            drawBoxer(player, '#3498db', true);
+            drawBoxer(cpu, '#e74c3c', false);
+            
+            // Action buttons display
+            ctx.fillStyle = '#fff';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('J = Left Punch | K = Right Punch | L = Special', canvas.width/2, canvas.height - 20);
+        }
+        
+        function update() {
+            // Animation timers
+            if (player.attacking) {
+                player.animTimer--;
+                if (player.animTimer <= 0) {
+                    player.attacking = false;
+                }
+            }
+            
+            if (cpu.attacking) {
+                cpu.animTimer--;
+                if (cpu.animTimer <= 0) {
+                    cpu.attacking = false;
+                }
+            }
+            
+            // CPU AI
+            if (!cpu.attacking && Math.random() < 0.02) {
+                cpuAttack();
+            }
+        }
+        
+        function playerAttack(type) {
+            if (player.attacking || gameOver) return;
+            
+            player.attacking = true;
+            player.attackType = type;
+            player.animTimer = 15;
+            
+            let damage = 0;
+            if (type === 'left') damage = 8;
+            else if (type === 'right') damage = 12;
+            else if (type === 'special') damage = 20;
+            
+            // Check if hit (CPU nearby)
+            if (cpu.hp > 0) {
+                cpu.hp -= damage;
+                document.getElementById('cpuHp').textContent = Math.max(0, cpu.hp);
+            }
+            
+            if (cpu.hp <= 0) {
+                endGame('YOU WIN!');
+            }
+        }
+        
+        function cpuAttack() {
+            cpu.attacking = true;
+            const types = ['left', 'right', 'special'];
+            cpu.attackType = types[Math.floor(Math.random() * 2)];  // No special for CPU
+            cpu.animTimer = 15;
+            
+            let damage = cpu.attackType === 'left' ? 5 : 8;
+            player.hp -= damage;
+            document.getElementById('playerHp').textContent = Math.max(0, player.hp);
+            
+            if (player.hp <= 0) {
+                endGame('CPU WINS!');
+            }
+        }
+        
+        function endGame(result) {
+            gameOver = true;
+            clearInterval(gameLoop);
+            setTimeout(() => {
+                alert(`${result}\n\nClick OK to play again!`);
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyJ') playerAttack('left');
+            if (e.code === 'KeyK') playerAttack('right');
+            if (e.code === 'KeyL') playerAttack('special');
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚔️ Sword Fight</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #e74c3c; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(231,76,60,0.2); padding: 5px 15px; border-radius: 15px; margin: 0 10px; }
+        canvas { border: 3px solid #e74c3c; border-radius: 10px; background: #87CEEB; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #e74c3c; padding: 3px 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>⚔️ SWORD FIGHT</h1>
+    <div class="score-board">
+        <span>Round: <strong id="round">1</strong></span>
+        <span>Wins: <strong id="wins">0</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="500" height="350"></canvas>
+    <div class="instructions"><span>A</span> or <span>←</span> Left | <span>D</span> or <span>→</span> Right | <span>SPACE</span> Attack</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let player = { x: 100, y: 250, dir: 1, attacking: false, attackFrame: 0, health: 100 };
+        let enemy = { x: 350, y: 250, dir: -1, attacking: false, attackFrame: 0, health: 100, attackTimer: 0 };
+        let score = 0;
+        let gameOver = false;
+        let gameLoop;
+        let particles = [];
+        let swordSwing = 0;
+        
+        function init() {
+            player = { x: 100, y: 250, dir: 1, attacking: false, attackFrame: 0, health: 100 };
+            enemy = { x: 350, y: 250, dir: -1, attacking: false, attackFrame: 0, health: 100, attackTimer: 0 };
+            particles = [];
+            gameOver = false;
+        }
+        
+        function drawCharacter(char, color, isPlayer) {
+            ctx.save();
+            ctx.translate(char.x, char.y);
+            if (char.dir < 0) ctx.scale(-1, 1);
+            
+            // Body
+            ctx.fillStyle = color;
+            ctx.fillRect(-15, -40, 30, 50);
+            
+            // Head
+            ctx.beginPath();
+            ctx.arc(0, -55, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyes
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(5, -58, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Legs
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(-12, 10, 10, 30);
+            ctx.fillRect(2, 10, 10, 30);
+            
+            // Arm with sword
+            ctx.save();
+            if (char.attacking) {
+                const swing = Math.sin(char.attackFrame * 0.3) * 1.5;
+                ctx.rotate(swing);
+            }
+            
+            // Arm
+            ctx.fillStyle = color;
+            ctx.fillRect(10, -35, 25, 10);
+            
+            // Sword
+            ctx.fillStyle = '#7f8c8d';
+            ctx.fillRect(30, -38, 50, 6);
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillRect(25, -42, 10, 14);
+            
+            ctx.restore();
+            
+            ctx.restore();
+            
+            // Health bar
+            const healthWidth = 60;
+            const healthHeight = 8;
+            ctx.fillStyle = '#c0392b';
+            ctx.fillRect(char.x - healthWidth/2, char.y - 90, healthWidth, healthHeight);
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(char.x - healthWidth/2, char.y - 90, healthWidth * (char.health / 100), healthHeight);
+        }
+        
+        function drawParticles() {
+            particles.forEach((p, i) => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.02;
+            });
+            particles = particles.filter(p => p.life > 0);
+        }
+        
+        function createHitParticles(x, y) {
+            for (let i = 0; i < 15; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    size: Math.random() * 5 + 2,
+                    life: 1,
+                    color: Math.random() > 0.5 ? '#e74c3c' : '#f1c40f'
+                });
+            }
+        }
+        
+        function draw() {
+            // Sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#98D8C8');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Ground
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, 280, canvas.width, 70);
+            
+            // Arena markers
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillRect(230, 275, 40, 5);
+            
+            drawCharacter(player, '#3498db', true);
+            drawCharacter(enemy, '#e74c3c', false);
+            drawParticles();
+            
+            // VS text
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 30px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('VS', canvas.width/2, 50);
+        }
+        
+        function update() {
+            if (gameOver) return;
+            
+            // Player attack
+            if (player.attacking) {
+                player.attackFrame++;
+                if (player.attackFrame > 15) {
+                    player.attacking = false;
+                    player.attackFrame = 0;
+                }
+                
+                // Check hit on enemy
+                if (player.attackFrame === 8) {
+                    const dist = Math.abs(player.x + 60 - enemy.x);
+                    if (dist < 80) {
+                        enemy.health -= 15;
+                        createHitParticles(enemy.x, enemy.y - 40);
+                        if (enemy.health <= 0) {
+                            score++;
+                            document.getElementById('wins').textContent = score;
+                            nextRound();
+                        }
+                    }
+                }
+            }
+            
+            // Enemy AI
+            enemy.attackTimer++;
+            if (enemy.attackTimer > 90) {
+                enemy.attacking = true;
+                enemy.attackFrame = 0;
+                enemy.attackTimer = 0;
+            }
+            
+            if (enemy.attacking) {
+                enemy.attackFrame++;
+                if (enemy.attackFrame > 15) {
+                    enemy.attacking = false;
+                    enemy.attackFrame = 0;
+                }
+                
+                // Check hit on player
+                if (enemy.attackFrame === 8) {
+                    const dist = Math.abs(enemy.x - 60 - player.x);
+                    if (dist < 80) {
+                        player.health -= 12;
+                        createHitParticles(player.x, player.y - 40);
+                        if (player.health <= 0) {
+                            gameOver = true;
+                            setTimeout(() => {
+                                alert(`💀 DEFEATED! 💀\n\nYou won ${score} rounds!\nClick OK to play again!`);
+                                score = 0;
+                                document.getElementById('wins').textContent = score;
+                                init();
+                            }, 100);
+                        }
+                    }
+                }
+            }
+            
+            // Move enemy toward player slightly
+            if (!enemy.attacking) {
+                const dir = player.x < enemy.x ? -1 : 1;
+                enemy.x += dir * 0.5;
+                enemy.dir = dir;
+            }
+        }
+        
+        function nextRound() {
+            player.health = 100;
+            enemy.health = 100;
+            player.x = 100;
+            enemy.x = 350;
+            document.getElementById('round').textContent = score + 1;
+        }
+        
+        function playerAttack() {
+            if (gameOver || player.attacking) return;
+            player.attacking = true;
+            player.attackFrame = 0;
+        }
+        
+        function moveLeft() {
+            if (gameOver) return;
+            player.x = Math.max(50, player.x - 15);
+            player.dir = -1;
+        }
+        
+        function moveRight() {
+            if (gameOver) return;
+            player.x = Math.min(450, player.x + 15);
+            player.dir = 1;
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                playerAttack();
+            } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+                moveLeft();
+            } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+                moveRight();
+            }
+        });
+        
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        init();
+        gameLoop();
+    </script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧩 Collapse</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #9b59b6; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(155,89,182,0.2); padding: 5px 15px; border-radius: 15px; margin: 0 10px; }
+        canvas { border: 3px solid #9b59b6; border-radius: 10px; background: #fff; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #9b59b6; padding: 3px 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🧩 COLLAPSE</h1>
+    <div class="score-board">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Groups: <strong id="groups">0</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div class="instructions"><span>CLICK</span> groups of 3+ same color to destroy!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const COLS = 10;
+        const ROWS = 10;
+        const CELL_SIZE = 40;
+        const colors = ['#e74c3c', '#3498db', '#27ae60', '#f1c40f', '#9b59b6', '#e67e22'];
+        
+        let grid = [];
+        let score = 0;
+        let groupsDestroyed = 0;
+        let animating = [];
+        
+        function init() {
+            grid = [];
+            for (let r = 0; r < ROWS; r++) {
+                grid[r] = [];
+                for (let c = 0; c < COLS; c++) {
+                    grid[r][c] = colors[Math.floor(Math.random() * colors.length)];
+                }
+            }
+            score = 0;
+            groupsDestroyed = 0;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('groups').textContent = '0';
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c]) {
+                        const x = c * CELL_SIZE;
+                        const y = r * CELL_SIZE;
+                        
+                        // Ball
+                        ctx.fillStyle = grid[r][c];
+                        ctx.beginPath();
+                        ctx.arc(x + CELL_SIZE/2, y + CELL_SIZE/2, CELL_SIZE/2 - 3, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Shine
+                        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                        ctx.beginPath();
+                        ctx.arc(x + CELL_SIZE/2 - 5, y + CELL_SIZE/2 - 5, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Border
+                        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.arc(x + CELL_SIZE/2, y + CELL_SIZE/2, CELL_SIZE/2 - 3, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            // Grid lines
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= COLS; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * CELL_SIZE, 0);
+                ctx.lineTo(i * CELL_SIZE, canvas.height);
+                ctx.stroke();
+            }
+            for (let i = 0; i <= ROWS; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, i * CELL_SIZE);
+                ctx.lineTo(canvas.width, i * CELL_SIZE);
+                ctx.stroke();
+            }
+        }
+        
+        function getGroup(r, c, color, visited) {
+            if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return [];
+            if (visited[r][c]) return [];
+            if (grid[r][c] !== color) return [];
+            
+            visited[r][c] = true;
+            let group = [{r, c}];
+            
+            group = group.concat(getGroup(r - 1, c, color, visited));
+            group = group.concat(getGroup(r + 1, c, color, visited));
+            group = group.concat(getGroup(r, c - 1, color, visited));
+            group = group.concat(getGroup(r, c + 1, color, visited));
+            
+            return group;
+        }
+        
+        function removeGroup(group) {
+            group.forEach(cell => {
+                grid[cell.r][cell.c] = null;
+            });
+        }
+        
+        function applyGravity() {
+            for (let c = 0; c < COLS; c++) {
+                let writePos = ROWS - 1;
+                for (let r = ROWS - 1; r >= 0; r--) {
+                    if (grid[r][c] !== null) {
+                        grid[writePos][c] = grid[r][c];
+                        if (writePos !== r) {
+                            grid[r][c] = null;
+                        }
+                        writePos--;
+                    }
+                }
+            }
+        }
+        
+        function shiftColumns() {
+            let writePos = 0;
+            for (let c = 0; c < COLS; c++) {
+                // Check if column is empty
+                let isEmpty = true;
+                for (let r = 0; r < ROWS; r++) {
+                    if (grid[r][c] !== null) {
+                        isEmpty = false;
+                        break;
+                    }
+                }
+                
+                if (!isEmpty) {
+                    if (writePos !== c) {
+                        for (let r = 0; r < ROWS; r++) {
+                            grid[r][writePos] = grid[r][c];
+                            grid[r][c] = null;
+                        }
+                    }
+                    writePos++;
+                }
+            }
+        }
+        
+        function checkGameOver() {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c]) {
+                        const visited = [];
+                        for (let i = 0; i < ROWS; i++) visited[i] = [];
+                        const group = getGroup(r, c, grid[r][c], visited);
+                        if (group.length >= 3) return false;
+                    }
+                }
+            }
+            return true;
+        }
+        
+        function getRemaining() {
+            let count = 0;
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c]) count++;
+                }
+            }
+            return count;
+        }
+        
+        canvas.addEventListener('click', e => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const c = Math.floor(x / CELL_SIZE);
+            const r = Math.floor(y / CELL_SIZE);
+            
+            if (r >= 0 && r < ROWS && c >= 0 && c < COLS && grid[r][c]) {
+                const visited = [];
+                for (let i = 0; i < ROWS; i++) visited[i] = [];
+                const group = getGroup(r, c, grid[r][c], visited);
+                
+                if (group.length >= 3) {
+                    // Calculate score
+                    const points = group.length * group.length * 10;
+                    score += points;
+                    groupsDestroyed++;
+                    
+                    document.getElementById('score').textContent = score;
+                    document.getElementById('groups').textContent = groupsDestroyed;
+                    
+                    removeGroup(group);
+                    applyGravity();
+                    setTimeout(() => {
+                        shiftColumns();
+                        draw();
+                        
+                        if (checkGameOver()) {
+                            const remaining = getRemaining();
+                            setTimeout(() => {
+                                alert(`🎉 LEVEL COMPLETE! 🎉\n\nFinal Score: ${score}\nGroups destroyed: ${groupsDestroyed}\nRemaining blocks: ${remaining}\n\nClick OK to play again!`);
+                                init();
+                            }, 100);
+                        }
+                    }, 200);
+                }
+            }
+        });
+        
+        init();
+        draw();
+    </script>
+</body>
+</html>

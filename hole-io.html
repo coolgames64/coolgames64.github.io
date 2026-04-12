@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🕳️ Hole.io</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #fff; text-shadow: 0 0 20px #9b59b6; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; display: flex; gap: 20px; }
+        .score-board span { background: rgba(155,89,182,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #9b59b6; border-radius: 10px; box-shadow: 0 0 30px rgba(155,89,182,0.4); }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #9b59b6; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🕳️ HOLE.IO</h1>
+    <div class="score-board">
+        <span>Size: <strong id="size">1</strong></span>
+        <span>Rank: <strong id="rank">#1</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <div class="instructions">Move with <span>WASD</span> or <span>ARROWS</span>! Eat things to grow!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const WORLD_SIZE = 2000;
+        let hole = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2, radius: 20 };
+        let objects = [];
+        let score = 0;
+        let gameLoop;
+        let keys = { up: false, down: false, left: false, right: false };
+        
+        const OBJECT_TYPES = [
+            { type: 'small', radius: 8, color: '#e74c3c', points: 1 },
+            { type: 'medium', radius: 15, color: '#3498db', points: 3 },
+            { type: 'large', radius: 25, color: '#2ecc71', points: 5 },
+            { type: 'tree', radius: 35, color: '#27ae60', points: 10 },
+            { type: 'car', radius: 45, color: '#f39c12', points: 15 },
+            { type: 'building', radius: 80, color: '#95a5a6', points: 30 }
+        ];
+        
+        let camera = { x: 0, y: 0 };
+        
+        function init() {
+            hole = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2, radius: 20 };
+            objects = [];
+            score = 0;
+            
+            // Generate objects
+            for (let i = 0; i < 200; i++) {
+                spawnObject();
+            }
+            
+            document.getElementById('size').textContent = '1';
+        }
+        
+        function spawnObject() {
+            const type = OBJECT_TYPES[Math.floor(Math.random() * OBJECT_TYPES.length)];
+            objects.push({
+                x: Math.random() * WORLD_SIZE,
+                y: Math.random() * WORLD_SIZE,
+                ...type,
+                eaten: false
+            });
+        }
+        
+        function draw() {
+            // Camera follows hole
+            camera.x = hole.x - canvas.width / 2;
+            camera.y = hole.y - canvas.height / 2;
+            
+            // Background (grass)
+            ctx.fillStyle = '#2d5a27';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Grid pattern
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+            ctx.lineWidth = 1;
+            const gridSize = 100;
+            for (let x = -camera.x % gridSize; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = -camera.y % gridSize; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            // Draw objects
+            objects.forEach(obj => {
+                if (obj.eaten) return;
+                
+                const screenX = obj.x - camera.x;
+                const screenY = obj.y - camera.y;
+                
+                // Skip if off screen
+                if (screenX < -obj.radius * 2 || screenX > canvas.width + obj.radius * 2 ||
+                    screenY < -obj.radius * 2 || screenY > canvas.height + obj.radius * 2) return;
+                
+                if (obj.type === 'tree') {
+                    // Tree
+                    ctx.fillStyle = obj.color;
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, obj.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(screenX - 8, screenY, 16, 20);
+                } else if (obj.type === 'car') {
+                    // Car
+                    ctx.fillStyle = obj.color;
+                    ctx.fillRect(screenX - obj.radius, screenY - obj.radius * 0.5, obj.radius * 2, obj.radius);
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.arc(screenX - obj.radius * 0.5, screenY + obj.radius * 0.3, 8, 0, Math.PI * 2);
+                    ctx.arc(screenX + obj.radius * 0.5, screenY + obj.radius * 0.3, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (obj.type === 'building') {
+                    // Building
+                    ctx.fillStyle = obj.color;
+                    ctx.fillRect(screenX - obj.radius, screenY - obj.radius, obj.radius * 2, obj.radius * 2);
+                    ctx.fillStyle = '#f39c12';
+                    for (let i = 0; i < 3; i++) {
+                        for (let j = 0; j < 3; j++) {
+                            ctx.fillRect(screenX - obj.radius + 15 + j * 40, screenY - obj.radius + 15 + i * 40, 20, 25);
+                        }
+                    }
+                } else {
+                    // Generic object
+                    ctx.fillStyle = obj.color;
+                    ctx.shadowColor = obj.color;
+                    ctx.shadowBlur = 5;
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, obj.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            });
+            
+            // Draw hole (black circle with white border)
+            const holeScreenX = hole.x - camera.x;
+            const holeScreenY = hole.y - camera.y;
+            
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(holeScreenX, holeScreenY, hole.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(holeScreenX, holeScreenY, hole.radius, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Size indicator
+            ctx.fillStyle = 'rgba(0,0,0,0.7)';
+            ctx.fillRect(holeScreenX - 30, holeScreenY - 10, 60, 20);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${Math.floor(hole.radius)}`, holeScreenX, holeScreenY + 4);
+        }
+        
+        function update() {
+            // Movement
+            const speed = 4;
+            if (keys.up) hole.y -= speed;
+            if (keys.down) hole.y += speed;
+            if (keys.left) hole.x -= speed;
+            if (keys.right) hole.x += speed;
+            
+            // Bounds
+            hole.x = Math.max(hole.radius, Math.min(WORLD_SIZE - hole.radius, hole.x));
+            hole.y = Math.max(hole.radius, Math.min(WORLD_SIZE - hole.radius, hole.y));
+            
+            // Check collisions with objects
+            objects.forEach(obj => {
+                if (obj.eaten) return;
+                
+                const dist = Math.sqrt((hole.x - obj.x) ** 2 + (hole.y - obj.y) ** 2);
+                if (dist < hole.radius + obj.radius * 0.5) {
+                    obj.eaten = true;
+                    score += obj.points;
+                    hole.radius += obj.points * 0.5;
+                    
+                    // Spawn new object
+                    spawnObject();
+                    
+                    document.getElementById('size').textContent = Math.floor(hole.radius);
+                    
+                    // Check win
+                    if (hole.radius >= 150) {
+                        winGame();
+                    }
+                }
+            });
+            
+            // Update rank based on size
+            const rank = Math.max(1, Math.floor(hole.radius / 15));
+            document.getElementById('rank').textContent = `#${rank}`;
+        }
+        
+        function winGame() {
+            clearInterval(gameLoop);
+            setTimeout(() => {
+                alert(`🎉 YOU WIN!!! 🎉\nFinal Size: ${Math.floor(hole.radius)}\n\nYou became the biggest hole!`);
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        // Controls
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = true;
+            if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = true;
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
+            if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = false;
+            if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = false;
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
+            if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
+        });
+        
+        // Mouse controls
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            const targetX = mouseX + camera.x;
+            const targetY = mouseY + camera.y;
+            
+            if (targetX < hole.x - 5) keys.left = true;
+            else if (targetX > hole.x + 5) keys.right = true;
+            else keys.left = keys.right = false;
+            
+            if (targetY < hole.y - 5) keys.up = true;
+            else if (targetY > hole.y + 5) keys.down = true;
+            else keys.up = keys.down = false;
+        });
+        
+        // Start
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

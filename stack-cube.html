@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="LFolYFY1ySO4aIcMbyo8EdJKYLqHW9MS6_B1y7e5MPQ" />
+    <title>Stack Tower | Cool Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: #1a1a2e; min-height: 100vh; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+        .score-board { position: fixed; top: 20px; display: flex; gap: 15px; }
+        .score-box { background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 15px; color: white; font-weight: bold; }
+        #gameCanvas { border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .back-btn { position: fixed; top: 20px; left: 20px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 10px 20px; border-radius: 25px; text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back</a>
+    <div class="score-board">
+        <div class="score-box">Score: <span id="score">0</span></div>
+        <div class="score-box">Best: <span id="best">0</span></div>
+    </div>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const bestEl = document.getElementById('best');
+        
+        let blocks = [];
+        let movingBlock = null;
+        let score = 0;
+        let best = localStorage.getItem('stackBest') || 0;
+        let gameOver = false;
+        let gameStarted = false;
+        let cameraY = 0;
+        let direction = 1;
+        let blockSpeed = 4;
+        
+        bestEl.textContent = best;
+        
+        const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#ff6b6b', '#4ecdc4', '#95e1d3'];
+        
+        function initGame() {
+            blocks = [];
+            let baseBlock = { x: 150, y: 500, width: 100, height: 30, color: colors[0] };
+            blocks.push(baseBlock);
+            
+            movingBlock = {
+                x: 150,
+                y: 470,
+                width: 100,
+                height: 30,
+                color: colors[1],
+                direction: 1
+            };
+            
+            score = 0;
+            cameraY = 0;
+            direction = 1;
+            blockSpeed = 4;
+            scoreEl.textContent = score;
+        }
+        
+        initGame();
+        
+        function draw() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, 400, 600);
+            
+            // Draw blocks
+            blocks.forEach(b => {
+                let screenY = b.y - cameraY;
+                ctx.fillStyle = b.color;
+                ctx.shadowColor = b.color;
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.roundRect(b.x, screenY, b.width, b.height, 5);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                
+                // Top shine
+                ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                ctx.fillRect(b.x + 5, screenY + 3, b.width - 10, 4);
+            });
+            
+            // Draw moving block
+            if (movingBlock) {
+                let screenY = movingBlock.y - cameraY;
+                ctx.fillStyle = movingBlock.color;
+                ctx.shadowColor = movingBlock.color;
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.roundRect(movingBlock.x, screenY, movingBlock.width, movingBlock.height, 5);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                
+                // Perfect indicator
+                if (movingBlock.perfect) {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.font = 'bold 14px Poppins';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('PERFECT!', movingBlock.x + movingBlock.width/2, screenY - 10);
+                }
+            }
+            
+            // Start message
+            if (!gameStarted) {
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(0, 0, 400, 600);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 28px Poppins';
+                ctx.textAlign = 'center';
+                ctx.fillText('🧱 STACK TOWER 🧱', 200, 250);
+                ctx.font = '18px Poppins';
+                ctx.fillText('Click or SPACE to drop!', 200, 300);
+                ctx.fillText('Match the blocks!', 200, 330);
+            }
+            
+            // Game Over
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                ctx.fillRect(0, 0, 400, 600);
+                ctx.fillStyle = '#e74c3c';
+                ctx.font = 'bold 36px Poppins';
+                ctx.textAlign = 'center';
+                ctx.fillText('💥 STACK FELL!', 200, 250);
+                ctx.fillStyle = 'white';
+                ctx.font = '24px Poppins';
+                ctx.fillText('Score: ' + score, 200, 320);
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '18px Poppins';
+                ctx.fillText('Click to Restart', 200, 380);
+            }
+        }
+        
+        function update() {
+            if (!gameStarted || gameOver) return;
+            
+            if (movingBlock) {
+                movingBlock.x += direction * blockSpeed;
+                
+                if (movingBlock.x <= 0 || movingBlock.x + movingBlock.width >= 400) {
+                    direction *= -1;
+                }
+            }
+        }
+        
+        function dropBlock() {
+            if (!gameStarted) gameStarted = true;
+            
+            if (gameOver) {
+                gameOver = false;
+                initGame();
+                return;
+            }
+            
+            if (!movingBlock) return;
+            
+            let lastBlock = blocks[blocks.length - 1];
+            
+            // Calculate overlap
+            let overlapLeft = Math.max(movingBlock.x, lastBlock.x);
+            let overlapRight = Math.min(movingBlock.x + movingBlock.width, lastBlock.x + lastBlock.width);
+            let overlapWidth = overlapRight - overlapLeft;
+            
+            if (overlapWidth <= 0) {
+                // Missed completely
+                gameOver = true;
+                if (score > best) {
+                    best = score;
+                    localStorage.setItem('stackBest', best);
+                    bestEl.textContent = best;
+                }
+                return;
+            }
+            
+            // Check if perfect
+            if (Math.abs(overlapWidth - lastBlock.width) < 5) {
+                movingBlock.perfect = true;
+                // Make block bigger
+                let diff = (lastBlock.width - movingBlock.width) / 2;
+                movingBlock.x -= diff;
+                movingBlock.width = lastBlock.width + Math.abs(diff) * 2;
+            } else {
+                movingBlock.perfect = false;
+                // Trim block
+                if (movingBlock.x < lastBlock.x) {
+                    movingBlock.x = lastBlock.x;
+                    movingBlock.width = overlapWidth;
+                } else {
+                    movingBlock.width = overlapWidth;
+                }
+            }
+            
+            // Add to stack
+            let newBlock = {
+                x: movingBlock.x,
+                y: lastBlock.y - 30,
+                width: movingBlock.width,
+                height: 30,
+                color: colors[blocks.length % colors.length]
+            };
+            blocks.push(newBlock);
+            
+            // Update camera
+            cameraY = newBlock.y - 400;
+            
+            // Create new moving block
+            movingBlock = {
+                x: 200 - newBlock.width/2,
+                y: newBlock.y - 30,
+                width: newBlock.width,
+                height: 30,
+                color: colors[blocks.length % colors.length],
+                direction: direction,
+                perfect: false
+            };
+            
+            score++;
+            scoreEl.textContent = score;
+            blockSpeed = 4 + score * 0.15;
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                dropBlock();
+            }
+        });
+        
+        canvas.addEventListener('click', dropBlock);
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            dropBlock();
+        });
+        
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        gameLoop();
+    </script>
+</body>
+</html>

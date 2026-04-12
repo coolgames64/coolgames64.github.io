@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="LFolYFY1ySO4aIcMbyo8EdJKYLqHW9MS6_B1y7e5MPQ" />
+    <title>Color Switch | Cool Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: #1a1a2e; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
+        .score-board { position: fixed; top: 20px; color: white; font-size: 2rem; font-weight: bold; }
+        #gameCanvas { border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .back-btn { position: fixed; top: 20px; left: 20px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 10px 20px; border-radius: 25px; text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back</a>
+    <div class="score-board">Score: <span id="score">0</span></div>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        
+        const colors = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#95e1d3'];
+        let colorIndex = 0;
+        let ball = { x: 200, y: 500, radius: 12, vy: -12 };
+        let obstacles = [];
+        let score = 0;
+        let gameOver = false;
+        let rotation = 0;
+        
+        function createObstacle() {
+            obstacles.push({
+                y: -100,
+                type: Math.floor(Math.random() * 3),
+                rotation: 0,
+                speed: 3 + score * 0.2
+            });
+        }
+        
+        createObstacle();
+        
+        document.addEventListener('click', () => {
+            if (gameOver) {
+                gameOver = false;
+                ball.y = 500;
+                ball.vy = -12;
+                obstacles = [];
+                score = 0;
+                colorIndex = 0;
+                createObstacle();
+                return;
+            }
+            ball.vy = -12;
+            colorIndex = (colorIndex + 1) % 4;
+        });
+        
+        function draw() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, 400, 600);
+            
+            // Draw star background
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            for (let i = 0; i < 30; i++) {
+                let x = (i * 137 + Date.now() / 50) % 400;
+                let y = (i * 97 + Date.now() / 100) % 600;
+                ctx.beginPath();
+                ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw obstacles
+            obstacles.forEach(o => {
+                ctx.save();
+                ctx.translate(200, o.y);
+                ctx.rotate(o.rotation);
+                
+                let c = colors[colorIndex];
+                let c2 = colors[(colorIndex + 1) % 4];
+                let c3 = colors[(colorIndex + 2) % 4];
+                let c4 = colors[(colorIndex + 3) % 4];
+                
+                if (o.type === 0) {
+                    // Four bars
+                    ctx.fillStyle = c;
+                    ctx.fillRect(-100, -15, 200, 30);
+                    ctx.fillStyle = c2;
+                    ctx.fillRect(-100, -15, 200, 30);
+                    ctx.shadowColor = c;
+                    ctx.shadowBlur = 20;
+                    
+                    ctx.fillStyle = c3;
+                    ctx.fillRect(-15, -100, 30, 200);
+                    ctx.fillStyle = c4;
+                    ctx.fillRect(-15, -100, 30, 200);
+                } else if (o.type === 1) {
+                    // Rotating circle
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 80, 0, Math.PI * 2);
+                    ctx.fillStyle = c;
+                    ctx.fill();
+                    ctx.shadowColor = c;
+                    ctx.shadowBlur = 30;
+                    
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 50, 0, Math.PI * 2);
+                    ctx.fillStyle = '#1a1a2e';
+                    ctx.fill();
+                } else {
+                    // Double bars
+                    ctx.fillStyle = c;
+                    ctx.fillRect(-100, -20, 200, 20);
+                    ctx.fillStyle = c2;
+                    ctx.fillRect(-100, 0, 200, 20);
+                    ctx.shadowColor = c;
+                    ctx.shadowBlur = 20;
+                    ctx.fillStyle = c3;
+                    ctx.fillRect(-100, -80, 200, 20);
+                    ctx.fillStyle = c4;
+                    ctx.fillRect(-100, -60, 200, 20);
+                }
+                
+                ctx.restore();
+            });
+            
+            // Draw ball
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fillStyle = colors[colorIndex];
+            ctx.shadowColor = colors[colorIndex];
+            ctx.shadowBlur = 25;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Score
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 48px Poppins';
+            ctx.textAlign = 'center';
+            ctx.fillText(score, 200, 550);
+            
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0, 0, 400, 600);
+                ctx.fillStyle = '#ff6b6b';
+                ctx.font = 'bold 36px Poppins';
+                ctx.fillText('GAME OVER!', 200, 270);
+                ctx.fillStyle = 'white';
+                ctx.font = '24px Poppins';
+                ctx.fillText('Score: ' + score, 200, 330);
+                ctx.font = '18px Poppins';
+                ctx.fillStyle = '#ffd700';
+                ctx.fillText('Click to Restart', 200, 380);
+            }
+        }
+        
+        function update() {
+            if (gameOver) return;
+            
+            ball.vy += 0.4;
+            ball.y += ball.vy;
+            
+            if (ball.y > 650) gameOver = true;
+            
+            obstacles.forEach(o => {
+                o.y += 3;
+                o.rotation += o.speed * 0.02;
+                
+                // Collision
+                let dx = ball.x - 200;
+                let dy = ball.y - o.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (o.type === 0 || o.type === 2) {
+                    if (ball.y > o.y - 15 && ball.y < o.y + 15 && ball.x > 100 && ball.x < 300) {
+                        let hitColor = colors[(colorIndex + 2) % 4];
+                        if (o.type === 0) {
+                            if ((ball.x > 185 || ball.x < 215) && Math.abs(dy) < 85) hitColor = colors[(colorIndex + 3) % 4];
+                        }
+                        if (o.y < 520 && o.y > 480) {
+                            gameOver = true;
+                        }
+                    }
+                }
+                
+                if (dist < 80 && dist > 50) {
+                    if (o.y < 520 && o.y > 480) {
+                        gameOver = true;
+                    }
+                }
+            });
+            
+            // Score when passing obstacle
+            obstacles.forEach((o, i) => {
+                if (o.y > ball.y && !o.passed) {
+                    o.passed = true;
+                    score++;
+                    scoreEl.textContent = score;
+                }
+                if (o.y > 700) {
+                    obstacles.splice(i, 1);
+                    createObstacle();
+                }
+            });
+        }
+        
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        gameLoop();
+    </script>
+</body>
+</html>

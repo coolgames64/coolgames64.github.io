@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="LFolYFY1ySO4aIcMbyo8EdJKYLqHW9MS6_B1y7e5MPQ" />
+    <title>ZigZag | Cool Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: #1a1a2e; min-height: 100vh; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+        .score-board { position: fixed; top: 60px; color: white; font-size: 3rem; font-weight: bold; text-shadow: 0 4px 15px rgba(102,126,234,0.5); }
+        #gameCanvas { border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .back-btn { position: fixed; top: 20px; left: 20px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 10px 20px; border-radius: 25px; text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back</a>
+    <div class="score-board"><span id="score">0</span></div>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        
+        let ball = { x: 200, y: 300, size: 15 };
+        let cube = { x: 200, y: 200, size: 40 };
+        let direction = 1; // 1 = right, -1 = left
+        let score = 0;
+        let gameOver = false;
+        let gameStarted = false;
+        let cubeSpeed = 5;
+        let fallSpeed = 0;
+        let cameraY = 0;
+        
+        const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e'];
+        let platforms = [];
+        let currentColorIndex = 0;
+        
+        // Create initial platform path
+        function createPlatforms() {
+            platforms = [];
+            let y = 200;
+            let x = 200;
+            let dir = 1;
+            
+            for (let i = 0; i < 50; i++) {
+                let width = 80 + Math.random() * 60;
+                platforms.push({
+                    x: x - width/2,
+                    y: y,
+                    width: width,
+                    color: colors[currentColorIndex % colors.length]
+                });
+                
+                x += dir * (100 + Math.random() * 50);
+                if (x > 320 || x < 80) dir *= -1;
+                y -= 30 + Math.random() * 20;
+                currentColorIndex++;
+            }
+        }
+        
+        createPlatforms();
+        
+        function draw() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, 400, 600);
+            
+            // Draw platforms
+            platforms.forEach(p => {
+                let screenY = p.y - cameraY;
+                if (screenY > -50 && screenY < 650) {
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.roundRect(p.x, screenY, p.width, 20, 5);
+                    ctx.fill();
+                    
+                    // Top highlight
+                    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                    ctx.fillRect(p.x + 5, screenY + 2, p.width - 10, 5);
+                }
+            });
+            
+            // Draw cube
+            let cubeScreenY = cube.y - cameraY;
+            ctx.fillStyle = '#ffd700';
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.roundRect(cube.x - cube.size/2, cubeScreenY - cube.size/2, cube.size, cube.size, 8);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Cube face
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.fillRect(cube.x - cube.size/4, cubeScreenY - cube.size/4, cube.size/3, cube.size/3);
+            
+            // Draw ball
+            let ballScreenY = ball.y - cameraY;
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(ball.x, ballScreenY, ball.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.beginPath();
+            ctx.arc(ball.x - 4, ballScreenY - 4, ball.size/3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Start/Game Over
+            if (!gameStarted) {
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(0, 0, 400, 600);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 28px Poppins';
+                ctx.textAlign = 'center';
+                ctx.fillText('⬜ ZIGZAG ⬜', 200, 250);
+                ctx.font = '18px Poppins';
+                ctx.fillText('Click to place cube!', 200, 300);
+                ctx.fillText('Match the platforms!', 200, 330);
+            }
+            
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                ctx.fillRect(0, 0, 400, 600);
+                ctx.fillStyle = '#e74c3c';
+                ctx.font = 'bold 36px Poppins';
+                ctx.textAlign = 'center';
+                ctx.fillText('💥 FELL OFF!', 200, 260);
+                ctx.fillStyle = 'white';
+                ctx.font = '28px Poppins';
+                ctx.fillText('Score: ' + score, 200, 330);
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '18px Poppins';
+                ctx.fillText('Click to Restart', 200, 390);
+            }
+        }
+        
+        function update() {
+            if (!gameStarted || gameOver) return;
+            
+            // Move cube
+            cube.x += direction * cubeSpeed;
+            
+            // Bounce off walls
+            if (cube.x > 380 - cube.size/2) {
+                cube.x = 380 - cube.size/2;
+                direction = -1;
+            }
+            if (cube.x < 20 + cube.size/2) {
+                cube.x = 20 + cube.size/2;
+                direction = 1;
+            }
+            
+            // Check platform collision
+            let onPlatform = false;
+            let cubeBottom = cube.y + cube.size/2;
+            let cubeLeft = cube.x - cube.size/2;
+            let cubeRight = cube.x + cube.size/2;
+            
+            platforms.forEach(p => {
+                if (cubeRight > p.x && cubeLeft < p.x + p.width &&
+                    cubeBottom > p.y && cubeBottom < p.y + 30) {
+                    onPlatform = true;
+                }
+            });
+            
+            if (!onPlatform) {
+                fallSpeed += 0.5;
+                cube.y += fallSpeed;
+                ball.y += fallSpeed;
+            } else {
+                fallSpeed = 0;
+            }
+            
+            // Ball follows cube
+            ball.y = cube.y - cube.size - ball.size - 5;
+            
+            // Camera follow
+            if (cube.y < cameraY + 200) {
+                cameraY = cube.y - 200;
+            }
+            
+            // Game over if fall too far
+            if (cube.y - cameraY > 700) {
+                gameOver = true;
+            }
+        }
+        
+        function placeCube() {
+            if (!gameStarted) gameStarted = true;
+            if (gameOver) {
+                gameOver = false;
+                cube = { x: 200, y: 200, size: 40 };
+                ball = { x: 200, y: 150, size: 15 };
+                direction = 1;
+                score = 0;
+                fallSpeed = 0;
+                cameraY = 0;
+                currentColorIndex = 0;
+                createPlatforms();
+                return;
+            }
+            
+            // Check if cube is on a platform
+            let onPlatform = false;
+            let cubeBottom = cube.y + cube.size/2;
+            let cubeLeft = cube.x - cube.size/2;
+            let cubeRight = cube.x + cube.size/2;
+            
+            let landedPlatform = null;
+            platforms.forEach(p => {
+                if (cubeRight > p.x && cubeLeft < p.x + p.width &&
+                    cubeBottom > p.y && cubeBottom < p.y + 30) {
+                    onPlatform = true;
+                    landedPlatform = p;
+                }
+            });
+            
+            if (onPlatform) {
+                // Create new ball at cube position
+                ball.x = cube.x;
+                ball.y = cube.y - cube.size/2 - ball.size - 5;
+                
+                // Reset cube for new path
+                cube.y -= 40;
+                cube.x = 200;
+                fallSpeed = 0;
+                
+                // Generate more platforms ahead
+                let lastPlatform = platforms[platforms.length - 1];
+                let y = lastPlatform.y;
+                let x = 200;
+                let dir = Math.random() > 0.5 ? 1 : -1;
+                
+                for (let i = 0; i < 10; i++) {
+                    let width = 80 + Math.random() * 60;
+                    platforms.push({
+                        x: x - width/2,
+                        y: y - (30 + Math.random() * 20),
+                        width: width,
+                        color: colors[currentColorIndex % colors.length]
+                    });
+                    x += dir * (100 + Math.random() * 50);
+                    if (x > 320 || x < 80) dir *= -1;
+                    y -= 30 + Math.random() * 20;
+                    currentColorIndex++;
+                }
+                
+                score++;
+                scoreEl.textContent = score;
+                cubeSpeed = 5 + score * 0.2;
+            } else {
+                gameOver = true;
+            }
+        }
+        
+        canvas.addEventListener('click', placeCube);
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            placeCube();
+        });
+        
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        gameLoop();
+    </script>
+</body>
+</html>

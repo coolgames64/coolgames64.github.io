@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎤 Video Game Karaoke! | Cool Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background: linear-gradient(135deg, #1a0a2e 0%, #2d1b4e 50%, #1a0a2e 100%);
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
+        }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        
+        .header {
+            background: linear-gradient(90deg, #ff6b9d, #c44dff, #9b59ff);
+            padding: 20px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(196, 77, 255, 0.4);
+        }
+        .header h1 { font-size: 2.5rem; text-shadow: 2px 2px 8px rgba(0,0,0,0.3); }
+        .header p { font-size: 1.1rem; opacity: 0.9; margin-top: 8px; }
+        
+        .music-select {
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 2px solid rgba(255,107,157,0.3);
+        }
+        .music-select h2 { color: #ff6b9d; margin-bottom: 15px; font-size: 1.3rem; }
+        .song-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 12px;
+        }
+        .song-btn {
+            background: linear-gradient(135deg, #2d1b4e, #4a2b7a);
+            border: 2px solid #9b59ff;
+            border-radius: 15px;
+            padding: 15px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+        .song-btn:hover, .song-btn.selected {
+            background: linear-gradient(135deg, #9b59ff, #ff6b9d);
+            border-color: #ff6b9d;
+            transform: scale(1.02);
+        }
+        .song-btn span { display: block; font-size: 1.4rem; margin-bottom: 5px; }
+        .song-btn small { opacity: 0.7; }
+        
+        .mic-notice {
+            background: rgba(255,107,157,0.2);
+            border: 2px solid #ff6b9d;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .mic-notice h3 { color: #ff6b9d; margin-bottom: 10px; }
+        .mic-btn {
+            background: linear-gradient(135deg, #ff6b9d, #c44dff);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            color: white;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .mic-btn:hover { transform: scale(1.05); }
+        .mic-granted { color: #4ade80; }
+        
+        .karaoke-stage {
+            background: linear-gradient(135deg, #1a0a2e, #2d1b4e);
+            border-radius: 25px;
+            padding: 30px;
+            border: 3px solid #9b59ff;
+            margin-bottom: 25px;
+            display: none;
+        }
+        .karaoke-stage.active { display: block; }
+        
+        .lyrics-container {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 30px;
+            min-height: 200px;
+            text-align: center;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .lyrics-line {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.3);
+            margin: 15px 0;
+            transition: all 0.3s;
+        }
+        .lyrics-line.current {
+            color: #ff6b9d;
+            font-size: 2.2rem;
+            text-shadow: 0 0 20px #ff6b9d;
+            transform: scale(1.1);
+        }
+        .lyrics-line.next { color: rgba(255,255,255,0.6); }
+        
+        .ball-container {
+            height: 50px;
+            position: relative;
+            margin: 20px 0;
+        }
+        .bouncing-ball {
+            width: 25px;
+            height: 25px;
+            background: radial-gradient(circle at 30% 30%, #ff6b9d, #c44dff);
+            border-radius: 50%;
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            box-shadow: 0 0 15px #ff6b9d;
+            transition: left 0.1s linear;
+        }
+        
+        .progress-container {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            height: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b9d, #c44dff, #9b59ff);
+            width: 0%;
+            border-radius: 10px;
+            transition: width 0.1s;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .ctrl-btn {
+            background: linear-gradient(135deg, #9b59ff, #c44dff);
+            border: none;
+            border-radius: 50px;
+            padding: 15px 35px;
+            color: white;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 150px;
+        }
+        .ctrl-btn:hover { transform: scale(1.05); box-shadow: 0 5px 25px rgba(155,89,255,0.5); }
+        .ctrl-btn.recording { 
+            background: linear-gradient(135deg, #ff4757, #ff6b9d);
+            animation: pulse-rec 1s infinite;
+        }
+        .ctrl-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        @keyframes pulse-rec { 
+            0%,100% { box-shadow: 0 0 0 0 rgba(255,71,87,0.7); }
+            50% { box-shadow: 0 0 0 15px rgba(255,71,87,0); }
+        }
+        
+        .rec-indicator {
+            display: none;
+            text-align: center;
+            margin: 15px 0;
+        }
+        .rec-indicator.active { display: block; }
+        .rec-dot {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            background: #ff4757;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+        .rec-text { color: #ff4757; font-weight: bold; }
+        
+        .playback-section {
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            padding: 25px;
+            margin-top: 20px;
+            display: none;
+        }
+        .playback-section.active { display: block; }
+        .playback-section h3 { color: #ff6b9d; margin-bottom: 15px; font-size: 1.2rem; }
+        
+        .score-display {
+            background: linear-gradient(135deg, #2d1b4e, #4a2b7a);
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+        .score-display.active { display: block; }
+        .score-display h3 { color: #ffd700; margin-bottom: 15px; }
+        .score-number {
+            font-size: 4rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ff6b9d, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .score-label { color: rgba(255,255,255,0.7); margin-top: 5px; }
+        .score-stars { font-size: 2rem; margin: 10px 0; }
+        
+        .volume-control {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        .volume-group { display: flex; align-items: center; gap: 10px; }
+        .volume-group label { font-size: 0.9rem; }
+        .volume-group input { width: 100px; accent-color: #ff6b9d; }
+        
+        .sparkles {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        .sparkle {
+            position: absolute;
+            width: 6px; height: 6px;
+            background: #ff6b9d;
+            border-radius: 50%;
+            animation: float 3s infinite;
+        }
+        @keyframes float {
+            0%,100% { transform: translateY(0) rotate(0deg); opacity: 0; }
+            50% { opacity: 1; }
+        }
+        
+        .footer { text-align: center; padding: 20px; opacity: 0.6; font-size: 0.9rem; }
+        .footer a { color: #ff6b9d; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="sparkles" id="sparkles"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🎤 Video Game Karaoke!</h1>
+            <p>Sing along to video game music!</p>
+        </div>
+        
+        <div class="mic-notice" id="micNotice">
+            <h3>🎤 Microphone Permission Needed</h3>
+            <p>To record your amazing voice, we need access to your microphone!</p>
+            <button class="mic-btn" id="allowMic">Allow Microphone</button>
+        </div>
+        <div class="mic-notice mic-granted" id="micGranted" style="display:none;">
+            <h3>✅ Microphone Ready!</h3>
+            <p>You're all set to record!</p>
+        </div>
+        
+        <div class="music-select">
+            <h2>🎮 Choose Your Song</h2>
+            <div class="song-grid" id="songGrid">
+                <button class="song-btn" data-song="creeper">
+                    <span>🎮</span> Minecraft Creeper <small>Creepy beat • Easy</small>
+                </button>
+                <button class="song-btn" data-song="pigstep">
+                    <span>🐷</span> Pigstep Remix <small>Happy rhythm • Medium</small>
+                </button>
+                <button class="song-btn" data-song="kart">
+                    <span>🏎️</span> Mario Kart Race <small>Fast pace • Medium</small>
+                </button>
+                <button class="song-btn" data-song="battle">
+                    <span>⚔️</span> Pokemon Battle <small>Epic theme • Hard</small>
+                </button>
+                <button class="song-btn" data-song="amongus">
+                    <span>📮</span> Among Us Theme <small>Suspenseful • Easy</small>
+                </button>
+                <button class="song-btn" data-song="temple">
+                    <span>🏃</span> Temple Run Beat <small>Chase music • Medium</small>
+                </button>
+            </div>
+        </div>
+        
+        <div class="karaoke-stage" id="karaokeStage">
+            <div class="lyrics-container">
+                <div class="lyrics-line" id="lyricsLine1">Select a song and press SING!</div>
+                <div class="lyrics-line next" id="lyricsLine2"></div>
+            </div>
+            
+            <div class="ball-container">
+                <div class="bouncing-ball" id="bouncingBall"></div>
+            </div>
+            
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            
+            <div class="volume-control">
+                <div class="volume-group">
+                    <label>🎤 Voice:</label>
+                    <input type="range" id="voiceVolume" min="0" max="100" value="80">
+                </div>
+                <div class="volume-group">
+                    <label>🎵 Music:</label>
+                    <input type="range" id="musicVolume" min="0" max="100" value="50">
+                </div>
+            </div>
+            
+            <div class="rec-indicator" id="recIndicator">
+                <span class="rec-dot"></span>
+                <span class="rec-text">● RECORDING...</span>
+            </div>
+            
+            <div class="controls">
+                <button class="ctrl-btn" id="singBtn">🎤 SING!</button>
+                <button class="ctrl-btn" id="stopBtn" disabled>⏹️ STOP</button>
+                <button class="ctrl-btn" id="playbackBtn" disabled>▶️ PLAY</button>
+            </div>
+            
+            <div class="playback-section" id="playbackSection">
+                <h3>🎧 Your Recording Options:</h3>
+                <div class="controls">
+                    <button class="ctrl-btn" id="mixedBtn">🎤+🎵 Voice + Music</button>
+                    <button class="ctrl-btn" id="voiceBtn">🎤 Voice Only</button>
+                    <button class="ctrl-btn" id="musicBtn">🎵 Music Only</button>
+                </div>
+            </div>
+            
+            <div class="score-display" id="scoreDisplay">
+                <h3>🏆 Your Score</h3>
+                <div class="score-number" id="scoreNumber">85</div>
+                <div class="score-stars" id="scoreStars">⭐⭐⭐⭐</div>
+                <div class="score-label">Voice Match Rating</div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <a href="index.html">← Back to Cool Games</a>
+        </div>
+    </div>
+    
+    <script>
+        // Sparkles
+        function createSparkles() {
+            const container = document.getElementById('sparkles');
+            for (let i = 0; i < 20; i++) {
+                const sparkle = document.createElement('div');
+                sparkle.className = 'sparkle';
+                sparkle.style.left = Math.random() * 100 + '%';
+                sparkle.style.top = Math.random() * 100 + '%';
+                sparkle.style.animationDelay = Math.random() * 3 + 's';
+                sparkle.style.background = ['#ff6b9d', '#c44dff', '#9b59ff', '#ffd700'][Math.floor(Math.random() * 4)];
+                container.appendChild(sparkle);
+            }
+        }
+        createSparkles();
+        
+        // State
+        let audioContext;
+        let microphone;
+        let mediaRecorder;
+        let recordedChunks = [];
+        let recordedBlob = null;
+        let musicSource = null;
+        let isRecording = false;
+        let currentSong = null;
+        let songStartTime = 0;
+        let animationId = null;
+        let musicPlaying = false;
+        
+        // Songs
+        const songs = {
+            creeper: {
+                title: "Minecraft Creeper",
+                bpm: 120, duration: 20,
+                lyrics: [
+                    { time: 0, text: "🎮 CREEEPER! 🎮" },
+                    { time: 3, text: "A creep-er" },
+                    { time: 6, text: "Oh no no!" },
+                    { time: 9, text: "RUN AWAY!" },
+                    { time: 12, text: "Creepy creep!" },
+                    { time: 15, text: "Minecraft!" },
+                    { time: 18, text: "YEAH!" }
+                ]
+            },
+            pigstep: {
+                title: "Pigstep Remix",
+                bpm: 180, duration: 18,
+                lyrics: [
+                    { time: 0, text: "🐷 PIG PIG! 🐷" },
+                    { time: 3, text: "Happy day!" },
+                    { time: 6, text: "Dance dance!" },
+                    { time: 9, text: "Oink oink!" },
+                    { time: 12, text: "So fun!" },
+                    { time: 15, text: "WHEEE!" }
+                ]
+            },
+            kart: {
+                title: "Mario Kart Race",
+                bpm: 200, duration: 22,
+                lyrics: [
+                    { time: 0, text: "🏎️ VROOM VROOM! 🏎️" },
+                    { time: 3, text: "Faster faster!" },
+                    { time: 6, text: "Red shell!" },
+                    { time: 9, text: "Ha ha ha!" },
+                    { time: 12, text: "First place!" },
+                    { time: 15, text: "🏆 WINNER! 🏆" },
+                    { time: 18, text: "YEAH!" }
+                ]
+            },
+            battle: {
+                title: "Pokemon Battle",
+                bpm: 140, duration: 20,
+                lyrics: [
+                    { time: 0, text: "⚔️ POKEMON! ⚔️" },
+                    { time: 3, text: "Gotta catch em all!" },
+                    { time: 6, text: "Pikachu thunder!" },
+                    { time: 9, text: "Super effective!" },
+                    { time: 12, text: "Victory!" },
+                    { time: 15, text: "🏆 CHAMPION! 🏆" },
+                    { time: 18, text: "AMAZING!" }
+                ]
+            },
+            amongus: {
+                title: "Among Us Theme",
+                bpm: 160, duration: 18,
+                lyrics: [
+                    { time: 0, text: "📮 Among us... 📮" },
+                    { time: 3, text: "Who is sus?" },
+                    { time: 6, text: "Sus sus sus!" },
+                    { time: 9, text: "Red is sus!" },
+                    { time: 12, text: "Vote him out!" },
+                    { time: 15, text: "EJECTED!" }
+                ]
+            },
+            temple: {
+                title: "Temple Run Beat",
+                bpm: 170, duration: 20,
+                lyrics: [
+                    { time: 0, text: "🏃 RUN RUN RUN! 🏃" },
+                    { time: 3, text: "Coins coins!" },
+                    { time: 6, text: "Jump! Slide!" },
+                    { time: 9, text: "Watch out!" },
+                    { time: 12, text: "Almost there!" },
+                    { time: 15, text: "SO CLOSE!" },
+                    { time: 18, text: "AGAIN! 🏃" }
+                ]
+            }
+        };
+        
+        // Elements
+        const micNotice = document.getElementById('micNotice');
+        const micGranted = document.getElementById('micGranted');
+        const allowMicBtn = document.getElementById('allowMic');
+        const songGrid = document.getElementById('songGrid');
+        const karaokeStage = document.getElementById('karaokeStage');
+        const lyricsLine1 = document.getElementById('lyricsLine1');
+        const lyricsLine2 = document.getElementById('lyricsLine2');
+        const bouncingBall = document.getElementById('bouncingBall');
+        const progressBar = document.getElementById('progressBar');
+        const singBtn = document.getElementById('singBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const playbackBtn = document.getElementById('playbackBtn');
+        const recIndicator = document.getElementById('recIndicator');
+        const playbackSection = document.getElementById('playbackSection');
+        const mixedBtn = document.getElementById('mixedBtn');
+        const voiceBtn = document.getElementById('voiceBtn');
+        const musicBtn = document.getElementById('musicBtn');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const scoreNumber = document.getElementById('scoreNumber');
+        const scoreStars = document.getElementById('scoreStars');
+        const voiceVolume = document.getElementById('voiceVolume');
+        const musicVolume = document.getElementById('musicVolume');
+        
+        // Init Audio
+        async function initAudio() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        // Mic Permission
+        allowMicBtn.addEventListener('click', async () => {
+            try {
+                await initAudio();
+                microphone = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(microphone);
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) recordedChunks.push(e.data);
+                };
+                mediaRecorder.onstop = () => {
+                    recordedBlob = new Blob(recordedChunks, { type: 'audio/webm' });
+                    recordedChunks = [];
+                    playbackBtn.disabled = false;
+                    calculateScore();
+                };
+                micNotice.style.display = 'none';
+                micGranted.style.display = 'block';
+            } catch (err) {
+                alert('Microphone access denied!');
+            }
+        });
+        
+        // Select Song
+        songGrid.addEventListener('click', e => {
+            const btn = e.target.closest('.song-btn');
+            if (!btn) return;
+            document.querySelectorAll('.song-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            currentSong = btn.dataset.song;
+            karaokeStage.classList.add('active');
+            karaokeStage.scrollIntoView({ behavior: 'smooth' });
+        });
+        
+        // Play Music
+        function playMusic() {
+            if (!currentSong) return;
+            const song = songs[currentSong];
+            musicSource = audioContext.createGain();
+            musicSource.gain.value = musicVolume.value / 100;
+            musicSource.connect(audioContext.destination);
+            
+            let noteTime = 0;
+            const beatDuration = 60 / song.bpm;
+            
+            function playNotes() {
+                if (!musicPlaying || !isRecording) return;
+                
+                for (let i = 0; i < 8; i++) {
+                    const freq = [220, 246.94, 261.63, 293.66, 329.63, 349.23, 392, 440][(Math.floor(noteTime / beatDuration) + i) % 8];
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.type = 'square';
+                    osc.frequency.value = freq;
+                    gain.gain.value = 0.08;
+                    osc.connect(gain);
+                    gain.connect(musicSource);
+                    osc.start(audioContext.currentTime + noteTime);
+                    osc.stop(audioContext.currentTime + noteTime + beatDuration * 0.9);
+                    noteTime += beatDuration;
+                }
+                
+                if (musicPlaying && isRecording) {
+                    setTimeout(playNotes, beatDuration * 8 * 1000);
+                }
+            }
+            musicPlaying = true;
+            playNotes();
+        }
+        
+        // Animate Ball
+        function animateBall(duration) {
+            const container = document.querySelector('.ball-container');
+            const containerWidth = container.offsetWidth;
+            let startTime = Date.now();
+            
+            function animate() {
+                const elapsed = (Date.now() - startTime) / 1000;
+                const progress = Math.min(elapsed / duration, 1);
+                const x = progress * (containerWidth - 30);
+                bouncingBall.style.left = x + 'px';
+                progressBar.style.width = (progress * 100) + '%';
+                
+                if (progress < 1 && isRecording) {
+                    animationId = requestAnimationFrame(animate);
+                }
+            }
+            animate();
+        }
+        
+        // Update Lyrics
+        function updateLyrics(lyrics, duration) {
+            function update() {
+                const elapsed = (Date.now() - songStartTime) / 1000;
+                let currentIndex = 0;
+                
+                for (let i = lyrics.length - 1; i >= 0; i--) {
+                    if (elapsed >= lyrics[i].time) {
+                        currentIndex = i;
+                        break;
+                    }
+                }
+                
+                lyricsLine1.textContent = lyrics[currentIndex] ? lyrics[currentIndex].text : '...';
+                lyricsLine1.className = 'lyrics-line current';
+                lyricsLine2.textContent = lyrics[currentIndex + 1] ? lyrics[currentIndex + 1].text : '...';
+                lyricsLine2.className = 'lyrics-line next';
+                
+                if (elapsed < duration && isRecording) {
+                    setTimeout(update, 100);
+                }
+            }
+            update();
+        }
+        
+        // Start Recording
+        singBtn.addEventListener('click', () => {
+            if (!currentSong) { alert('Select a song first!'); return; }
+            if (audioContext.state === 'suspended') audioContext.resume();
+            
+            isRecording = true;
+            recordedChunks = [];
+            songStartTime = Date.now();
+            
+            singBtn.classList.add('recording');
+            singBtn.disabled = true;
+            stopBtn.disabled = false;
+            recIndicator.classList.add('active');
+            playbackSection.classList.remove('active');
+            scoreDisplay.classList.remove('active');
+            
+            mediaRecorder.start();
+            
+            const song = songs[currentSong];
+            animateBall(song.duration);
+            updateLyrics(song.lyrics, song.duration);
+            playMusic();
+        });
+        
+        // Stop Recording
+        stopBtn.addEventListener('click', () => {
+            isRecording = false;
+            musicPlaying = false;
+            mediaRecorder.stop();
+            cancelAnimationFrame(animationId);
+            
+            singBtn.classList.remove('recording');
+            singBtn.disabled = false;
+            stopBtn.disabled = true;
+            recIndicator.classList.remove('active');
+            bouncingBall.style.left = '0';
+            progressBar.style.width = '0%';
+            lyricsLine1.textContent = 'Recording saved!';
+            lyricsLine1.className = 'lyrics-line';
+            lyricsLine2.textContent = '';
+            
+            setTimeout(() => playbackSection.classList.add('active'), 500);
+        });
+        
+        // Calculate Score
+        function calculateScore() {
+            const baseScore = 60 + Math.random() * 30;
+            const volume = recordedBlob ? recordedBlob.size / 10000 : 0;
+            const finalScore = Math.min(100, Math.round(baseScore + Math.min(volume, 10)));
+            
+            scoreNumber.textContent = finalScore;
+            
+            let stars = '⭐';
+            if (finalScore >= 40) stars = '⭐⭐';
+            if (finalScore >= 60) stars = '⭐⭐⭐';
+            if (finalScore >= 80) stars = '⭐⭐⭐⭐';
+            if (finalScore >= 95) stars = '⭐⭐⭐⭐⭐';
+            scoreStars.textContent = stars;
+            
+            scoreDisplay.classList.add('active');
+        }
+        
+        // Playback
+        playbackBtn.addEventListener('click', () => {
+            if (recordedBlob) playbackSection.classList.add('active');
+        });
+        
+        // Mixed playback (voice + music)
+        mixedBtn.addEventListener('click', async () => {
+            if (!recordedBlob) return;
+            
+            // Play voice
+            const voiceUrl = URL.createObjectURL(recordedBlob);
+            const voiceAudio = new Audio(voiceUrl);
+            voiceAudio.volume = voiceVolume.value / 100;
+            
+            // Create music
+            if (currentSong && audioContext) {
+                const song = songs[currentSong];
+                const musicGain = audioContext.createGain();
+                musicGain.gain.value = musicVolume.value / 100;
+                musicGain.connect(audioContext.destination);
+                
+                const beatDuration = 60 / song.bpm;
+                let noteTime = 0;
+                
+                function playMusicNote(freq, duration) {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.type = 'square';
+                    osc.frequency.value = freq;
+                    gain.gain.value = 0.08;
+                    osc.connect(gain);
+                    gain.connect(musicGain);
+                    osc.start(audioContext.currentTime + noteTime);
+                    osc.stop(audioContext.currentTime + noteTime + duration * 0.9);
+                }
+                
+                for (let bar = 0; bar < 4; bar++) {
+                    const freqs = [220, 246.94, 261.63, 293.66, 329.63, 349.23, 392, 440];
+                    for (let i = 0; i < 8; i++) {
+                        playMusicNote(freqs[(bar * 2 + i) % 8], beatDuration);
+                        noteTime += beatDuration;
+                    }
+                }
+            }
+            
+            voiceAudio.play();
+        });
+        
+        // Voice only
+        voiceBtn.addEventListener('click', () => {
+            if (!recordedBlob) return;
+            const url = URL.createObjectURL(recordedBlob);
+            const audio = new Audio(url);
+            audio.volume = voiceVolume.value / 100;
+            audio.play();
+        });
+        
+        // Music only
+        musicBtn.addEventListener('click', () => {
+            if (!currentSong || !audioContext) return;
+            const song = songs[currentSong];
+            const musicGain = audioContext.createGain();
+            musicGain.gain.value = musicVolume.value / 100;
+            musicGain.connect(audioContext.destination);
+            
+            const beatDuration = 60 / song.bpm;
+            let noteTime = 0;
+            
+            function playMusicNote(freq, duration) {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.type = 'square';
+                osc.frequency.value = freq;
+                gain.gain.value = 0.08;
+                osc.connect(gain);
+                gain.connect(musicGain);
+                osc.start(audioContext.currentTime + noteTime);
+                osc.stop(audioContext.currentTime + noteTime + duration * 0.9);
+            }
+            
+            const freqs = [220, 246.94, 261.63, 293.66, 329.63, 349.23, 392, 440];
+            for (let bar = 0; bar < 4; bar++) {
+                for (let i = 0; i < 8; i++) {
+                    playMusicNote(freqs[(bar * 2 + i) % 8], beatDuration);
+                    noteTime += beatDuration;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

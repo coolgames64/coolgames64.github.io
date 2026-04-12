@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦖 T-Rex Runner</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #f7f7f7;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Courier New', monospace;
+        }
+        h1 { font-size: 2rem; margin-bottom: 10px; color: #333; }
+        .score-board { font-size: 1.2rem; margin-bottom: 15px; color: #666; }
+        .score-board span { background: #e0e0e0; padding: 3px 10px; border-radius: 5px; margin: 0 5px; }
+        canvas { border: 2px solid #333; border-radius: 5px; background: #fff; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #333; color: white; padding: 3px 8px; border-radius: 3px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: #333; color: white;
+            border: none; padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+            font-size: 1rem;
+        }
+        .back-btn:hover { background: #555; }
+        #gameOver {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center; align-items: center; z-index: 100;
+        }
+        .modal-content {
+            background: white; padding: 40px; border-radius: 20px;
+            text-align: center; border: 3px solid #333;
+        }
+        .modal-content h2 { color: #ff6b6b; font-size: 2rem; margin-bottom: 15px; }
+        .modal-content p { font-size: 1.3rem; margin-bottom: 15px; color: #333; }
+        .modal-content button {
+            background: #333; color: white; border: none;
+            padding: 15px 40px; font-size: 1.2rem; border-radius: 30px;
+            cursor: pointer; font-weight: bold;
+        }
+        .modal-content button:hover { background: #555; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🦖 T-REX RUNNER</h1>
+    <div class="score-board">Score: <span id="score">0</span> | Hi-Score: <span id="hiScore">0</span></div>
+    <canvas id="gameCanvas" width="600" height="200"></canvas>
+    <div class="instructions">Press <span>SPACE</span> or <span>UP</span> to jump! Press <span>DOWN</span> to duck!</div>
+    
+    <div id="gameOver">
+        <div class="modal-content">
+            <h2>💥 GAME OVER!</h2>
+            <p>Score: <span id="finalScore">0</span></p>
+            <p>Hi-Score: <span id="finalHi">0</span></p>
+            <button onclick="restartGame()">TRY AGAIN 🔄</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let dino = { x: 50, y: 140, width: 40, height: 45, vy: 0, jumping: false, ducking: false };
+        let obstacles = [];
+        let clouds = [];
+        let groundX = 0;
+        let score = 0;
+        let hiScore = parseInt(localStorage.getItem('tRexHiScore')) || 0;
+        let gameOver = false;
+        let gameLoop;
+        let speed = 5;
+        
+        const GROUND_Y = 155;
+        const GRAVITY = 0.8;
+        const JUMP_FORCE = -14;
+        
+        function init() {
+            dino = { x: 50, y: GROUND_Y - 45, width: 40, height: 45, vy: 0, jumping: false, ducking: false };
+            obstacles = [];
+            clouds = [];
+            groundX = 0;
+            score = 0;
+            gameOver = false;
+            speed = 5;
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('hiScore').textContent = hiScore;
+            document.getElementById('gameOver').style.display = 'none';
+            
+            // Initial clouds
+            for (let i = 0; i < 3; i++) {
+                clouds.push({
+                    x: i * 200 + 100,
+                    y: 30 + Math.random() * 40
+                });
+            }
+        }
+        
+        function drawDino() {
+            ctx.fillStyle = '#333';
+            
+            if (dino.ducking) {
+                // Ducking dino (wider, shorter)
+                ctx.fillRect(dino.x, dino.y + 20, 55, 25);
+                // Head
+                ctx.fillRect(dino.x + 40, dino.y + 10, 15, 15);
+                // Eye
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(dino.x + 48, dino.y + 12, 5, 5);
+            } else {
+                // Standing dino
+                // Body
+                ctx.fillRect(dino.x + 10, dino.y + 15, 25, 30);
+                // Head
+                ctx.fillRect(dino.x + 20, dino.y, 25, 20);
+                // Tail
+                ctx.fillRect(dino.x, dino.y + 20, 15, 10);
+                ctx.fillRect(dino.x - 5, dino.y + 15, 10, 8);
+                
+                // Eye
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(dino.x + 35, dino.y + 5, 8, 8);
+                ctx.fillStyle = '#333';
+                ctx.fillRect(dino.x + 38, dino.y + 7, 4, 4);
+                
+                // Mouth line
+                ctx.fillStyle = '#333';
+                ctx.fillRect(dino.x + 25, dino.y + 12, 20, 3);
+                
+                // Legs
+                if (dino.jumping) {
+                    ctx.fillRect(dino.x + 15, dino.y + 42, 8, 3);
+                    ctx.fillRect(dino.x + 28, dino.y + 42, 8, 3);
+                } else {
+                    // Running animation
+                    const legPhase = Math.floor(Date.now() / 80) % 2;
+                    if (legPhase === 0) {
+                        ctx.fillRect(dino.x + 15, dino.y + 42, 8, 10);
+                        ctx.fillRect(dino.x + 28, dino.y + 42, 8, 6);
+                    } else {
+                        ctx.fillRect(dino.x + 15, dino.y + 42, 8, 6);
+                        ctx.fillRect(dino.x + 28, dino.y + 42, 8, 10);
+                    }
+                }
+            }
+        }
+        
+        function drawObstacle(obs) {
+            ctx.fillStyle = '#333';
+            
+            if (obs.type === 'cactus') {
+                // Cactus
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                // Arms
+                if (obs.variant === 'large') {
+                    ctx.fillRect(obs.x - 8, obs.y + 10, 8, 5);
+                    ctx.fillRect(obs.x - 8, obs.y + 5, 5, 10);
+                    ctx.fillRect(obs.x + obs.width, obs.y + 15, 8, 5);
+                    ctx.fillRect(obs.x + obs.width + 3, obs.y + 10, 5, 10);
+                }
+            } else if (obs.type === 'pterodactyl') {
+                // Pterodactyl
+                ctx.fillRect(obs.x, obs.y, 40, 20);
+                // Beak
+                ctx.fillRect(obs.x + 35, obs.y + 8, 10, 5);
+                // Wing animation
+                const wingY = Math.floor(Date.now() / 100) % 2 === 0 ? -8 : 0;
+                ctx.fillRect(obs.x + 10, obs.y + wingY, 25, 8);
+                // Eye
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(obs.x + 30, obs.y + 5, 4, 4);
+            }
+        }
+        
+        function drawCloud(cloud) {
+            ctx.fillStyle = 'rgba(200,200,200,0.8)';
+            ctx.beginPath();
+            ctx.arc(cloud.x, cloud.y, 15, 0, Math.PI * 2);
+            ctx.arc(cloud.x + 20, cloud.y - 5, 18, 0, Math.PI * 2);
+            ctx.arc(cloud.x + 40, cloud.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function draw() {
+            // Sky
+            ctx.fillStyle = '#f7f7f7';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Sun
+            ctx.fillStyle = '#ffd93d';
+            ctx.beginPath();
+            ctx.arc(520, 40, 25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Clouds
+            clouds.forEach(drawCloud);
+            
+            // Ground
+            ctx.fillStyle = '#d4a574';
+            ctx.fillRect(0, GROUND_Y, canvas.width, 5);
+            
+            // Ground texture
+            ctx.fillStyle = '#c4956a';
+            for (let i = 0; i < 30; i++) {
+                ctx.fillRect(groundX + i * 25, GROUND_Y + 8, 15, 3);
+            }
+            
+            // Draw dino
+            drawDino();
+            
+            // Draw obstacles
+            obstacles.forEach(drawObstacle);
+            
+            // Score
+            ctx.fillStyle = '#666';
+            ctx.font = 'bold 16px Courier New';
+            ctx.textAlign = 'right';
+            ctx.fillText(`SCORE: ${Math.floor(score)}`, canvas.width - 20, 30);
+            ctx.fillText(`HI: ${hiScore}`, canvas.width - 20, 50);
+        }
+        
+        function update() {
+            if (gameOver) return;
+            
+            // Speed increases over time
+            speed = 5 + score * 0.01;
+            
+            // Gravity
+            if (dino.jumping) {
+                dino.vy += GRAVITY;
+                dino.y += dino.vy;
+                
+                if (dino.y > GROUND_Y - dino.height) {
+                    dino.y = GROUND_Y - dino.height;
+                    dino.jumping = false;
+                    dino.vy = 0;
+                }
+            }
+            
+            // Update ground scroll
+            groundX -= speed;
+            if (groundX < -25) groundX = 0;
+            
+            // Update clouds
+            clouds.forEach(cloud => {
+                cloud.x -= speed * 0.3;
+                if (cloud.x < -60) {
+                    cloud.x = canvas.width + 60;
+                    cloud.y = 30 + Math.random() * 40;
+                }
+            });
+            
+            // Spawn obstacles
+            if (Math.random() < 0.01 + score * 0.0002) {
+                const type = Math.random() > 0.85 ? 'pterodactyl' : 'cactus';
+                const variant = Math.random() > 0.7 ? 'large' : 'small';
+                
+                if (type === 'cactus') {
+                    obstacles.push({
+                        x: canvas.width + 20,
+                        y: GROUND_Y - (variant === 'large' ? 50 : 35),
+                        width: variant === 'large' ? 25 : 15,
+                        height: variant === 'large' ? 50 : 35,
+                        type: 'cactus',
+                        variant: variant
+                    });
+                } else {
+                    obstacles.push({
+                        x: canvas.width + 20,
+                        y: GROUND_Y - 70 - Math.random() * 40,
+                        width: 45,
+                        height: 20,
+                        type: 'pterodactyl'
+                    });
+                }
+            }
+            
+            // Update obstacles
+            obstacles.forEach(obs => {
+                obs.x -= speed;
+            });
+            obstacles = obstacles.filter(obs => obs.x > -60);
+            
+            // Collision detection
+            const dinoBox = {
+                x: dino.x + 5,
+                y: dino.y + (dino.ducking ? 20 : 0),
+                width: dino.ducking ? 50 : 35,
+                height: dino.ducking ? 25 : 40
+            };
+            
+            obstacles.forEach(obs => {
+                if (obs.x < dinoBox.x + dinoBox.width &&
+                    obs.x + obs.width > dinoBox.x &&
+                    obs.y < dinoBox.y + dinoBox.height &&
+                    obs.y + obs.height > dinoBox.y) {
+                    endGame();
+                }
+            });
+            
+            // Score
+            score += 0.1;
+            document.getElementById('score').textContent = Math.floor(score);
+        }
+        
+        function jump() {
+            if (!dino.jumping && !dino.ducking) {
+                dino.jumping = true;
+                dino.vy = JUMP_FORCE;
+            }
+        }
+        
+        function duck() {
+            if (!dino.jumping) {
+                dino.ducking = true;
+                dino.height = 25;
+                dino.y = GROUND_Y - 25;
+            }
+        }
+        
+        function stopDuck() {
+            dino.ducking = false;
+            dino.height = 45;
+            dino.y = GROUND_Y - 45;
+        }
+        
+        function endGame() {
+            gameOver = true;
+            clearInterval(gameLoop);
+            
+            if (score > hiScore) {
+                hiScore = Math.floor(score);
+                localStorage.setItem('tRexHiScore', hiScore);
+            }
+            
+            document.getElementById('finalScore').textContent = Math.floor(score);
+            document.getElementById('finalHi').textContent = hiScore;
+            document.getElementById('gameOver').style.display = 'flex';
+        }
+        
+        function restartGame() {
+            init();
+            gameLoop = setInterval(() => {
+                update();
+                draw();
+            }, 1000 / 60);
+        }
+        
+        // Controls
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                if (gameOver) restartGame();
+                else jump();
+            }
+            if (e.code === 'ArrowDown') {
+                e.preventDefault();
+                duck();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowDown') {
+                stopDuck();
+            }
+        });
+        
+        // Touch controls
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameOver) restartGame();
+            else jump();
+        });
+        
+        // Start
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

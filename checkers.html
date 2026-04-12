@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Checkers</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .status { font-size: 1.3rem; margin-bottom: 15px; }
+        canvas { border: 3px solid #8B4513; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🎯 CHECKERS</h1>
+    <div class="status" id="status">Red's turn</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const SIZE = 60;
+        canvas.width = SIZE * 8;
+        canvas.height = SIZE * 8;
+        
+        let board = [];
+        let selected = null;
+        let turn = 'red';
+        let redPieces = 12;
+        let blackPieces = 12;
+        
+        function init() {
+            board = [];
+            for (let r = 0; r < 8; r++) {
+                board[r] = [];
+                for (let c = 0; c < 8; c++) {
+                    if ((r + c) % 2 === 1) {
+                        if (r < 3) board[r][c] = 'b';
+                        else if (r > 4) board[r][c] = 'r';
+                        else board[r][c] = '';
+                    } else {
+                        board[r][c] = '';
+                    }
+                }
+            }
+            selected = null;
+            turn = 'red';
+            redPieces = 12;
+            blackPieces = 12;
+        }
+        
+        function draw() {
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const x = c * SIZE;
+                    const y = r * SIZE;
+                    
+                    // Board
+                    ctx.fillStyle = (r + c) % 2 === 0 ? '#f5deb3' : '#8B4513';
+                    ctx.fillRect(x, y, SIZE, SIZE);
+                    
+                    // Piece
+                    const piece = board[r][c];
+                    if (piece) {
+                        const color = piece === 'r' || piece === 'R' ? '#e74c3c' : '#333';
+                        ctx.fillStyle = color;
+                        ctx.beginPath();
+                        ctx.arc(x + SIZE/2, y + SIZE/2, 22, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // King crown
+                        if (piece === 'R' || piece === 'B') {
+                            ctx.fillStyle = '#f1c40f';
+                            ctx.font = 'bold 20px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('♔', x + SIZE/2, y + SIZE/2 + 6);
+                        }
+                        
+                        // Highlight valid moves
+                        if (selected && selected.r === r && selected.c === c) {
+                            ctx.strokeStyle = '#f1c40f';
+                            ctx.lineWidth = 3;
+                            ctx.beginPath();
+                            ctx.arc(x + SIZE/2, y + SIZE/2, 22, 0, Math.PI * 2);
+                            ctx.stroke();
+                        }
+                    }
+                    
+                    // Valid move indicator
+                    if (selected) {
+                        const moves = getValidMoves(selected.r, selected.c);
+                        if (moves.find(m => m.r === r && m.c === c)) {
+                            ctx.fillStyle = 'rgba(46, 204, 113, 0.5)';
+                            ctx.beginPath();
+                            ctx.arc(x + SIZE/2, y + SIZE/2, 15, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+            
+            document.getElementById('status').textContent = `${turn.charAt(0).toUpperCase() + turn.slice(1)}'s turn | Red: ${redPieces} Black: ${blackPieces}`;
+        }
+        
+        function getValidMoves(r, c) {
+            const piece = board[r][c];
+            if (!piece) return [];
+            
+            const isRed = piece === 'r' || piece === 'R';
+            const isKing = piece === 'R' || piece === 'B';
+            const moves = [];
+            
+            const dirs = isRed ? [-1, 1] : [1, -1];
+            if (isKing) dirs.push(...(isRed ? [1, -1] : [-1, 1]));
+            
+            for (const dc of dirs) {
+                const nc = c + dc;
+                if (nc < 0 || nc >= 8) continue;
+                
+                // Jump over
+                for (const dr of (isKing ? [-1, 1] : [isRed ? -1 : 1])) {
+                    const nr = r + dr;
+                    const nmc = nc + dc;
+                    if (nr >= 0 && nr < 8 && nmc >= 0 && nmc < 8) {
+                        const target = board[nr][nc];
+                        if (target && (isRed ? target === 'b' || target === 'B' : target === 'r' || target === 'R')) {
+                            if (board[nr + dr] && board[nr + dr][nmc] === '') {
+                                moves.push({r: nr + dr, c: nmc, jump: {r: nr, c: nc}});
+                            }
+                        }
+                    }
+                }
+                
+                // Simple move
+                const nr = r + (isRed ? -1 : 1);
+                if (nr >= 0 && nr < 8 && board[nr][nc] === '') {
+                    moves.push({r: nr, c: nc});
+                }
+            }
+            
+            return moves;
+        }
+        
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const c = Math.floor(x / SIZE);
+            const r = Math.floor(y / SIZE);
+            
+            if (selected) {
+                const moves = getValidMoves(selected.r, selected.c);
+                const move = moves.find(m => m.r === r && m.c === c);
+                
+                if (move) {
+                    // Move piece
+                    board[r][c] = board[selected.r][selected.c];
+                    board[selected.r][selected.c] = '';
+                    
+                    // Jump
+                    if (move.jump) {
+                        const jumped = board[move.jump.r][move.jump.c];
+                        board[move.jump.r][move.jump.c] = '';
+                        if (jumped === 'r' || jumped === 'R') blackPieces--;
+                        else redPieces--;
+                    }
+                    
+                    // King promotion
+                    if (r === 0 && board[r][c] === 'r') board[r][c] = 'R';
+                    if (r === 7 && board[r][c] === 'b') board[r][c] = 'B';
+                    
+                    // Switch turn
+                    turn = turn === 'red' ? 'black' : 'red';
+                    
+                    // Check win
+                    if (redPieces === 0) {
+                        alert('Black WINS!');
+                        init();
+                    } else if (blackPieces === 0) {
+                        alert('Red WINS!');
+                        init();
+                    }
+                }
+                selected = null;
+            }
+            
+            const piece = board[r][c];
+            if (piece) {
+                const isRed = piece === 'r' || piece === 'R';
+                if ((turn === 'red' && isRed) || (turn === 'black' && !isRed)) {
+                    selected = {r, c};
+                }
+            }
+            
+            draw();
+        });
+        
+        init();
+        draw();
+    </script>
+</body>
+</html>

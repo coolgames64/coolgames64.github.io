@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏎️ Drift Racing</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #e74c3c; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(231,76,60,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #e74c3c; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #e74c3c; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🏎️ DRIFT RACING</h1>
+    <div class="score-board">
+        <span>Speed: <strong id="speed">0</strong></span>
+        <span>Score: <strong id="score">0</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="500" height="450"></canvas>
+    <div class="instructions"><span>← →</span> steer | <span>↑</span> gas | <span>↓</span> brake</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let car = { x: 250, y: 350, angle: 0, speed: 0, drift: 0 };
+        let obstacles = [];
+        let score = 0;
+        let gameLoop;
+        let keys = { left: false, right: false, up: false, down: false };
+        let particles = [];
+        
+        function init() {
+            car = { x: 250, y: 350, angle: 0, speed: 0, drift: 0 };
+            obstacles = [];
+            particles = [];
+            score = 0;
+            
+            for (let i = 0; i < 3; i++) {
+                spawnObstacle(200 + i * 150);
+            }
+            
+            document.getElementById('speed').textContent = '0';
+            document.getElementById('score').textContent = '0';
+        }
+        
+        function spawnObstacle(y) {
+            obstacles.push({
+                x: 50 + Math.random() * 400,
+                y: y,
+                size: 25 + Math.random() * 20
+            });
+        }
+        
+        function drawTrack() {
+            // Asphalt
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Track edges
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(0, 0, 30, canvas.height);
+            ctx.fillRect(470, 0, 30, canvas.height);
+            
+            // Center line (dashed)
+            ctx.strokeStyle = '#fff';
+            ctx.setLineDash([20, 20]);
+            ctx.beginPath();
+            ctx.moveTo(250, 0);
+            ctx.lineTo(250, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Drift marks
+            ctx.fillStyle = 'rgba(30,30,30,0.5)';
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
+        function drawCar() {
+            ctx.save();
+            ctx.translate(car.x, car.y);
+            ctx.rotate(car.angle);
+            
+            // Car body
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(-20, -10, 40, 20);
+            
+            // Windshield
+            ctx.fillStyle = '#2980b9';
+            ctx.fillRect(5, -7, 10, 14);
+            
+            // Wheels
+            ctx.fillStyle = '#222';
+            ctx.fillRect(-18, -12, 8, 5);
+            ctx.fillRect(-18, 7, 8, 5);
+            ctx.fillRect(10, -12, 8, 5);
+            ctx.fillRect(10, 7, 8, 5);
+            
+            ctx.restore();
+        }
+        
+        function drawObstacle(obs) {
+            ctx.fillStyle = '#f39c12';
+            ctx.beginPath();
+            ctx.arc(obs.x, obs.y, obs.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#d68910';
+            ctx.beginPath();
+            ctx.arc(obs.x, obs.y, obs.size - 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function draw() {
+            drawTrack();
+            obstacles.forEach(drawObstacle);
+            drawCar();
+        }
+        
+        function update() {
+            // Acceleration
+            if (keys.up) car.speed = Math.min(12, car.speed + 0.2);
+            if (keys.down) car.speed = Math.max(-3, car.speed - 0.3);
+            car.speed *= 0.98;
+            
+            // Steering
+            if (keys.left) {
+                car.angle -= 0.05 * (car.speed / 5);
+                if (Math.abs(car.speed) > 5) {
+                    car.drift = Math.min(5, car.drift + 0.5);
+                    // Tire marks
+                    particles.push({ x: car.x, y: car.y, size: 3 });
+                }
+            } else if (keys.right) {
+                car.angle += 0.05 * (car.speed / 5);
+                if (Math.abs(car.speed) > 5) {
+                    car.drift = Math.min(5, car.drift + 0.5);
+                    particles.push({ x: car.x, y: car.y, size: 3 });
+                }
+            } else {
+                car.drift *= 0.9;
+            }
+            
+            car.x += Math.sin(car.angle) * car.speed;
+            car.y -= Math.cos(car.angle) * car.speed;
+            
+            particles = particles.filter(p => {
+                p.y += 2;
+                p.size *= 0.99;
+                return p.size > 0.5 && p.y < canvas.height;
+            });
+            
+            // Bounds
+            if (car.x < 50 || car.x > 450) {
+                car.speed *= 0.5;
+                car.x = Math.max(50, Math.min(450, car.x));
+            }
+            
+            obstacles.forEach(obs => {
+                obs.y -= car.speed * 0.8;
+                
+                const dist = Math.sqrt((car.x - obs.x) ** 2 + (car.y - obs.y) ** 2);
+                if (dist < obs.size + 20) {
+                    endGame();
+                }
+            });
+            
+            obstacles = obstacles.filter(o => o.y > -50);
+            
+            if (obstacles.length < 3) {
+                spawnObstacle(480);
+            }
+            
+            score += Math.floor(car.speed * 0.1);
+            document.getElementById('speed').textContent = Math.floor(car.speed * 20);
+            document.getElementById('score').textContent = score;
+        }
+        
+        function endGame() {
+            clearInterval(gameLoop);
+            setTimeout(() => {
+                alert(`Crash! 💥\nScore: ${score}\n\nClick OK to play again!`);
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'ArrowLeft') keys.left = true;
+            if (e.code === 'ArrowRight') keys.right = true;
+            if (e.code === 'ArrowUp') keys.up = true;
+            if (e.code === 'ArrowDown') keys.down = true;
+        });
+        
+        document.addEventListener('keyup', e => {
+            if (e.code === 'ArrowLeft') keys.left = false;
+            if (e.code === 'ArrowRight') keys.right = false;
+            if (e.code === 'ArrowUp') keys.up = false;
+            if (e.code === 'ArrowDown') keys.down = false;
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

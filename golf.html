@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⛳ Golf</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #27ae60; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(39,174,96,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #27ae60; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #27ae60; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>⛳ GOLF</h1>
+    <div class="score-board">
+        <span>Hole: <strong id="hole">1</strong>/9</span>
+        <span>Par: <strong id="par">3</strong></span>
+        <span>Strokes: <strong id="strokes">0</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="500" height="450"></canvas>
+    <div class="instructions"><span>CLICK & DRAG</span> to shoot! Power = distance!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let ball = { x: 100, y: 380 };
+        let hole = { x: 400, y: 80 };
+        let flagHeight = 40;
+        let strokes = 0;
+        let currentHole = 1;
+        let totalScore = 0;
+        let gameLoop;
+        let dragging = false;
+        let dragStart = { x: 0, y: 0 };
+        let ballMoving = false;
+        
+        const holes = [
+            { x: 400, y: 80, par: 3 },
+            { x: 80, y: 80, par: 3 },
+            { x: 450, y: 200, par: 4 },
+            { x: 50, y: 250, par: 3 },
+            { x: 250, y: 50, par: 4 },
+            { x: 400, y: 350, par: 5 },
+            { x: 100, y: 150, par: 3 },
+            { x: 300, y: 250, par: 4 },
+            { x: 250, y: 400, par: 3 }
+        ];
+        
+        function init() {
+            loadHole(1);
+        }
+        
+        function loadHole(num) {
+            if (num > 9) {
+                endGame();
+                return;
+            }
+            
+            const h = holes[num - 1];
+            hole = { x: h.x, y: h.y };
+            ball = { x: 100, y: 380 };
+            strokes = 0;
+            currentHole = num;
+            ballMoving = false;
+            
+            document.getElementById('hole').textContent = currentHole;
+            document.getElementById('par').textContent = h.par;
+            document.getElementById('strokes').textContent = '0';
+        }
+        
+        function draw() {
+            // Sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#98D8C8');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Fairway
+            ctx.fillStyle = '#27ae60';
+            ctx.beginPath();
+            ctx.ellipse(250, 250, 220, 180, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Rough
+            ctx.fillStyle = '#229954';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#27ae60';
+            ctx.beginPath();
+            ctx.ellipse(250, 250, 200, 160, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Bunker
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.ellipse(200, 300, 50, 30, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Water
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.ellipse(350, 150, 40, 25, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Hole
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(hole.x, hole.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Flag
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(hole.x, hole.y);
+            ctx.lineTo(hole.x, hole.y - flagHeight);
+            ctx.stroke();
+            
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.moveTo(hole.x, hole.y - flagHeight);
+            ctx.lineTo(hole.x + 25, hole.y - flagHeight + 10);
+            ctx.lineTo(hole.x, hole.y - flagHeight + 20);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Ball
+            if (!ballMoving || ball.y < 450) {
+                ctx.fillStyle = '#fff';
+                ctx.shadowColor = '#fff';
+                ctx.shadowBlur = 5;
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+            
+            // Power indicator
+            if (dragging) {
+                ctx.strokeStyle = '#e74c3c';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(ball.x, ball.y);
+                ctx.lineTo(dragStart.x + (dragStart.x - ball.x), dragStart.y + (dragStart.y - ball.y));
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // Power bar
+                const power = Math.min(100, Math.sqrt((dragStart.x - ball.x) ** 2 + (dragStart.y - ball.y) ** 2));
+                ctx.fillStyle = '#333';
+                ctx.fillRect(20, canvas.height - 30, 150, 15);
+                ctx.fillStyle = power > 80 ? '#e74c3c' : power > 50 ? '#f1c40f' : '#27ae60';
+                ctx.fillRect(20, canvas.height - 30, power * 1.5, 15);
+            }
+        }
+        
+        function update() {
+            if (!ballMoving) return;
+            
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            ball.vx *= 0.98;
+            ball.vy *= 0.98;
+            
+            // Friction
+            if (ball.vx > 0.1 || ball.vy > 0.1) {
+                ball.vx *= 0.95;
+                ball.vy *= 0.95;
+            } else {
+                ball.vx = 0;
+                ball.vy = 0;
+                ballMoving = false;
+            }
+            
+            // Hole collision
+            const distToHole = Math.sqrt((ball.x - hole.x) ** 2 + (ball.y - hole.y) ** 2);
+            if (distToHole < 15 && Math.sqrt(ball.vx ** 2 + ball.vy ** 2) < 5) {
+                // In the hole!
+                setTimeout(() => {
+                    totalScore += strokes;
+                    loadHole(currentHole + 1);
+                }, 500);
+                ballMoving = false;
+                ball.x = hole.x;
+                ball.y = hole.y;
+            }
+            
+            // Out of bounds
+            if (ball.y > 450 || ball.x < 0 || ball.x > 500 || ball.y < 0) {
+                ball = { x: 100, y: 380 };
+                ballMoving = false;
+            }
+        }
+        
+        function endGame() {
+            clearInterval(gameLoop);
+            const avgScore = totalScore / 9;
+            let message = '';
+            if (avgScore < 3) message = 'AMAZING!';
+            else if (avgScore < 4) message = 'GREAT!';
+            else if (avgScore < 5) message = 'GOOD!';
+            else message = 'KEEP PRACTICING!';
+            
+            setTimeout(() => {
+                alert(`${message}\nTotal Score: ${totalScore}\nAvg: ${avgScore.toFixed(1)}\n\nClick OK to play again!`);
+                totalScore = 0;
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        canvas.addEventListener('mousedown', (e) => {
+            if (ballMoving) return;
+            const rect = canvas.getBoundingClientRect();
+            dragStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            dragging = true;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            const rect = canvas.getBoundingClientRect();
+            ball.x = e.clientX - rect.left;
+            ball.y = e.clientY - rect.top;
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            if (!dragging) return;
+            dragging = false;
+            
+            ball.vx = (dragStart.x - ball.x) * 0.1;
+            ball.vy = (dragStart.y - ball.y) * 0.1;
+            
+            if (Math.abs(ball.vx) > 0.5 || Math.abs(ball.vy) > 0.5) {
+                strokes++;
+                document.getElementById('strokes').textContent = strokes;
+                ballMoving = true;
+            } else {
+                ball.x = 100;
+                ball.y = 380;
+            }
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ExploreCraft - Cool Games</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:#1a1a2e;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:Arial,sans-serif}
+        canvas{display:block;background:#87ceeb;border-radius:8px;box-shadow:0 0 30px rgba(0,0,0,0.5)}
+        #start{position:fixed;inset:0;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:20px;z-index:100}
+        #start h1{font-size:2.5rem;margin-bottom:10px;text-shadow:0 0 20px #667eea}
+        #start h2{font-size:1.2rem;color:#ffd700;margin-bottom:20px}
+        .ctrl{background:rgba(255,255,255,0.1);padding:20px;border-radius:12px;margin-bottom:15px}
+        .ctrl p{margin:8px 0;font-size:14px}
+        .k{background:#444;padding:4px 10px;border-radius:5px;border:1px solid #666}
+        .tip{background:rgba(0,255,255,0.15);padding:12px 20px;border-radius:10px;margin-bottom:20px;border:1px solid #0ff;font-size:14px}
+        #start button{padding:15px 50px;font-size:20px;background:linear-gradient(135deg,#0ff,#099);border:none;color:#000;font-weight:bold;border-radius:25px;cursor:pointer;box-shadow:0 4px 20px rgba(0,255,255,0.4)}
+        #hud{position:fixed;top:10px;left:10px;color:#fff;font-size:14px;text-shadow:1px 1px 2px #000;background:rgba(0,0,0,0.6);padding:10px;border-radius:8px}
+        #inv{position:fixed;top:10px;right:10px;color:#fff;font-size:13px;text-shadow:1px 1px 2px #000;background:rgba(0,0,0,0.6);padding:10px;border-radius:8px;min-width:120px}
+        #inv h3{color:#ffd700;margin-bottom:8px;font-size:15px}
+        .row{display:flex;align-items:center;gap:8px;margin:5px 0}
+        #msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;color:#ffd700;text-shadow:0 0 15px #ffd700;pointer-events:none;opacity:0;transition:opacity .3s}
+        #msg.show{opacity:1}
+        #depth{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#fff;font-size:16px;text-shadow:1px 1px 2px #000;background:rgba(0,0,0,0.7);padding:8px 20px;border-radius:20px}
+    </style>
+</head>
+<body>
+    <div id="start">
+        <h1>⛏️ ExploreCraft</h1>
+        <h2>💎 Mine for Rare Ores! 💎</h2>
+        <div class="ctrl">
+            <p><span class="k">↑ ↓ ← →</span> or <span class="k">WASD</span> = Move</p>
+            <p><span class="k">Space</span> = Dig DOWN into blocks</p>
+            <p><span class="k">1-4</span> = Select tool</p>
+        </div>
+        <div class="tip">
+            <p>💎 Diamonds = Deep underground!</p>
+            <p>🟨 Gold = Medium depth</p>
+            <p>🟫 Iron & Coal = Near surface</p>
+        </div>
+        <button onclick="startGame()">🎮 START!</button>
+    </div>
+    <canvas id="c" width="800" height="600"></canvas>
+    <div id="hud"><div id="dayNight">☀️ Day 1</div></div>
+    <div id="inv"><h3>💎 Inventory</h3><div class="row"><span>ite</span><span>Coal</span><span id="coalC">0</span></div><div class="row"><span>🟫</span><span>Iron</span><span id="ironC">0</span></div><div class="row"><span>🟨</span><span>Gold</span><span id="goldC">0</span></div><div class="row"><span>💎</span><span>Diamond</span><span id="diamondC">0</span></div></div>
+    <div id="depth">Depth: 0m</div>
+    <div id="msg"></div>
+
+    <script>
+    const canvas=document.getElementById('c');
+    const ctx=canvas.getContext('2d');
+    const W=canvas.width,H=canvas.height,TILE=20;
+    const COLS=W/TILE,ROWS=H/TILE;
+
+    const BLOCKS=[
+        {name:'Air',c:null},
+        {name:'Grass',c:'#5d8c3e'},
+        {name:'Dirt',c:'#8b6914'},
+        {name:'Stone',c:'#707070'},
+        {name:'Coal',c:'#1a1a1a',ore:true,emj:'ite',shine:'#333'},
+        {name:'Iron',c:'#c9a66b',ore:true,emj:'🟫',shine:'#daa520'},
+        {name:'Gold',c:'#ffd700',ore:true,emj:'🟨',shine:'#ffec8b'},
+        {name:'Diamond',c:'#00ffff',ore:true,emj:'💎',shine:'#b0ffff'},
+        {name:'Wood',c:'#8b4513'},
+        {name:'Leaves',c:'#228b22'},
+        {name:'Sand',c:'#f4d03f'},
+        {name:'Water',c:'#3498db',a:true},
+        {name:'Bedrock',c:'#333'}
+    ];
+
+    let world=[],px=10,py=10,depth=0,collected={coal:0,iron:0,gold:0,diamond:0};
+    let keys={},gameOn=false,time=0,day=1,night=false,shiftDown=false,selectedTool=0;
+    const TOOLS=['Pickaxe','Shovel','Axe','Hand'];
+
+    function rand(s){let x=Math.sin(s)*10000;return x-Math.floor(x);}
+    function noise(x,y){return rand(x+y*57);}
+
+    function generateWorld(){
+        for(let x=0;x<COLS;x++){
+            world[x]=[];
+            let surfaceH=8+Math.floor(noise(x*.3,0)*6);
+            for(let y=0;y<ROWS;y++){
+                if(y<surfaceH){world[x][y]=0;}
+                else if(y===surfaceH){world[x][y]=1;}
+                else if(y<surfaceH+4){world[x][y]=2;}
+                else if(y<ROWS-3){
+                    let r=rand(x*10+y*5);
+                    let d=y-surfaceH;
+                    if(d>15&&r>.85){world[x][y]=7;}
+                    else if(d>10&&r>.8){world[x][y]=6;}
+                    else if(d>6&&r>.75){world[x][y]=5;}
+                    else if(r>.7){world[x][y]=4;}
+                    else{world[x][y]=3;}
+                }
+                else if(y<ROWS-2){world[x][y]=3;}
+                else{world[x][y]=13;}
+            }
+            if(noise(x,.5)>.6&&surfaceH>6){
+                let th=4+Math.floor(noise(x,.7)*3);
+                for(let t=1;t<=th;t++) world[x][surfaceH+t]=9;
+                if(surfaceH+th<ROWS-1){
+                    for(let lx=-1;lx<=1;lx++) for(let ly=0;ly<2;ly++)
+                        if(x+lx>=0&&x+lx<COLS) world[x+lx][surfaceH+th+ly]=10;
+                }
+            }
+            if(surfaceH<9&&surfaceH>5){
+                for(let s=0;s<3;s++) if(x+s<COLS) world[x+s][surfaceH]=7;
+            }
+        }
+    }
+
+    function draw(){
+        ctx.fillStyle=night?'#001133':'#87ceeb';
+        ctx.fillRect(0,0,W,H);
+        let startX=Math.max(0,Math.floor(px-COLS/2));
+        let endX=Math.min(COLS-1,startX+COLS);
+        let startY=Math.max(0,Math.floor(py-ROWS/2));
+        let endY=Math.min(ROWS-1,startY+ROWS);
+        let offsetX=W/2-(px-startX)*TILE;
+        let offsetY=H/2-(py-startY)*TILE;
+        for(let x=startX;x<=endX;x++) for(let y=startY;y<=endY;y++){
+            let b=world[x]&&world[x][y]!==undefined?world[x][y]:0;
+            let bx=x*TILE-offsetX,by=y*TILE-offsetY;
+            if(b&&b!==0){
+                let block=BLOCKS[b];
+                ctx.fillStyle=block.c;
+                if(block.a)ctx.globalAlpha=.6;
+                if(b>=4&&b<=7&&block.shine){
+                    ctx.fillStyle=block.c;
+                    ctx.fillRect(bx,by,TILE,TILE);
+                    ctx.fillStyle=block.shine;
+                    ctx.fillRect(bx+2,by+2,TILE/3,TILE/3);
+                } else {
+                    ctx.fillRect(bx,by,TILE,TILE);
+                }
+                if(b===1){
+                    ctx.fillStyle='#3d6b2e';
+                    ctx.fillRect(bx,by+TILE-4,TILE,4);
+                }
+                ctx.globalAlpha=1;
+            }
+            ctx.strokeStyle='rgba(0,0,0,0.1)';
+            ctx.strokeRect(bx,by,TILE,TILE);
+        }
+        let playerBX=px*TILE-offsetX,playerBY=py*TILE-offsetY;
+        ctx.fillStyle='#4a90d9';
+        ctx.fillRect(playerBX-4,playerBY-8,8,10);
+        ctx.fillStyle='#ffdbac';
+        ctx.fillRect(playerBX-3,playerBY-12,6,5);
+        ctx.fillStyle='#fff';
+        ctx.fillRect(playerBX-2,playerBY-11,1.5,1.5);
+        ctx.fillRect(playerBX+.5,playerBY-11,1.5,1.5);
+        ctx.fillStyle='#333';
+        ctx.fillRect(playerBX-2.5,playerBY-10,6,.5);
+        ctx.fillStyle='#aaa';
+        ctx.fillRect(playerBX+5,playerBY-8,6,2);
+        ctx.fillRect(playerBX+5,playerBY-6,6,2);
+    }
+
+    function showMsg(text){
+        let m=document.getElementById('msg');
+        m.textContent=text;
+        m.classList.add('show');
+        setTimeout(()=>m.classList.remove('show'),1500);
+    }
+
+    function update(){
+        if(!gameOn)return;
+        let mx=0,my=0;
+        if(keys['ArrowUp']||keys['w']||keys['W'])my=-1;
+        if(keys['ArrowDown']||keys['s']||keys['S'])my=1;
+        if(keys['ArrowLeft']||keys['a']||keys['A'])mx=-1;
+        if(keys['ArrowRight']||keys['d']||keys['D'])mx=1;
+        if(mx||my){
+            let newX=px+mx*.5,newY=py+my*.5;
+            let bx=Math.floor(newX),by=Math.floor(newY);
+            let currentB=world[Math.floor(px)][Math.floor(py)];
+            if(by>=0&&by<ROWS&&bx>=0&&bx<COLS){
+                let targetB=world[bx][by];
+                if(targetB===0||targetB===11||(targetB===9||targetB===10)){
+                    px=newX;py=newY;
+                    currentB=targetB;
+                } else if(targetB!==13){
+                    px=newX;py=newY;
+                }
+            }
+        }
+        if(keys[' ']&&!shiftDown){
+            let bx=Math.floor(px),by=Math.floor(py)+1;
+            if(bx>=0&&bx<COLS&&by>=0&&by<ROWS){
+                let b=world[bx][by];
+                if(b&&b!==0&&b!==13){
+                    let block=BLOCKS[b];
+                    if(block.ore){
+                        let nm=block.name.toLowerCase();
+                        collected[nm]++;
+                        document.getElementById(nm+'C').textContent=collected[nm];
+                        showMsg(block.emj+' Found! '+block.emj);
+                    }
+                    world[bx][by]=0;
+                }
+            }
+            shiftDown=true;
+        }
+        if(!keys[' '])shiftDown=false;
+        depth=Math.max(0,Math.floor((py-8)*2));
+        document.getElementById('depth').textContent=`Depth: ${depth}m ${depth<5?'(Surface)':depth<20?'(Shallow)':depth<40?'(Medium)':'(Deep)'}`;
+        time+=16;
+        let cyc=30000,pos=(time%cyc)/cyc;
+        night=pos>.5;
+        document.getElementById('dayNight').textContent=(night?'🌙 ':'☀️ ')+`Day ${day}`;
+        day=Math.floor(time/cyc)+1;
+        document.body.style.background=night?'#001133':'#1a1a2e';
+    }
+
+    function gameLoop(){
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function startGame(){
+        gameOn=true;
+        document.getElementById('start').style.display='none';
+        generateWorld();
+    }
+
+    document.addEventListener('keydown',e=>{
+        keys[e.key]=true;
+        if(e.key>='1'&&e.key<='4'){selectedTool=parseInt(e.key)-1;e.preventDefault();}
+    });
+    document.addEventListener('keyup',e=>keys[e.key]=false);
+
+    generateWorld();
+    gameLoop();
+    </script>
+</body>
+</html>

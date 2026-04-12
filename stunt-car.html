@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚗 Stunt Car</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #e74c3c; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(231,76,60,0.2); padding: 5px 15px; border-radius: 15px; margin: 0 10px; }
+        canvas { border: 3px solid #e74c3c; border-radius: 10px; background: #87CEEB; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #e74c3c; padding: 3px 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🚗 STUNT CAR</h1>
+    <div class="score-board">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Flips: <strong id="flips">0</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="500" height="350"></canvas>
+    <div class="instructions"><span>←</span><span>→</span> Tilt | <span>↑</span> Accelerate | <span>↓</span> Brake | Do flips for bonus points!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let car = {
+            x: 100,
+            y: 200,
+            vx: 0,
+            vy: 0,
+            angle: 0,
+            va: 0, // angular velocity
+            onGround: false,
+            crashed: false
+        };
+        let score = 0;
+        let flips = 0;
+        let totalRotation = 0;
+        let gameLoop;
+        let ramps = [];
+        let particles = [];
+        
+        function init() {
+            car = { x: 100, y: 200, vx: 0, vy: 0, angle: 0, va: 0, onGround: false, crashed: false };
+            score = 0;
+            flips = 0;
+            totalRotation = 0;
+            ramps = [];
+            particles = [];
+            
+            // Create ramps
+            for (let i = 0; i < 5; i++) {
+                ramps.push({
+                    x: 300 + i * 400,
+                    width: 150,
+                    height: 60 + Math.random() * 40
+                });
+            }
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('flips').textContent = '0';
+        }
+        
+        function drawCar() {
+            ctx.save();
+            ctx.translate(car.x, car.y);
+            ctx.rotate(car.angle);
+            
+            // Car body
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(-30, -15, 60, 25);
+            
+            // Roof
+            ctx.fillStyle = '#c0392b';
+            ctx.fillRect(-15, -30, 30, 18);
+            
+            // Windows
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(-12, -28, 10, 12);
+            ctx.fillRect(2, -28, 10, 12);
+            
+            // Wheels
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath();
+            ctx.arc(-20, 12, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(20, 12, 10, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Wheel details
+            ctx.fillStyle = '#7f8c8d';
+            ctx.beginPath();
+            ctx.arc(-20, 12, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(20, 12, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        function drawRamp(ramp) {
+            // Ramp
+            ctx.fillStyle = '#27ae60';
+            ctx.beginPath();
+            ctx.moveTo(ramp.x, 300);
+            ctx.lineTo(ramp.x + ramp.width, 300 - ramp.height);
+            ctx.lineTo(ramp.x + ramp.width, 300);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Stripe
+            ctx.fillStyle = '#f1c40f';
+            for (let i = 0; i < 5; i++) {
+                ctx.fillRect(ramp.x + i * 30, 290 - i * 12, 15, 10);
+            }
+        }
+        
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+                ctx.globalAlpha = 1;
+                
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2;
+                p.life -= 0.02;
+            });
+            particles = particles.filter(p => p.life > 0);
+        }
+        
+        function draw() {
+            // Sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#98D8C8');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Clouds
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            for (let i = 0; i < 5; i++) {
+                const cx = (i * 150 + car.x * 0.2) % (canvas.width + 200) - 100;
+                ctx.beginPath();
+                ctx.arc(cx, 60 + i * 10, 30, 0, Math.PI * 2);
+                ctx.arc(cx + 30, 55 + i * 10, 25, 0, Math.PI * 2);
+                ctx.arc(cx + 60, 60 + i * 10, 30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Mountains
+            ctx.fillStyle = '#6b8e23';
+            ctx.beginPath();
+            ctx.moveTo(0, 300);
+            for (let i = 0; i <= canvas.width; i += 50) {
+                ctx.lineTo(i, 200 + Math.sin(i * 0.02) * 50);
+            }
+            ctx.lineTo(canvas.width, 300);
+            ctx.fill();
+            
+            // Ground
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, 300, canvas.width, 50);
+            
+            // Ramps
+            ramps.forEach(drawRamp);
+            
+            // Draw car
+            drawCar();
+            drawParticles();
+            
+            // Score display
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 20px Arial';
+            ctx.fillText(`Score: ${score}`, 20, 30);
+            ctx.fillText(`Flips: ${flips}`, 20, 55);
+        }
+        
+        function update() {
+            if (car.crashed) return;
+            
+            // Physics
+            car.vy += 0.5; // Gravity
+            car.x += car.vx;
+            car.y += car.vy;
+            car.angle += car.va;
+            
+            // Air resistance
+            car.va *= 0.99;
+            
+            // Track rotation for flips
+            if (!car.onGround) {
+                totalRotation += car.va;
+            }
+            
+            // Check ground/ramp collision
+            car.onGround = false;
+            
+            // Ground check
+            if (car.y > 260) {
+                car.y = 260;
+                
+                // Landing detection
+                if (!car.onGround && Math.abs(car.angle) > 0.5) {
+                    // Check for crash (bad landing)
+                    if (Math.abs(car.angle) > 1.0) {
+                        car.crashed = true;
+                        createExplosion();
+                        setTimeout(() => {
+                            alert(`💥 CRASH! 💥\n\nScore: ${score}\nFlips: ${flips}\nClick OK to try again!`);
+                            init();
+                        }, 100);
+                        return;
+                    }
+                }
+                
+                // Good landing
+                if (Math.abs(totalRotation) > Math.PI * 1.8) {
+                    const newFlips = Math.floor(Math.abs(totalRotation) / (Math.PI * 2));
+                    if (newFlips > flips) {
+                        flips = newFlips;
+                        score += flips * 500;
+                        document.getElementById('flips').textContent = flips;
+                        document.getElementById('score').textContent = score;
+                    }
+                }
+                
+                car.onGround = true;
+                car.angle *= 0.9; // Straighten
+                car.va *= 0.9;
+                totalRotation = 0;
+                car.vy = 0;
+            }
+            
+            // Ramp collision
+            ramps.forEach(ramp => {
+                if (car.x > ramp.x && car.x < ramp.x + ramp.width) {
+                    const rampY = 300 - (car.x - ramp.x) / ramp.width * ramp.height;
+                    if (car.y > rampY - 20) {
+                        car.y = rampY - 20;
+                        car.onGround = true;
+                        
+                        // Launch off ramp
+                        if (car.vx > 3) {
+                            const launchAngle = -ramp.height / ramp.width;
+                            car.vy = launchAngle * car.vx * 0.8;
+                        }
+                    }
+                }
+            });
+            
+            // Boundary check
+            if (car.x < 0) car.x = 0;
+            if (car.x > canvas.width) {
+                car.x = 0; // Reset to start
+                score += 100;
+                document.getElementById('score').textContent = score;
+            }
+            
+            // Continuous scoring
+            if (car.onGround) {
+                score += Math.floor(car.vx);
+                document.getElementById('score').textContent = score;
+            }
+            
+            // Dust particles
+            if (car.onGround && Math.abs(car.vx) > 2) {
+                if (Math.random() < 0.3) {
+                    particles.push({
+                        x: car.x - 30,
+                        y: car.y + 15,
+                        vx: -car.vx * 0.3 + (Math.random() - 0.5) * 2,
+                        vy: -Math.random() * 3,
+                        size: Math.random() * 4 + 2,
+                        life: 1,
+                        color: '#8B7355'
+                    });
+                }
+            }
+            
+            // Accelerate
+            if (keys.up) {
+                car.vx += 0.3;
+                car.vx = Math.min(car.vx, 15);
+            }
+            
+            // Brake
+            if (keys.down) {
+                car.vx *= 0.95;
+            }
+            
+            // Air control
+            if (!car.onGround) {
+                if (keys.left) car.va -= 0.01;
+                if (keys.right) car.va += 0.01;
+            }
+        }
+        
+        function createExplosion() {
+            for (let i = 0; i < 20; i++) {
+                particles.push({
+                    x: car.x,
+                    y: car.y,
+                    vx: (Math.random() - 0.5) * 15,
+                    vy: (Math.random() - 0.5) * 15,
+                    size: Math.random() * 8 + 4,
+                    life: 1,
+                    color: Math.random() > 0.5 ? '#e74c3c' : '#f1c40f'
+                });
+            }
+        }
+        
+        let keys = { left: false, right: false, up: false, down: false };
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'ArrowLeft') keys.left = true;
+            if (e.code === 'ArrowRight') keys.right = true;
+            if (e.code === 'ArrowUp') { keys.up = true; e.preventDefault(); }
+            if (e.code === 'ArrowDown') keys.down = true;
+        });
+        
+        document.addEventListener('keyup', e => {
+            if (e.code === 'ArrowLeft') keys.left = false;
+            if (e.code === 'ArrowRight') keys.right = false;
+            if (e.code === 'ArrowUp') keys.up = false;
+            if (e.code === 'ArrowDown') keys.down = false;
+        });
+        
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        init();
+        gameLoop();
+    </script>
+</body>
+</html>

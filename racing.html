@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏎️ Racing</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #e74c3c; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(231,76,60,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #e74c3c; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #3498db; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🏎️ RACING</h1>
+    <div class="score-board">
+        <span>Lap: <strong id="lap">1</strong>/3</span>
+        <span>Time: <strong id="time">0</strong>s</span>
+    </div>
+    <canvas id="gameCanvas" width="500" height="600"></canvas>
+    <div class="instructions"><span>↑↓</span> Accelerate/Brake | <span>←→</span> Steer</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let car = { x: 250, y: 500, angle: 0, speed: 0 };
+        let keys = { up: false, down: false, left: false, right: false };
+        let gameLoop;
+        let lap = 1;
+        let startTime = Date.now();
+        let checkpoints = [500, 400, 300, 200, 100];
+        let checkpointIndex = 0;
+        
+        function init() {
+            car = { x: 250, y: 500, angle: 0, speed: 0 };
+            lap = 1;
+            checkpointIndex = 0;
+            startTime = Date.now();
+        }
+        
+        function drawTrack() {
+            // Grass
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Track
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 80;
+            ctx.beginPath();
+            ctx.moveTo(100, 600);
+            ctx.lineTo(100, 100);
+            ctx.lineTo(400, 100);
+            ctx.lineTo(400, 600);
+            ctx.stroke();
+            
+            // Inner grass
+            ctx.strokeStyle = '#27ae60';
+            ctx.lineWidth = 60;
+            ctx.beginPath();
+            ctx.moveTo(100, 600);
+            ctx.lineTo(100, 100);
+            ctx.lineTo(400, 100);
+            ctx.lineTo(400, 600);
+            ctx.stroke();
+            
+            // Track lines
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([20, 20]);
+            ctx.beginPath();
+            ctx.moveTo(100, 600);
+            ctx.lineTo(100, 100);
+            ctx.lineTo(400, 100);
+            ctx.lineTo(400, 600);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Start/Finish line
+            ctx.fillStyle = '#fff';
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 2; j++) {
+                    if ((i + j) % 2 === 0) {
+                        ctx.fillRect(90 + i * 10, 570 + j * 10, 10, 10);
+                    }
+                }
+            }
+            
+            // Checkpoints
+            const cpColors = ['#3498db', '#e74c3c', '#f1c40f', '#9b59b6', '#27ae60'];
+            checkpoints.forEach((y, i) => {
+                if (i === checkpointIndex) {
+                    ctx.fillStyle = cpColors[i] + '60';
+                    ctx.fillRect(100, y - 5, 300, 10);
+                }
+            });
+        }
+        
+        function drawCar() {
+            ctx.save();
+            ctx.translate(car.x, car.y);
+            ctx.rotate(car.angle);
+            
+            // Car body
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(-15, -25, 30, 50);
+            
+            // Windshield
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(-10, -15, 20, 15);
+            
+            // Wheels
+            ctx.fillStyle = '#333';
+            ctx.fillRect(-18, -20, 6, 15);
+            ctx.fillRect(12, -20, 6, 15);
+            ctx.fillRect(-18, 10, 6, 15);
+            ctx.fillRect(12, 10, 6, 15);
+            
+            ctx.restore();
+        }
+        
+        function draw() {
+            drawTrack();
+            drawCar();
+            
+            // Time
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            document.getElementById('time').textContent = elapsed;
+        }
+        
+        function update() {
+            // Acceleration
+            if (keys.up) car.speed += 0.2;
+            if (keys.down) car.speed -= 0.2;
+            
+            car.speed *= 0.98;  // Friction
+            car.speed = Math.max(-3, Math.min(8, car.speed));
+            
+            // Steering
+            if (car.speed !== 0) {
+                if (keys.left) car.angle -= 0.05;
+                if (keys.right) car.angle += 0.05;
+            }
+            
+            // Movement
+            car.x += Math.sin(car.angle) * car.speed;
+            car.y -= Math.cos(car.angle) * car.speed;
+            
+            // Bounds (stay on track)
+            if (car.x < 115) car.x = 115;
+            if (car.x > 385) car.x = 385;
+            if (car.y < 30) car.y = 30;
+            if (car.y > 570) car.y = 570;
+            
+            // Check checkpoints
+            if (checkpointIndex === 0 && car.y < checkpoints[0] && car.y > checkpoints[0] - 20) {
+                checkpointIndex = 1;
+            } else if (checkpointIndex === 1 && car.x > 385 && car.y < 350 && car.y > 150) {
+                checkpointIndex = 2;
+            } else if (checkpointIndex === 2 && car.y < checkpoints[2] && car.y > checkpoints[2] - 20) {
+                checkpointIndex = 3;
+            } else if (checkpointIndex === 3 && car.x < 115 && car.y < 350 && car.y > 150) {
+                checkpointIndex = 4;
+            } else if (checkpointIndex === 4 && car.y > 550) {
+                checkpointIndex = 0;
+                lap++;
+                document.getElementById('lap').textContent = Math.min(lap, 3);
+                
+                if (lap > 3) {
+                    endGame();
+                }
+            }
+        }
+        
+        function endGame() {
+            clearInterval(gameLoop);
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            setTimeout(() => {
+                alert(`🏆 FINISH! 🏆\nTime: ${elapsed} seconds\n\nClick OK to play again!`);
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'ArrowUp') keys.up = true;
+            if (e.code === 'ArrowDown') keys.down = true;
+            if (e.code === 'ArrowLeft') keys.left = true;
+            if (e.code === 'ArrowRight') keys.right = true;
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowUp') keys.up = false;
+            if (e.code === 'ArrowDown') keys.down = false;
+            if (e.code === 'ArrowLeft') keys.left = false;
+            if (e.code === 'ArrowRight') keys.right = false;
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

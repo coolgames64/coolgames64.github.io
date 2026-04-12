@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚽ Soccer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #27ae60; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(39,174,96,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #27ae60; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #27ae60; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>⚽ SOCCER</h1>
+    <div class="score-board">
+        <span>You: <strong id="playerScore">0</strong></span>
+        <span>CPU: <strong id="cpuScore">0</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="500" height="350"></canvas>
+    <div class="instructions">Click on ball to <span>KICK</span> it toward goal!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let ball = { x: 250, y: 280, vx: 0, vy: 0 };
+        let cpu = { x: 250, y: 60 };
+        let player = { x: 250, y: 300 };
+        let playerScore = 0;
+        let cpuScore = 0;
+        let gameLoop;
+        let dragging = false;
+        
+        function init() {
+            ball = { x: 250, y: 280, vx: 0, vy: 0 };
+            cpu = { x: 250, y: 60 };
+            player = { x: 250, y: 300 };
+            
+            document.getElementById('playerScore').textContent = playerScore;
+            document.getElementById('cpuScore').textContent = cpuScore;
+        }
+        
+        function draw() {
+            // Field
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Field pattern
+            ctx.fillStyle = '#229954';
+            for (let i = 0; i < 10; i++) {
+                ctx.fillRect(i * 60, 0, 30, canvas.height);
+            }
+            
+            // Field lines
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
+            
+            // Center circle
+            ctx.beginPath();
+            ctx.arc(250, 175, 50, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Goals
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(30, 130, 10, 90);  // Left goal
+            ctx.fillRect(460, 130, 10, 90);  // Right goal
+            
+            // Goal nets
+            ctx.strokeStyle = '#ccc';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 10; i++) {
+                ctx.beginPath();
+                ctx.moveTo(30, 130 + i * 9);
+                ctx.lineTo(20, 130 + i * 9);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(470, 130 + i * 9);
+                ctx.lineTo(480, 130 + i * 9);
+                ctx.stroke();
+            }
+            
+            // CPU player
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(cpu.x, cpu.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#c0392b';
+            ctx.fillRect(cpu.x - 10, cpu.y + 10, 20, 25);
+            
+            // Player (goalkeeper)
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#2980b9';
+            ctx.fillRect(player.x - 10, player.y + 10, 20, 25);
+            
+            // Ball
+            ctx.fillStyle = '#fff';
+            ctx.shadowColor = '#fff';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Ball pattern
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, 10, 0, Math.PI * 2);
+            ctx.moveTo(ball.x - 10, ball.y);
+            ctx.lineTo(ball.x + 10, ball.y);
+            ctx.stroke();
+        }
+        
+        function update() {
+            // CPU AI
+            if (ball.vy < 0) {  // Ball going up
+                const targetX = ball.x + ball.vx * 3;
+                if (targetX < cpu.x - 10) cpu.x -= 3;
+                else if (targetX > cpu.x + 10) cpu.x += 3;
+            } else {
+                // Return to center
+                if (cpu.x < 245) cpu.x += 2;
+                else if (cpu.x > 255) cpu.x -= 2;
+            }
+            cpu.x = Math.max(50, Math.min(450, cpu.x));
+            
+            // Ball physics
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            ball.vx *= 0.98;
+            ball.vy *= 0.98;
+            
+            // Ball ground friction
+            if (ball.y > 330) {
+                ball.vy *= 0.9;
+                ball.y = 330;
+            }
+            
+            // Wall bounces
+            if (ball.x < 40 || ball.x > 460) {
+                ball.vx *= -0.8;
+                ball.x = ball.x < 40 ? 40 : 460;
+            }
+            
+            // CPU collision
+            const distToCPU = Math.sqrt((ball.x - cpu.x) ** 2 + (ball.y - cpu.y) ** 2);
+            if (distToCPU < 25) {
+                const angle = Math.atan2(ball.y - cpu.y, ball.x - cpu.x);
+                ball.vx = Math.cos(angle) * 8;
+                ball.vy = Math.sin(angle) * 8;
+            }
+            
+            // Player collision (goalkeeper)
+            const distToPlayer = Math.sqrt((ball.x - player.x) ** 2 + (ball.y - player.y) ** 2);
+            if (distToPlayer < 25) {
+                const angle = Math.atan2(ball.y - player.y, ball.x - player.x);
+                ball.vx = Math.cos(angle) * 6;
+                ball.vy = Math.sin(angle) * 6;
+            }
+            
+            // Scoring
+            if (ball.x > 460 && ball.y > 130 && ball.y < 220) {
+                playerScore++;
+                document.getElementById('playerScore').textContent = playerScore;
+                resetBall();
+            }
+            if (ball.x < 40 && ball.y > 130 && ball.y < 220) {
+                cpuScore++;
+                document.getElementById('cpuScore').textContent = cpuScore;
+                resetBall();
+            }
+            
+            // Ball out of bounds
+            if (ball.y > 360 || ball.y < 0) {
+                resetBall();
+            }
+        }
+        
+        function resetBall() {
+            ball = { x: 250, y: 280, vx: 0, vy: 0 };
+        }
+        
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            
+            // Kick ball toward click
+            const dist = Math.sqrt((ball.x - mx) ** 2 + (ball.y - my) ** 2);
+            if (dist < 50) {
+                const angle = Math.atan2(my - ball.y, mx - ball.x);
+                ball.vx = Math.cos(angle) * 10;
+                ball.vy = Math.sin(angle) * 10;
+            }
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

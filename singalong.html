@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎤 Video Game Sing Along! | Cool Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a0a2e 0%, #16213e 50%, #0f0f23 100%);
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
+        }
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 2s infinite;
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        header {
+            text-align: center;
+            padding: 30px 0;
+        }
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #ff6b9d, #c44cff, #6b9dff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(196, 76, 255, 0.5);
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #a0a0c0;
+            font-size: 1.1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 15px;
+            color: #6b9dff;
+            text-decoration: none;
+            padding: 8px 20px;
+            border: 1px solid #6b9dff;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+        .back-link:hover {
+            background: #6b9dff;
+            color: #1a0a2e;
+        }
+        .game-area {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px 0;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .song-select {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        .song-select h2 {
+            color: #ff6b9d;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        .song-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 25px;
+        }
+        .song-btn {
+            background: linear-gradient(145deg, #2a1a4a, #1a1a3a);
+            border: 2px solid #6b9dff;
+            border-radius: 15px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        .song-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(107, 157, 255, 0.3);
+            border-color: #ff6b9d;
+        }
+        .song-btn .icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .song-btn .name {
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        .song-btn .difficulty {
+            color: #a0a0c0;
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+        .play-area {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .now-playing {
+            color: #ff6b9d;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+        .lyrics-container {
+            background: linear-gradient(145deg, #2a1a4a, #1a1a3a);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px 0;
+            min-height: 200px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid #6b9dff;
+        }
+        .lyrics-line {
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            opacity: 0.3;
+            transition: all 0.3s;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .lyrics-line.active {
+            opacity: 1;
+            color: #ff6b9d;
+            transform: scale(1.1);
+            text-shadow: 0 0 20px rgba(255, 107, 157, 0.5);
+        }
+        .bouncing-ball {
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(145deg, #ff6b9d, #c44cff);
+            border-radius: 50%;
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            box-shadow: 0 0 20px rgba(255, 107, 157, 0.8);
+            transition: left 0.1s linear;
+        }
+        .timing-zone {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            width: 60px;
+            height: 40px;
+            border: 3px solid #ffd700;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #ffd700;
+            font-size: 1.2rem;
+        }
+        .timing-zone::before {
+            content: "★";
+            position: absolute;
+            left: -25px;
+            font-size: 1.5rem;
+        }
+        .score-display {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            margin: 20px 0;
+        }
+        .score-label {
+            color: #a0a0c0;
+            font-size: 1rem;
+        }
+        .rating {
+            font-size: 2rem;
+            margin: 15px 0;
+        }
+        .rating-text {
+            color: #ff6b9d;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        .tap-btn {
+            background: linear-gradient(145deg, #ff6b9d, #c44cff);
+            border: none;
+            color: white;
+            padding: 20px 60px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 10px 30px rgba(255, 107, 157, 0.4);
+        }
+        .tap-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(255, 107, 157, 0.5);
+        }
+        .tap-btn:active {
+            transform: translateY(0) scale(0.95);
+        }
+        .tap-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .instructions {
+            color: #a0a0c0;
+            font-size: 1rem;
+            margin-top: 15px;
+        }
+        .perfect-count, .miss-count {
+            display: inline-block;
+            margin: 0 20px;
+            font-size: 1.2rem;
+        }
+        .perfect-count { color: #ffd700; }
+        .miss-count { color: #ff6b6b; }
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b9d, #c44cff);
+            width: 0%;
+            transition: width 0.1s;
+        }
+        .feedback {
+            font-size: 2rem;
+            font-weight: bold;
+            height: 50px;
+            margin: 10px 0;
+        }
+        .feedback.perfect {
+            color: #ffd700;
+            animation: pop 0.3s;
+        }
+        .feedback.good {
+            color: #6bff6b;
+            animation: pop 0.3s;
+        }
+        .feedback.miss {
+            color: #ff6b6b;
+            animation: shake 0.3s;
+        }
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .result-screen {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        .result-title {
+            font-size: 2.5rem;
+            color: #ff6b9d;
+            margin-bottom: 20px;
+        }
+        .final-score {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+        .final-rating {
+            font-size: 3rem;
+            margin: 20px 0;
+        }
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        .stat {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #6b9dff;
+        }
+        .stat-label {
+            color: #a0a0c0;
+            font-size: 0.9rem;
+        }
+        .restart-btn {
+            background: linear-gradient(145deg, #6b9dff, #c44cff);
+            border: none;
+            color: white;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+        }
+        .restart-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(107, 157, 255, 0.4);
+        }
+        .back-btn {
+            background: transparent;
+            border: 2px solid #6b9dff;
+            color: #6b9dff;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+        }
+        .back-btn:hover {
+            background: #6b9dff;
+            color: #1a0a2e;
+        }
+        .volume-control {
+            margin: 20px 0;
+        }
+        .volume-label {
+            color: #a0a0c0;
+            margin-bottom: 10px;
+        }
+        input[type="range"] {
+            width: 200px;
+            cursor: pointer;
+        }
+        .webcam-hint {
+            background: rgba(255, 107, 157, 0.2);
+            border: 1px solid #ff6b9d;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            color: #ff6b9d;
+        }
+    </style>
+</head>
+<body>
+    <div class="stars" id="stars"></div>
+    
+    <div class="container">
+        <header>
+            <h1>🎤 Video Game Sing Along!</h1>
+            <p class="subtitle">Sing your heart out! No microphone needed!</p>
+            <a href="index.html" class="back-link">← Back to Cool Games</a>
+        </header>
+        
+        <div class="game-area">
+            <!-- Song Selection -->
+            <div class="song-select" id="songSelect">
+                <h2>🎮 Choose Your Song</h2>
+                <p style="color: #a0a0c0; margin-bottom: 15px;">Press SPACEBAR or TAP when the ball reaches the star!</p>
+                <div class="webcam-hint">
+                    💡 <strong>No microphone needed!</strong> Just sing along out loud and tap in time with the bouncing ball!
+                </div>
+                <div class="song-grid">
+                    <button class="song-btn" onclick="selectSong(0)">
+                        <div class="icon">⛏️</div>
+                        <div class="name">Minecraft Theme</div>
+                        <div class="difficulty">Easy • Classic</div>
+                    </button>
+                    <button class="song-btn" onclick="selectSong(1)">
+                        <div class="icon">🏁</div>
+                        <div class="name">Mario Kart Race</div>
+                        <div class="difficulty">Medium • Fast!</div>
+                    </button>
+                    <button class="song-btn" onclick="selectSong(2)">
+                        <div class="icon">🔮</div>
+                        <div class="name">Pokemon Battle</div>
+                        <div class="difficulty">Medium • Epic</div>
+                    </button>
+                    <button class="song-btn" onclick="selectSong(3)">
+                        <div class="icon">🌟</div>
+                        <div class="name">Among Us Theme</div>
+                        <div class="difficulty">Easy • Catchy</div>
+                    </button>
+                    <button class="song-btn" onclick="selectSong(4)">
+                        <div class="icon">🏃</div>
+                        <div class="name">Temple Run Chase</div>
+                        <div class="difficulty">Hard • Intense</div>
+                    </button>
+                    <button class="song-btn" onclick="selectSong(5)">
+                        <div class="icon">🎵</div>
+                        <div class="name">8-Bit Adventure</div>
+                        <div class="difficulty">Easy • Fun</div>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Play Area -->
+            <div class="play-area" id="playArea">
+                <div class="now-playing" id="nowPlaying">Now Playing: Minecraft Theme</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="lyrics-container" id="lyricsContainer">
+                    <div class="lyrics-line" id="lyricsLine">Press SPACE or TAP to start!</div>
+                    <div class="bouncing-ball" id="bouncingBall"></div>
+                    <div class="timing-zone" id="timingZone">★</div>
+                </div>
+                <div class="feedback" id="feedback"></div>
+                <div class="score-display">
+                    Score: <span id="score">0</span>
+                </div>
+                <div class="stats">
+                    <div class="perfect-count">✨ Perfect: <span id="perfectCount">0</span></div>
+                    <div class="miss-count">❌ Miss: <span id="missCount">0</span></div>
+                </div>
+                <div class="controls">
+                    <button class="tap-btn" id="tapBtn" onmousedown="handleTap()" ontouchstart="handleTap()">🎤 SING!</button>
+                </div>
+                <p class="instructions">
+                    Press <strong>SPACEBAR</strong> or <strong>TAP</strong> when the ball reaches the star!
+                </p>
+                <div class="volume-control">
+                    <div class="volume-label">🎵 Music Volume</div>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="70" oninput="setVolume(this.value)">
+                </div>
+            </div>
+            
+            <!-- Result Screen -->
+            <div class="result-screen" id="resultScreen">
+                <div class="result-title">🎉 Song Complete!</div>
+                <div class="final-score" id="finalScore">0</div>
+                <div class="final-rating" id="finalRating">⭐⭐⭐⭐⭐</div>
+                <div class="rating-text" id="ratingText">Amazing Singer!</div>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value" id="finalPerfect">0</div>
+                        <div class="stat-label">✨ Perfect</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="finalGood">0</div>
+                        <div class="stat-label">👍 Good</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="finalMiss">0</div>
+                        <div class="stat-label">❌ Miss</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="maxCombo">0</div>
+                        <div class="stat-label">🔥 Max Combo</div>
+                    </div>
+                </div>
+                <button class="restart-btn" onclick="restartGame()">🔄 Play Again</button>
+                <button class="back-btn" onclick="goBack()">🎵 Change Song</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Create stars background
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            for (let i = 0; i < 50; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.width = Math.random() * 3 + 1 + 'px';
+                star.style.height = star.style.width;
+                star.style.animationDelay = Math.random() * 2 + 's';
+                starsContainer.appendChild(star);
+            }
+        }
+        createStars();
+        
+        // Song data with lyrics and timing (in seconds)
+        const songs = [
+            {
+                name: "Minecraft Theme",
+                icon: "⛏️",
+                lyrics: [
+                    { time: 0, text: "This song is about a boy" },
+                    { time: 2, text: "In a world, blocky and square" },
+                    { time: 4, text: "Mining by daylight" },
+                    { time: 6, text: "And crafting all his gear" },
+                    { time: 8, text: "He wakes up in the morning" },
+                    { time: 10, text: "And he starts to explore" },
+                    { time: 12, text: "A world of possibilities" },
+                    { time: 14, text: "With so much more in store!" }
+                ],
+                duration: 18
+            },
+            {
+                name: "Mario Kart Race",
+                icon: "🏁",
+                lyrics: [
+                    { time: 0, text: "Gotta go fast!" },
+                    { time: 2, text: "Mario Kart racing!" },
+                    { time: 4, text: "Boost and drift!" },
+                    { time: 6, text: "Blue shell incoming!" },
+                    { time: 8, text: "Golden mushroom ready!" },
+                    { time: 10, text: "Red shell on the left!" },
+                    { time: 12, text: "Drift around the corner!" },
+                    { time: 14, text: "First place, here I come!" }
+                ],
+                duration: 18
+            },
+            {
+                name: "Pokemon Battle",
+                icon: "🔮",
+                lyrics: [
+                    { time: 0, text: "Gotta catch em all!" },
+                    { time: 2, text: "Pikachu, I choose you!" },
+                    { time: 4, text: "Thunder bolt attack!" },
+                    { time: 6, text: "Pokemon trainer believes!" },
+                    { time: 8, text: "Gotta be the best!" },
+                    { time: 10, text: "Trainer on the way!" },
+                    { time: 12, text: "Evolution power up!" },
+                    { time: 14, text: "Champion today!" }
+                ],
+                duration: 18
+            },
+            {
+                name: "Among Us Theme",
+                icon: "🌟",
+                lyrics: [
+                    { time: 0, text: "Among us, among us!" },
+                    { time: 2, text: "Working together!" },
+                    { time: 4, text: "Red is not sus!" },
+                    { time: 6, text: "Let's do tasks better!" },
+                    { time: 8, text: "Vent cleaning time!" },
+                    { time: 10, text: "Electrical wires done!" },
+                    { time: 12, text: "Medbay scanning!" },
+                    { time: 14, text: "Emergency meeting!" }
+                ],
+                duration: 18
+            },
+            {
+                name: "Temple Run Chase",
+                icon: "🏃",
+                lyrics: [
+                    { time: 0, text: "Run, run, run!" },
+                    { time: 2, text: "The monkeys are chasing!" },
+                    { time: 4, text: "Jump over the logs!" },
+                    { time: 6, text: "Slide under the branches!" },
+                    { time: 8, text: "Coin collection time!" },
+                    { time: 10, text: "Power up activated!" },
+                    { time: 12, text: "Mystery box opened!" },
+                    { time: 14, text: "Never look back!" }
+                ],
+                duration: 18
+            },
+            {
+                name: "8-Bit Adventure",
+                icon: "🎵",
+                lyrics: [
+                    { time: 0, text: "Level one starting!" },
+                    { time: 2, text: "Jump on the platform!" },
+                    { time: 4, text: "Collect all the coins!" },
+                    { time: 6, text: "Extra life bonus!" },
+                    { time: 8, text: "Watch out for gaps!" },
+                    { time: 10, text: "Boss battle ahead!" },
+                    { time: 12, text: "Power strike ready!" },
+                    { time: 14, text: "Level complete!" }
+                ],
+                duration: 18
+            }
+        ];
+        
+        // Game state
+        let currentSong = null;
+        let currentSongIndex = -1;
+        let score = 0;
+        let perfectCount = 0;
+        let goodCount = 0;
+        let missCount = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let gameInterval = null;
+        let gameStartTime = 0;
+        let isPlaying = false;
+        let audioContext = null;
+        let oscillator = null;
+        let gainNode = null;
+        let currentLyricIndex = 0;
+        let lastTapTime = 0;
+        
+        // Audio context for music
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+        }
+        
+        // Simple melody player
+        function playMelody(songIndex) {
+            initAudio();
+            
+            const baseFreqs = [
+                [261, 293, 329, 349, 392, 440, 493, 523], // C major scale - Minecraft
+                [392, 440, 494, 523, 587, 659, 698, 784],  // G major - Mario Kart
+                [330, 349, 392, 440, 494, 523, 587, 659],  // E major - Pokemon
+                [440, 494, 523, 587, 659, 698, 784, 880],  // A major - Among Us
+                [523, 587, 659, 698, 784, 880, 988, 1046],// C# major - Temple Run
+                [262, 294, 330, 350, 392, 440, 494, 523]    // C major - 8-Bit
+            ];
+            
+            const freqs = baseFreqs[songIndex];
+            let noteIndex = 0;
+            
+            if (oscillator) {
+                oscillator.stop();
+            }
+            
+            oscillator = audioContext.createOscillator();
+            gainNode = audioContext.createGain();
+            
+            oscillator.type = 'square';
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            gainNode.gain.value = document.getElementById('volumeSlider').value / 200;
+            
+            oscillator.start();
+            
+            // Play notes based on lyrics timing
+            const song = songs[songIndex];
+            song.lyrics.forEach((lyric, i) => {
+                setTimeout(() => {
+                    if (isPlaying && oscillator) {
+                        oscillator.frequency.value = freqs[i % freqs.length];
+                    }
+                }, lyric.time * 1000);
+            });
+        }
+        
+        function stopMelody() {
+            if (oscillator) {
+                oscillator.stop();
+                oscillator = null;
+            }
+        }
+        
+        function setVolume(value) {
+            if (gainNode) {
+                gainNode.gain.value = value / 200;
+            }
+        }
+        
+        // Song selection
+        function selectSong(index) {
+            currentSongIndex = index;
+            currentSong = songs[index];
+            
+            // Reset score
+            score = 0;
+            perfectCount = 0;
+            goodCount = 0;
+            missCount = 0;
+            combo = 0;
+            maxCombo = 0;
+            currentLyricIndex = 0;
+            
+            // Update UI
+            document.getElementById('score').textContent = '0';
+            document.getElementById('perfectCount').textContent = '0';
+            document.getElementById('missCount').textContent = '0';
+            document.getElementById('feedback').textContent = '';
+            document.getElementById('feedback').className = 'feedback';
+            document.getElementById('nowPlaying').textContent = `Now Playing: ${currentSong.icon} ${currentSong.name}`;
+            document.getElementById('lyricsLine').textContent = 'Press SPACE or TAP to start!';
+            document.getElementById('lyricsLine').className = 'lyrics-line';
+            
+            // Show play area
+            document.getElementById('songSelect').style.display = 'none';
+            document.getElementById('playArea').style.display = 'block';
+            document.getElementById('resultScreen').style.display = 'none';
+        }
+        
+        // Start game
+        function startGame() {
+            isPlaying = true;
+            gameStartTime = Date.now();
+            currentLyricIndex = 0;
+            
+            // Start melody
+            playMelody(currentSongIndex);
+            
+            // Game loop
+            gameInterval = setInterval(updateGame, 50);
+            
+            // Song end
+            setTimeout(endGame, (currentSong.duration + 1) * 1000);
+        }
+        
+        // Update game state
+        function updateGame() {
+            if (!isPlaying) return;
+            
+            const elapsed = (Date.now() - gameStartTime) / 1000;
+            const duration = currentSong.duration;
+            
+            // Update progress bar
+            const progress = (elapsed / duration) * 100;
+            document.getElementById('progressFill').style.width = Math.min(progress, 100) + '%';
+            
+            // Update bouncing ball position
+            const ballPos = (elapsed / duration) * 70 + 15; // 15% to 85%
+            document.getElementById('bouncingBall').style.left = ballPos + '%';
+            
+            // Update lyrics
+            if (currentLyricIndex < currentSong.lyrics.length) {
+                const lyric = currentSong.lyrics[currentLyricIndex];
+                if (elapsed >= lyric.time) {
+                    document.getElementById('lyricsLine').textContent = lyric.text;
+                    document.getElementById('lyricsLine').className = 'lyrics-line active';
+                    currentLyricIndex++;
+                }
+            }
+            
+            // Auto-miss after timing window passes
+            if (currentLyricIndex > 0 && currentLyricIndex <= currentSong.lyrics.length) {
+                const prevLyric = currentSong.lyrics[currentLyricIndex - 1];
+                if (elapsed > prevLyric.time + 1.5) {
+                    // Missed this lyric
+                    missCount++;
+                    combo = 0;
+                    document.getElementById('missCount').textContent = missCount;
+                    document.getElementById('feedback').textContent = '❌ Miss!';
+                    document.getElementById('feedback').className = 'feedback miss';
+                    currentLyricIndex++;
+                }
+            }
+        }
+        
+        // Handle tap/spacebar
+        function handleTap() {
+            if (!isPlaying && !document.getElementById('resultScreen').style.display) {
+                startGame();
+                return;
+            }
+            if (!isPlaying) return;
+            
+            const elapsed = (Date.now() - gameStartTime) / 1000;
+            
+            // Find the current lyric we should be singing
+            let targetLyric = null;
+            let lyricIndex = -1;
+            
+            for (let i = 0; i < currentSong.lyrics.length; i++) {
+                if (Math.abs(elapsed - currentSong.lyrics[i].time) < 1.0) {
+                    targetLyric = currentSong.lyrics[i];
+                    lyricIndex = i;
+                    break;
+                }
+            }
+            
+            if (targetLyric) {
+                const timingDiff = Math.abs(elapsed - targetLyric.time);
+                
+                if (timingDiff < 0.2) {
+                    // Perfect!
+                    perfectCount++;
+                    combo++;
+                    score += 100 * combo;
+                    document.getElementById('feedback').textContent = '✨ PERFECT!';
+                    document.getElementById('feedback').className = 'feedback perfect';
+                } else if (timingDiff < 0.5) {
+                    // Good
+                    goodCount++;
+                    combo++;
+                    score += 50 * combo;
+                    document.getElementById('feedback').textContent = '👍 Good!';
+                    document.getElementById('feedback').className = 'feedback good';
+                } else {
+                    // Miss (too early or late)
+                    missCount++;
+                    combo = 0;
+                    document.getElementById('feedback').textContent = '❌ Off beat!';
+                    document.getElementById('feedback').className = 'feedback miss';
+                }
+                
+                // Update display
+                document.getElementById('score').textContent = score;
+                document.getElementById('perfectCount').textContent = perfectCount;
+                document.getElementById('missCount').textContent = missCount;
+                
+                if (combo > maxCombo) maxCombo = combo;
+            } else {
+                // No lyric nearby - just give generic feedback
+                document.getElementById('feedback').textContent = '🎤 Sing!';
+                document.getElementById('feedback').className = 'feedback good';
+            }
+            
+            // Visual feedback on button
+            const btn = document.getElementById('tapBtn');
+            btn.style.transform = 'scale(0.9)';
+            setTimeout(() => btn.style.transform = '', 100);
+        }
+        
+        // End game
+        function endGame() {
+            isPlaying = false;
+            stopMelody();
+            clearInterval(gameInterval);
+            
+            // Show result screen
+            document.getElementById('playArea').style.display = 'none';
+            document.getElementById('resultScreen').style.display = 'block';
+            
+            // Calculate final score
+            const totalNotes = currentSong.lyrics.length;
+            const accuracy = (perfectCount + goodCount * 0.5) / totalNotes;
+            
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalPerfect').textContent = perfectCount;
+            document.getElementById('finalGood').textContent = goodCount;
+            document.getElementById('finalMiss').textContent = missCount;
+            document.getElementById('maxCombo').textContent = maxCombo + 'x';
+            
+            // Rating
+            let rating, rating            
+            // Rating based on accuracy
+            let ratingText;
+            if (accuracy >= 0.9) {
+                ratingText = '⭐⭐⭐⭐⭐';
+                document.getElementById('ratingText').textContent = '🎤 PERFECT SINGER! 🎤';
+            } else if (accuracy >= 0.7) {
+                ratingText = '⭐⭐⭐⭐';
+                document.getElementById('ratingText').textContent = '🌟 Amazing! 🌟';
+            } else if (accuracy >= 0.5) {
+                ratingText = '⭐⭐⭐';
+                document.getElementById('ratingText').textContent = '👍 Great Job! 👍';
+            } else if (accuracy >= 0.3) {
+                ratingText = '⭐⭐';
+                document.getElementById('ratingText').textContent = '🎤 Keep Practicing! 🎤';
+            } else {
+                ratingText = '⭐';
+                document.getElementById('ratingText').textContent = '🎵 Try Again! 🎵';
+            }
+            document.getElementById('finalRating').textContent = ratingText;
+        }
+        
+        // Restart game with same song
+        function restartGame() {
+            selectSong(currentSongIndex);
+            startGame();
+        }
+        
+        // Go back to song selection
+        function goBack() {
+            isPlaying = false;
+            stopMelody();
+            clearInterval(gameInterval);
+            document.getElementById('songSelect').style.display = 'block';
+            document.getElementById('playArea').style.display = 'none';
+            document.getElementById('resultScreen').style.display = 'none';
+        }
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                handleTap();
+            }
+        });
+        
+        // Prevent double-tap zoom on mobile
+        document.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            handleTap();
+        }, { passive: false });
+    </script>
+</body>
+</html>

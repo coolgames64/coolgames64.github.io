@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🟢 Simon Says</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .status { font-size: 1.5rem; margin-bottom: 15px; height: 30px; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(255,255,255,0.1); padding: 5px 15px; border-radius: 15px; }
+        canvas { border-radius: 10px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🟢 SIMON SAYS</h1>
+    <div class="status" id="status">Watch the pattern!</div>
+    <div class="score-board">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Level: <strong id="level">1</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="300" height="300"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const COLORS = ['#e74c3c', '#3498db', '#27ae60', '#f1c40f'];
+        const SIZE = 130;
+        
+        let sequence = [];
+        let playerSequence = [];
+        let score = 0;
+        let level = 1;
+        let showing = false;
+        let playerTurn = false;
+        let gameLoop;
+        let flashIndex = 0;
+        
+        function init() {
+            sequence = [];
+            playerSequence = [];
+            score = 0;
+            level = 1;
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('level').textContent = '1';
+            
+            addToSequence();
+        }
+        
+        function drawButton(index, lit = false) {
+            const x = (index % 2) * SIZE;
+            const y = Math.floor(index / 2) * SIZE;
+            
+            ctx.fillStyle = lit ? COLORS[index] : COLORS[index] + '60';
+            ctx.shadowColor = lit ? COLORS[index] : 'transparent';
+            ctx.shadowBlur = lit ? 30 : 0;
+            ctx.fillRect(x, y, SIZE, SIZE);
+            ctx.shadowBlur = 0;
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = 0; i < 4; i++) {
+                drawButton(i, false);
+            }
+        }
+        
+        function flashButton(index) {
+            return new Promise(resolve => {
+                let count = 0;
+                let interval = setInterval(() => {
+                    drawButton(index, count % 2 === 0);
+                    count++;
+                    if (count >= 4) {
+                        clearInterval(interval);
+                        drawButton(index, false);
+                        resolve();
+                    }
+                }, 200);
+            });
+        }
+        
+        async function showSequence() {
+            showing = true;
+            playerTurn = false;
+            document.getElementById('status').textContent = 'Watch...';
+            
+            await new Promise(r => setTimeout(r, 500));
+            
+            for (let i = 0; i < sequence.length; i++) {
+                await flashButton(sequence[i]);
+                await new Promise(r => setTimeout(r, 200));
+            }
+            
+            showing = false;
+            playerTurn = true;
+            playerSequence = [];
+            document.getElementById('status').textContent = 'Your turn!';
+        }
+        
+        function addToSequence() {
+            sequence.push(Math.floor(Math.random() * 4));
+            setTimeout(showSequence, 500);
+        }
+        
+        function handleClick(e) {
+            if (!playerTurn || showing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const index = Math.floor(x / SIZE) + Math.floor(y / SIZE) * 2;
+            
+            if (index < 0 || index > 3) return;
+            
+            playerSequence.push(index);
+            flashButton(index);
+            
+            // Check if correct
+            const i = playerSequence.length - 1;
+            if (playerSequence[i] !== sequence[i]) {
+                // Wrong!
+                document.getElementById('status').textContent = 'WRONG! Game Over!';
+                playerTurn = false;
+                setTimeout(() => {
+                    alert(`Game Over!\nScore: ${score}\nLevel: ${level}\n\nClick OK to play again!`);
+                    init();
+                }, 500);
+                return;
+            }
+            
+            // Correct!
+            if (playerSequence.length === sequence.length) {
+                score += level * 10;
+                level++;
+                document.getElementById('score').textContent = score;
+                document.getElementById('level').textContent = level;
+                document.getElementById('status').textContent = 'Correct!';
+                playerTurn = false;
+                setTimeout(addToSequence, 1000);
+            }
+        }
+        
+        canvas.addEventListener('click', handleClick);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            handleClick({ clientX: touch.clientX, clientY: touch.clientY });
+        });
+        
+        init();
+        draw();
+    </script>
+</body>
+</html>

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏹 Archery</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(180deg, #87CEEB 0%, #98D8C8 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: #333;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(255,255,255,0.5); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #8B4513; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #555; font-size: 1rem; }
+        .instructions span { background: #8B4513; color: white; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: #8B4513; color: white; border: none; padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: #6B3E0A; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🏹 ARCHERY</h1>
+    <div class="score-board">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Arrows: <strong id="arrows">10</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="500" height="400"></canvas>
+    <div class="instructions"><span>DRAG & RELEASE</span> to shoot! Aim for the center!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let arrow = { x: 80, y: 200, vx: 0, vy: 0, shot: false, landed: false };
+        let arrowsLeft = 10;
+        let score = 0;
+        let gameLoop;
+        let dragging = false;
+        let dragStart = { x: 0, y: 0 };
+        const targetX = 420;
+        const targetY = 200;
+        
+        function init() {
+            arrow = { x: 80, y: 200, vx: 0, vy: 0, shot: false, landed: false };
+            arrowsLeft = 10;
+            score = 0;
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('arrows').textContent = '10';
+        }
+        
+        function drawTarget() {
+            // Target stand
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(targetX - 10, targetY + 50, 20, 150);
+            
+            // Target
+            const colors = ['#fff', '#e74c3c', '#e74c3c', '#f1c40f', '#f1c40f', '#27ae60', '#27ae60', '#333'];
+            const sizes = [50, 44, 38, 32, 26, 20, 14, 8];
+            
+            colors.forEach((color, i) => {
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(targetX, targetY, sizes[i], 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
+        function drawBow() {
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.arc(arrow.x, arrow.y, 30, -Math.PI * 0.4, Math.PI * 0.4);
+            ctx.stroke();
+            
+            // String
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(arrow.x + Math.cos(-Math.PI * 0.4) * 30, arrow.y + Math.sin(-Math.PI * 0.4) * 30);
+            ctx.lineTo(arrow.x, arrow.y);
+            ctx.lineTo(arrow.x + Math.cos(Math.PI * 0.4) * 30, arrow.y + Math.sin(Math.PI * 0.4) * 30);
+            ctx.stroke();
+        }
+        
+        function drawArrow() {
+            if (arrow.landed) {
+                // Draw embedded arrow
+                ctx.save();
+                ctx.translate(arrow.x, arrow.y);
+                ctx.rotate(arrow.angle);
+                
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(-30, -2, 30, 4);
+                
+                ctx.fillStyle = '#888';
+                ctx.beginPath();
+                ctx.moveTo(5, -5);
+                ctx.lineTo(15, 0);
+                ctx.lineTo(5, 5);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.restore();
+            } else {
+                // Draw bow and ready arrow
+                drawBow();
+                
+                ctx.fillStyle = '#8B4513';
+                ctx.save();
+                ctx.translate(arrow.x, arrow.y);
+                if (dragging) {
+                    const angle = Math.atan2(dragStart.y - arrow.y, dragStart.x - arrow.x);
+                    ctx.rotate(angle);
+                }
+                ctx.fillRect(-5, -2, 40, 4);
+                ctx.fillStyle = '#888';
+                ctx.beginPath();
+                ctx.moveTo(30, -5);
+                ctx.lineTo(40, 0);
+                ctx.lineTo(30, 5);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+                
+                // Trajectory
+                if (dragging) {
+                    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    let tx = arrow.x;
+                    let ty = arrow.y;
+                    let tvx = (dragStart.x - arrow.x) * 0.2;
+                    let tvy = (dragStart.y - arrow.y) * 0.2;
+                    ctx.moveTo(tx, ty);
+                    for (let i = 0; i < 20; i++) {
+                        tx += tvx;
+                        ty += tvy;
+                        tvy += 0.1;
+                        ctx.lineTo(tx, ty);
+                    }
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+        }
+        
+        function draw() {
+            // Sky
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Ground
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, 350, canvas.width, 50);
+            
+            // Grass
+            ctx.fillStyle = '#229954';
+            for (let i = 0; i < 50; i++) {
+                ctx.fillRect(i * 12, 345, 8, 10);
+            }
+            
+            drawTarget();
+            drawArrow();
+            
+            if (arrow.landed) {
+                // Show score
+                const dist = Math.sqrt((arrow.x - targetX) ** 2 + (arrow.y - targetY) ** 2);
+                let points = 0;
+                if (dist < 8) points = 10;
+                else if (dist < 14) points = 9;
+                else if (dist < 20) points = 8;
+                else if (dist < 26) points = 7;
+                else if (dist < 32) points = 6;
+                else if (dist < 38) points = 5;
+                else if (dist < 44) points = 4;
+                else if (dist < 50) points = 3;
+                else points = 1;
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 48px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`+${points}`, targetX, targetY - 70);
+            }
+        }
+        
+        function update() {
+            if (!arrow.shot || arrow.landed) return;
+            
+            arrow.x += arrow.vx;
+            arrow.y += arrow.vy;
+            arrow.vy += 0.15;  // Gravity
+            
+            // Hit target
+            const dist = Math.sqrt((arrow.x - targetX) ** 2 + (arrow.y - targetY) ** 2);
+            if (dist < 50 && arrow.x > targetX) {
+                arrow.landed = true;
+                arrow.angle = Math.atan2(arrow.vy, arrow.vx);
+                
+                // Score
+                let points = 0;
+                if (dist < 8) points = 10;
+                else if (dist < 14) points = 9;
+                else if (dist < 20) points = 8;
+                else if (dist < 26) points = 7;
+                else if (dist < 32) points = 6;
+                else if (dist < 38) points = 5;
+                else if (dist < 44) points = 4;
+                else if (dist < 50) points = 3;
+                else points = 1;
+                
+                score += points;
+                document.getElementById('score').textContent = score;
+                
+                // Reset after delay
+                setTimeout(resetArrow, 1000);
+            }
+            
+            // Off screen or hit ground
+            if (arrow.y > 350 || arrow.x > 500) {
+                setTimeout(resetArrow, 500);
+            }
+        }
+        
+        function resetArrow() {
+            if (arrowsLeft <= 0) {
+                endGame();
+                return;
+            }
+            arrow = { x: 80, y: 200 + (Math.random() - 0.5) * 100, vx: 0, vy: 0, shot: false, landed: false };
+        }
+        
+        function endGame() {
+            clearInterval(gameLoop);
+            setTimeout(() => {
+                alert(`Game Over!\nFinal Score: ${score}\nArrows Left: ${arrowsLeft}\n\nClick OK to play again!`);
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        canvas.addEventListener('mousedown', (e) => {
+            if (arrow.shot || arrowsLeft <= 0) return;
+            const rect = canvas.getBoundingClientRect();
+            dragStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            dragging = true;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            const rect = canvas.getBoundingClientRect();
+            arrow.x = e.clientX - rect.left;
+            arrow.y = e.clientY - rect.top;
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            if (!dragging) return;
+            dragging = false;
+            
+            arrow.vx = (dragStart.x - arrow.x) * 0.2;
+            arrow.vy = (dragStart.y - arrow.y) * 0.2;
+            
+            if (Math.abs(arrow.vx) > 1 || Math.abs(arrow.vy) > 1) {
+                arrow.shot = true;
+                arrowsLeft--;
+                document.getElementById('arrows').textContent = arrowsLeft;
+            }
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

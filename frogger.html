@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐸 Frogger</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #27ae60; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(39,174,96,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #27ae60; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #27ae60; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🐸 FROGGER</h1>
+    <div class="score-board">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Lives: <strong id="lives">3</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="400" height="450"></canvas>
+    <div class="instructions"><span>↑ ↓ ← →</span> to move!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let frog = { x: 200, y: 400, lives: 3, score: 0 };
+        let cars = [];
+        let logs = [];
+        let gameLoop;
+        let won = false;
+        
+        function init() {
+            frog = { x: 200, y: 400, lives: 3, score: 0 };
+            cars = [];
+            logs = [];
+            won = false;
+            
+            // Create cars
+            for (let i = 0; i < 4; i++) {
+                cars.push({ x: i * 120, y: 300, speed: 2 + Math.random() * 2, dir: 1, color: '#e74c3c' });
+                cars.push({ x: 50 + i * 100, y: 200, speed: 3 + Math.random() * 2, dir: -1, color: '#3498db' });
+            }
+            
+            // Create logs
+            for (let i = 0; i < 3; i++) {
+                logs.push({ x: i * 150, y: 100, speed: 2, size: 80 });
+                logs.push({ x: 100 + i * 120, y: 50, speed: -2.5, size: 100 });
+            }
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('lives').textContent = '3';
+        }
+        
+        function draw() {
+            // Water (top half)
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(0, 0, canvas.width, 200);
+            
+            // Road (bottom half)
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 200, canvas.width, 250);
+            
+            // Safe zones
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, 0, canvas.width, 30);
+            ctx.fillRect(0, 420, canvas.width, 30);
+            
+            // Road markings
+            ctx.strokeStyle = '#fff';
+            ctx.setLineDash([20, 20]);
+            ctx.beginPath();
+            ctx.moveTo(0, 250);
+            ctx.lineTo(canvas.width, 250);
+            ctx.moveTo(0, 350);
+            ctx.lineTo(canvas.width, 350);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Cars
+            cars.forEach(car => {
+                ctx.fillStyle = car.color;
+                ctx.fillRect(car.x - 20, car.y - 15, 40, 30);
+                ctx.fillStyle = '#333';
+                ctx.beginPath();
+                ctx.arc(car.x - 12, car.y + 12, 6, 0, Math.PI * 2);
+                ctx.arc(car.x + 12, car.y + 12, 6, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // Logs
+            logs.forEach(log => {
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(log.x, log.y - 15, log.size, 30);
+                ctx.fillStyle = '#654321';
+                for (let i = 0; i < log.size; i += 20) {
+                    ctx.fillRect(log.x + i, log.y - 15, 2, 30);
+                }
+            });
+            
+            // Frog
+            ctx.fillStyle = '#27ae60';
+            ctx.beginPath();
+            ctx.arc(frog.x, frog.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#229954';
+            ctx.beginPath();
+            ctx.arc(frog.x - 5, frog.y - 5, 4, 0, Math.PI * 2);
+            ctx.arc(frog.x + 5, frog.y - 5, 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function update() {
+            // Move cars
+            cars.forEach(car => {
+                car.x += car.speed * car.dir;
+                if (car.x > canvas.width + 30) car.x = -30;
+                if (car.x < -30) car.x = canvas.width + 30;
+            });
+            
+            // Move logs
+            logs.forEach(log => {
+                log.x += log.speed;
+                if (log.x > canvas.width + 120) log.x = -120;
+                if (log.x < -120) log.x = canvas.width + 120;
+            });
+            
+            // Check car collision
+            cars.forEach(car => {
+                if (Math.abs(frog.x - car.x) < 25 && Math.abs(frog.y - car.y) < 20) {
+                    frog.lives--;
+                    document.getElementById('lives').textContent = frog.lives;
+                    frog.x = 200;
+                    frog.y = 400;
+                    
+                    if (frog.lives <= 0) {
+                        endGame();
+                    }
+                }
+            });
+            
+            // Check water (on log)
+            if (frog.y < 200) {
+                let onLog = false;
+                logs.forEach(log => {
+                    if (frog.x > log.x && frog.x < log.x + log.size && Math.abs(frog.y - log.y) < 20) {
+                        onLog = true;
+                        frog.x += log.speed;
+                    }
+                });
+                
+                if (!onLog) {
+                    frog.lives--;
+                    document.getElementById('lives').textContent = frog.lives;
+                    frog.x = 200;
+                    frog.y = 400;
+                    
+                    if (frog.lives <= 0) {
+                        endGame();
+                    }
+                }
+            }
+            
+            // Won!
+            if (frog.y < 30 && !won) {
+                won = true;
+                frog.score += 100;
+                document.getElementById('score').textContent = frog.score;
+                
+                setTimeout(() => {
+                    frog.x = 200;
+                    frog.y = 400;
+                    won = false;
+                }, 500);
+            }
+            
+            // Bounds
+            frog.x = Math.max(15, Math.min(385, frog.x));
+        }
+        
+        function endGame() {
+            clearInterval(gameLoop);
+            setTimeout(() => {
+                alert(`Game Over!\nFinal Score: ${frog.score}\n\nClick OK to play again!`);
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (won) return;
+            
+            if (e.code === 'ArrowUp' && frog.y > 15) frog.y -= 30;
+            if (e.code === 'ArrowDown' && frog.y < 415) frog.y += 30;
+            if (e.code === 'ArrowLeft' && frog.x > 15) frog.x -= 30;
+            if (e.code === 'ArrowRight' && frog.x < 385) frog.x += 30;
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

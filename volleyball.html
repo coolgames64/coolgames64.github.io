@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏐 Volleyball</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(180deg, #87CEEB 0%, #98D8C8 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: #333;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(255,255,255,0.5); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #333; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #555; font-size: 1rem; }
+        .instructions span { background: #333; color: white; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: #333; color: white; border: none; padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: #555; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🏐 VOLLEYBALL</h1>
+    <div class="score-board">
+        <span>You: <strong id="p1">0</strong></span>
+        <span>CPU: <strong id="p2">0</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="400" height="500"></canvas>
+    <div class="instructions"><span>CLICK</span> to serve and hit!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let player = { x: 200, y: 450 };
+        let cpu = { x: 200, y: 80 };
+        let ball = { x: 200, y: 400, vx: 0, vy: 0, serving: true };
+        let p1Score = 0;
+        let p2Score = 0;
+        let gameLoop;
+        
+        function init() {
+            player = { x: 200, y: 450 };
+            cpu = { x: 200, y: 80 };
+            ball = { x: 200, y: 400, vx: 0, vy: 0, serving: true };
+            p1Score = 0;
+            p2Score = 0;
+            
+            document.getElementById('p1').textContent = '0';
+            document.getElementById('p2').textContent = '0';
+        }
+        
+        function draw() {
+            // Sky
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Court
+            ctx.fillStyle = '#f5deb3';
+            ctx.fillRect(0, 420, canvas.width, 80);
+            
+            // Net
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 250, canvas.width, 8);
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 20; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * 20, 250);
+                ctx.lineTo(i * 20, 258);
+                ctx.stroke();
+            }
+            
+            // Net posts
+            ctx.fillStyle = '#333';
+            ctx.fillRect(-5, 245, 10, 20);
+            ctx.fillRect(395, 245, 10, 20);
+            
+            // Player paddle
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, 30, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // CPU paddle
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(cpu.x, cpu.y, 30, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Ball
+            ctx.fillStyle = '#fff';
+            ctx.shadowColor = '#fff';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Ball lines
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, 15, -0.5, 0.5);
+            ctx.stroke();
+            
+            if (ball.serving) {
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#fff';
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Click to serve!', canvas.width/2, canvas.height/2);
+            }
+        }
+        
+        function update() {
+            if (ball.serving) return;
+            
+            // Gravity
+            ball.vy += 0.15;
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            
+            // Wall bounces
+            if (ball.x < 15 || ball.x > 385) {
+                ball.vx *= -0.8;
+                ball.x = ball.x < 15 ? 15 : 385;
+            }
+            
+            // Player collision
+            let dx = ball.x - player.x;
+            let dy = ball.y - player.y;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 45) {
+                const angle = Math.atan2(dy, dx);
+                const speed = 10 + Math.random() * 3;
+                ball.vx = Math.cos(angle) * speed + (Math.random() - 0.5) * 3;
+                ball.vy = Math.sin(angle) * speed;
+                ball.y = player.y - 45;
+            }
+            
+            // CPU collision
+            dx = ball.x - cpu.x;
+            dy = ball.y - cpu.y;
+            dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 45) {
+                const angle = Math.atan2(dy, dx);
+                const speed = 8;
+                ball.vx = Math.cos(angle) * speed + (Math.random() - 0.5) * 3;
+                ball.vy = Math.sin(angle) * speed;
+                ball.y = cpu.y + 45;
+            }
+            
+            // CPU AI
+            if (ball.vy < 0) {
+                if (ball.x < cpu.x - 10) cpu.x -= 3;
+                else if (ball.x > cpu.x + 10) cpu.x += 3;
+            }
+            cpu.x = Math.max(40, Math.min(360, cpu.x));
+            
+            // Scoring
+            if (ball.y > 500) {
+                p2Score++;
+                document.getElementById('p2').textContent = p2Score;
+                resetBall();
+            }
+            if (ball.y < 0) {
+                p1Score++;
+                document.getElementById('p1').textContent = p1Score;
+                resetBall();
+            }
+            
+            // Out of bounds
+            if (ball.y > 520 || ball.y < -20) {
+                resetBall();
+            }
+        }
+        
+        function resetBall() {
+            ball = { x: 200, y: 400, vx: 0, vy: 0, serving: true };
+        }
+        
+        function serve() {
+            if (!ball.serving) return;
+            ball.serving = false;
+            ball.vy = -10;
+            ball.vx = (Math.random() - 0.5) * 4;
+        }
+        
+        canvas.addEventListener('click', () => {
+            if (ball.serving) {
+                serve();
+            } else {
+                // Hit harder
+                if (ball.y > player.y - 50) {
+                    ball.vy = -12;
+                    ball.vx += (Math.random() - 0.5) * 5;
+                }
+            }
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            player.x = e.clientX - rect.left;
+            player.x = Math.max(40, Math.min(360, player.x));
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

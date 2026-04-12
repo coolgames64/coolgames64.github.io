@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏃 Ninja Run</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #2c3e50; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 15px; margin: 0 10px; }
+        canvas { border: 3px solid #2c3e50; border-radius: 10px; background: #000; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #2c3e50; padding: 3px 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🏃 NINJA RUN</h1>
+    <div class="score-board">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Best: <strong id="best">0</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="400" height="300"></canvas>
+    <div class="instructions"><span>SPACE</span> or <span>↑</span> Jump | <span>↓</span> Slide | Avoid obstacles!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let ninja = { x: 80, y: 220, vy: 0, sliding: false, groundY: 220 };
+        let obstacles = [];
+        let score = 0;
+        let best = parseInt(localStorage.getItem('ninjaRunBest')) || 0;
+        let gameLoop;
+        let gameOver = false;
+        let scrollSpeed = 5;
+        let jumpPressed = false;
+        let slidePressed = false;
+        
+        document.getElementById('best').textContent = best;
+        
+        function init() {
+            ninja = { x: 80, y: 220, vy: 0, sliding: false, groundY: 220 };
+            obstacles = [];
+            score = 0;
+            scrollSpeed = 5;
+            gameOver = false;
+            document.getElementById('score').textContent = '0';
+        }
+        
+        function createObstacle() {
+            const types = ['crate', 'bird', 'spike'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            if (type === 'bird') {
+                obstacles.push({
+                    x: canvas.width + 50,
+                    y: 180 + Math.random() * 40,
+                    type: 'bird',
+                    width: 40,
+                    height: 30
+                });
+            } else if (type === 'spike') {
+                obstacles.push({
+                    x: canvas.width + 50,
+                    y: 250,
+                    type: 'spike',
+                    width: 30,
+                    height: 30
+                });
+            } else {
+                obstacles.push({
+                    x: canvas.width + 50,
+                    y: 220,
+                    type: 'crate',
+                    width: 40,
+                    height: 40
+                });
+            }
+        }
+        
+        function drawNinja() {
+            ctx.save();
+            ctx.translate(ninja.x, ninja.y);
+            
+            if (ninja.sliding) {
+                // Sliding pose
+                ctx.fillStyle = '#2c3e50';
+                ctx.fillRect(-25, 15, 50, 20);
+                // Head
+                ctx.beginPath();
+                ctx.arc(20, 15, 15, 0, Math.PI * 2);
+                ctx.fill();
+                // Mask
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(10, 10, 25, 8);
+            } else {
+                // Running pose
+                // Body
+                ctx.fillStyle = '#2c3e50';
+                ctx.fillRect(-10, -20, 20, 35);
+                
+                // Head
+                ctx.beginPath();
+                ctx.arc(0, -30, 15, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Mask
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(-15, -35, 30, 10);
+                
+                // Eyes
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(5, -32, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Legs (running animation)
+                const legAngle = Math.sin(Date.now() / 50) * 0.5;
+                ctx.fillStyle = '#1a1a2e';
+                ctx.save();
+                ctx.rotate(legAngle);
+                ctx.fillRect(-5, 15, 8, 25);
+                ctx.restore();
+                ctx.save();
+                ctx.rotate(-legAngle);
+                ctx.fillRect(-3, 15, 8, 25);
+                ctx.restore();
+                
+                // Sword on back
+                ctx.fillStyle = '#7f8c8d';
+                ctx.fillRect(-20, -25, 5, 40);
+            }
+            
+            ctx.restore();
+        }
+        
+        function drawObstacle(obs) {
+            if (obs.type === 'crate') {
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                ctx.strokeStyle = '#5D3A1A';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+                ctx.beginPath();
+                ctx.moveTo(obs.x, obs.y);
+                ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+                ctx.moveTo(obs.x + obs.width, obs.y);
+                ctx.lineTo(obs.x, obs.y + obs.height);
+                ctx.stroke();
+            } else if (obs.type === 'bird') {
+                ctx.fillStyle = '#1a1a2e';
+                ctx.beginPath();
+                ctx.ellipse(obs.x + 20, obs.y + 15, 20, 15, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Wings
+                const wingY = Math.sin(Date.now() / 100) * 5;
+                ctx.fillRect(obs.x - 5, obs.y + wingY, 25, 10);
+                ctx.fillRect(obs.x + 15, obs.y + wingY, 25, 10);
+                // Beak
+                ctx.fillStyle = '#f1c40f';
+                ctx.beginPath();
+                ctx.moveTo(obs.x + 40, obs.y + 15);
+                ctx.lineTo(obs.x + 50, obs.y + 18);
+                ctx.lineTo(obs.x + 40, obs.y + 21);
+                ctx.fill();
+            } else if (obs.type === 'spike') {
+                ctx.fillStyle = '#7f8c8d';
+                ctx.beginPath();
+                ctx.moveTo(obs.x, obs.y + obs.height);
+                ctx.lineTo(obs.x + obs.width / 2, obs.y);
+                ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+                ctx.fill();
+            }
+        }
+        
+        function draw() {
+            // Night sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#0a0a1a');
+            gradient.addColorStop(0.5, '#1a1a3a');
+            gradient.addColorStop(1, '#2a2a4a');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Moon
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(350, 50, 30, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Stars
+            ctx.fillStyle = '#fff';
+            for (let i = 0; i < 30; i++) {
+                ctx.fillRect((i * 47) % canvas.width, (i * 23) % 150, 2, 2);
+            }
+            
+            // Ground
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 260, canvas.width, 40);
+            
+            // Ground detail
+            ctx.fillStyle = '#2a2a4a';
+            for (let i = 0; i < canvas.width; i += 30) {
+                ctx.fillRect(i, 260, 20, 5);
+            }
+            
+            obstacles.forEach(drawObstacle);
+            drawNinja();
+        }
+        
+        function update() {
+            if (gameOver) return;
+            
+            // Gravity
+            if (!ninja.sliding) {
+                ninja.vy += 0.8;
+                ninja.y += ninja.vy;
+                
+                if (ninja.y > ninja.groundY) {
+                    ninja.y = ninja.groundY;
+                    ninja.vy = 0;
+                }
+            }
+            
+            // Create obstacles
+            if (obstacles.length === 0 || obstacles[obstacles.length - 1].x < canvas.width - 200) {
+                if (Math.random() < 0.03) createObstacle();
+            }
+            
+            // Move obstacles
+            obstacles.forEach(obs => {
+                obs.x -= scrollSpeed;
+            });
+            
+            // Remove off-screen
+            obstacles = obstacles.filter(obs => obs.x > -60);
+            
+            // Collision
+            obstacles.forEach(obs => {
+                const ninjaBox = {
+                    x: ninja.x - 15,
+                    y: ninja.sliding ? ninja.y + 10 : ninja.y - 30,
+                    width: 40,
+                    height: ninja.sliding ? 20 : 50
+                };
+                
+                if (ninjaBox.x < obs.x + obs.width &&
+                    ninjaBox.x + ninjaBox.width > obs.x &&
+                    ninjaBox.y < obs.y + obs.height &&
+                    ninjaBox.y + ninjaBox.height > obs.y) {
+                    endGame();
+                }
+            });
+            
+            // Score
+            score++;
+            document.getElementById('score').textContent = Math.floor(score / 10);
+            
+            // Increase speed
+            if (score % 500 === 0) scrollSpeed += 0.5;
+        }
+        
+        function endGame() {
+            gameOver = true;
+            
+            const finalScore = Math.floor(score / 10);
+            if (finalScore > best) {
+                best = finalScore;
+                localStorage.setItem('ninjaRunBest', best);
+                document.getElementById('best').textContent = best;
+            }
+            
+            setTimeout(() => {
+                alert(`💀 CAUGHT! 💀\n\nScore: ${finalScore}\nBest: ${best}\nClick OK to try again!`);
+                init();
+            }, 100);
+        }
+        
+        function jump() {
+            if (gameOver || ninja.sliding) return;
+            if (ninja.y >= ninja.groundY - 5) {
+                ninja.vy = -15;
+            }
+        }
+        
+        function slide() {
+            if (gameOver) return;
+            ninja.sliding = true;
+            setTimeout(() => { ninja.sliding = false; }, 500);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                jump();
+            } else if (e.code === 'ArrowDown') {
+                e.preventDefault();
+                slide();
+            }
+        });
+        
+        canvas.addEventListener('click', jump);
+        
+        init();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

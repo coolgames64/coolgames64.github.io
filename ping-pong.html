@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏓 Ping Pong</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #3498db; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(52,152,219,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #3498db; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #3498db; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🏓 PING PONG</h1>
+    <div class="score-board">
+        <span>Player 1: <strong id="p1">0</strong></span>
+        <span>Player 2: <strong id="p2">0</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <div class="instructions"><span>W/S</span> Player 1 | <span>↑/↓</span> Player 2</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let p1 = { y: 170, score: 0 };
+        let p2 = { y: 170, score: 0 };
+        let ball = { x: 300, y: 200, vx: 5, vy: 3 };
+        let gameLoop;
+        let keys = { w: false, s: false, up: false, down: false };
+        
+        function init() {
+            p1 = { y: 170, score: 0 };
+            p2 = { y: 170, score: 0 };
+            ball = { x: 300, y: 200, vx: 5, vy: 3 };
+            
+            document.getElementById('p1').textContent = '0';
+            document.getElementById('p2').textContent = '0';
+        }
+        
+        function draw() {
+            // Background
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Center line
+            ctx.strokeStyle = '#fff';
+            ctx.setLineDash([10, 10]);
+            ctx.beginPath();
+            ctx.moveTo(300, 0);
+            ctx.lineTo(300, 400);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Net
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(295, 0, 10, 400);
+            
+            // Paddles
+            ctx.fillStyle = '#2ecc71';
+            ctx.fillRect(20, p1.y, 15, 60);
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(565, p2.y, 15, 60);
+            
+            // Ball
+            ctx.fillStyle = '#fff';
+            ctx.shadowColor = '#fff';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        
+        function update() {
+            // P1 movement
+            if (keys.w) p1.y -= 6;
+            if (keys.s) p1.y += 6;
+            
+            // P2 movement
+            if (keys.up) p2.y -= 6;
+            if (keys.down) p2.y += 6;
+            
+            // Bounds
+            p1.y = Math.max(0, Math.min(340, p1.y));
+            p2.y = Math.max(0, Math.min(340, p2.y));
+            
+            // Ball movement
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            
+            // Top/bottom bounce
+            if (ball.y < 10 || ball.y > 390) {
+                ball.vy *= -1;
+            }
+            
+            // P1 paddle collision
+            if (ball.x < 35 && ball.y > p1.y && ball.y < p1.y + 60) {
+                ball.vx = Math.abs(ball.vx);
+                const hitPos = (ball.y - p1.y) / 60;
+                ball.vy = (hitPos - 0.5) * 10;
+            }
+            
+            // P2 paddle collision
+            if (ball.x > 565 && ball.y > p2.y && ball.y < p2.y + 60) {
+                ball.vx = -Math.abs(ball.vx);
+                const hitPos = (ball.y - p2.y) / 60;
+                ball.vy = (hitPos - 0.5) * 10;
+            }
+            
+            // Scoring
+            if (ball.x < 0) {
+                p2.score++;
+                document.getElementById('p2').textContent = p2.score;
+                resetBall();
+            }
+            if (ball.x > 600) {
+                p1.score++;
+                document.getElementById('p1').textContent = p1.score;
+                resetBall();
+            }
+        }
+        
+        function resetBall() {
+            ball = { x: 300, y: 200, vx: (Math.random() > 0.5 ? 1 : -1) * 5, vy: (Math.random() - 0.5) * 6 };
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyW') keys.w = true;
+            if (e.code === 'KeyS') keys.s = true;
+            if (e.code === 'ArrowUp') { keys.up = true; e.preventDefault(); }
+            if (e.code === 'ArrowDown') { keys.down = true; e.preventDefault(); }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'KeyW') keys.w = false;
+            if (e.code === 'KeyS') keys.s = false;
+            if (e.code === 'ArrowUp') keys.up = false;
+            if (e.code === 'ArrowDown') keys.down = false;
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

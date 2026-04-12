@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💣 Minesweeper</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .status { font-size: 1.3rem; margin-bottom: 15px; }
+        canvas { border: 3px solid #fff; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>💣 MINESWEEPER</h1>
+    <div class="status" id="status">💣 Click to start</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const COLS = 10;
+        const ROWS = 10;
+        const CELL_SIZE = 35;
+        const MINES = 15;
+        
+        canvas.width = COLS * CELL_SIZE;
+        canvas.height = ROWS * CELL_SIZE;
+        
+        let grid = [];
+        let revealed = [];
+        let flagged = [];
+        let gameOver = false;
+        let won = false;
+        let firstClick = true;
+        
+        const COLORS = ['', '#3498db', '#27ae60', '#e74c3c', '#9b59b6', '#f1c40f', '#1abc9c', '#333', '#e67e22'];
+        
+        function init() {
+            grid = [];
+            revealed = [];
+            flagged = [];
+            gameOver = false;
+            won = false;
+            firstClick = true;
+            
+            for (let r = 0; r < ROWS; r++) {
+                grid[r] = [];
+                revealed[r] = [];
+                flagged[r] = [];
+                for (let c = 0; c < COLS; c++) {
+                    grid[r][c] = 0;
+                    revealed[r][c] = false;
+                    flagged[r][c] = false;
+                }
+            }
+            
+            document.getElementById('status').textContent = '💣 Click to start';
+        }
+        
+        function placeMines(excludeR, excludeC) {
+            let minesPlaced = 0;
+            while (minesPlaced < MINES) {
+                const r = Math.floor(Math.random() * ROWS);
+                const c = Math.floor(Math.random() * COLS);
+                
+                if (r !== excludeR && c !== excludeC && grid[r][c] !== -1) {
+                    grid[r][c] = -1;
+                    minesPlaced++;
+                }
+            }
+            
+            // Calculate numbers
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c] === -1) continue;
+                    
+                    let count = 0;
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            const nr = r + dr;
+                            const nc = c + dc;
+                            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && grid[nr][nc] === -1) {
+                                count++;
+                            }
+                        }
+                    }
+                    grid[r][c] = count;
+                }
+            }
+        }
+        
+        function draw() {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const x = c * CELL_SIZE;
+                    const y = r * CELL_SIZE;
+                    
+                    // Cell background
+                    ctx.fillStyle = revealed[r][c] ? '#bdc3c7' : '#7f8c8d';
+                    ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                    
+                    // Border
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x, y, CELL_SIZE, CELL_SIZE);
+                    
+                    if (revealed[r][c]) {
+                        if (grid[r][c] === -1) {
+                            // Mine
+                            ctx.fillStyle = '#e74c3c';
+                            ctx.beginPath();
+                            ctx.arc(x + CELL_SIZE/2, y + CELL_SIZE/2, 12, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.fillStyle = '#333';
+                            ctx.font = 'bold 16px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('💣', x + CELL_SIZE/2, y + CELL_SIZE/2 + 5);
+                        } else if (grid[r][c] > 0) {
+                            ctx.fillStyle = COLORS[grid[r][c]];
+                            ctx.font = 'bold 18px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.fillText(grid[r][c], x + CELL_SIZE/2, y + CELL_SIZE/2 + 6);
+                        }
+                    } else if (flagged[r][c]) {
+                        ctx.font = '20px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('🚩', x + CELL_SIZE/2, y + CELL_SIZE/2 + 6);
+                    }
+                }
+            }
+        }
+        
+        function reveal(r, c) {
+            if (r < 0 || r >= ROWS || c < 0 || c >= COLS || revealed[r][c] || flagged[r][c]) return;
+            
+            revealed[r][c] = true;
+            
+            if (grid[r][c] === -1) {
+                gameOver = true;
+                document.getElementById('status').textContent = '💥 BOOM! Game Over!';
+                // Reveal all mines
+                for (let i = 0; i < ROWS; i++) {
+                    for (let j = 0; j < COLS; j++) {
+                        if (grid[i][j] === -1) revealed[i][j] = true;
+                    }
+                }
+                return;
+            }
+            
+            if (grid[r][c] === 0) {
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        reveal(r + dr, c + dc);
+                    }
+                }
+            }
+            
+            // Check win
+            let unrevealed = 0;
+            for (let i = 0; i < ROWS; i++) {
+                for (let j = 0; j < COLS; j++) {
+                    if (!revealed[i][j]) unrevealed++;
+                }
+            }
+            if (unrevealed === MINES) {
+                won = true;
+                document.getElementById('status').textContent = '🎉 You Win!';
+            }
+        }
+        
+        canvas.addEventListener('click', (e) => {
+            if (gameOver || won) {
+                init();
+                return;
+            }
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const c = Math.floor(x / CELL_SIZE);
+            const r = Math.floor(y / CELL_SIZE);
+            
+            if (firstClick) {
+                placeMines(r, c);
+                firstClick = false;
+            }
+            
+            reveal(r, c);
+            draw();
+        });
+        
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (gameOver || won) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const c = Math.floor(x / CELL_SIZE);
+            const r = Math.floor(y / CELL_SIZE);
+            
+            if (r >= 0 && r < ROWS && c >= 0 && c < COLS && !revealed[r][c]) {
+                flagged[r][c] = !flagged[r][c];
+            }
+            draw();
+        });
+        
+        init();
+        draw();
+    </script>
+</body>
+</html>

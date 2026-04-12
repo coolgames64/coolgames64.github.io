@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏏 Cricket</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #27ae60;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #fff; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #ddd; font-size: 1rem; }
+        .instructions span { background: #fff; color: #27ae60; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.2); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.3); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🏏 CRICKET</h1>
+    <div class="score-board">
+        <span>Runs: <strong id="runs">0</strong></span>
+        <span>Balls: <strong id="balls">0</strong>/30</span>
+        <span>Wickets: <strong id="wickets">0</strong>/3</span>
+    </div>
+    <canvas id="gameCanvas" width="500" height="400"></canvas>
+    <div class="instructions"><span>CLICK</span> when the ball is near the wicket! Time it right to score runs!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let ball = { y: -50, speed: 5, bowling: false };
+        let runs = 0;
+        let balls = 0;
+        let wickets = 0;
+        let gameLoop;
+        let swinging = false;
+        let swingTimer = 0;
+        let batAngle = 0;
+        
+        function init() {
+            ball = { y: -50, speed: 5, bowling: false };
+            runs = 0;
+            balls = 0;
+            wickets = 0;
+            swinging = false;
+            swingTimer = 0;
+            
+            document.getElementById('runs').textContent = '0';
+            document.getElementById('balls').textContent = '0';
+            document.getElementById('wickets').textContent = '0';
+        }
+        
+        function drawPitch() {
+            // Pitch
+            ctx.fillStyle = '#c4a676';
+            ctx.fillRect(200, 50, 100, 300);
+            
+            // Crease lines
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(200, 100);
+            ctx.lineTo(300, 100);
+            ctx.moveTo(200, 300);
+            ctx.lineTo(300, 300);
+            ctx.stroke();
+            
+            // Wickets
+            ctx.fillStyle = '#fff';
+            for (let i = 0; i < 3; i++) {
+                ctx.fillRect(245 + i * 5, 280, 5, 40);
+            }
+            // Bails
+            ctx.fillRect(240, 275, 20, 5);
+            
+            // Bowler
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.arc(250, 30, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillRect(240, 45, 20, 35);
+        }
+        
+        function drawBatsman() {
+            ctx.save();
+            ctx.translate(250, 300);
+            ctx.rotate(batAngle);
+            
+            // Bat
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(-5, -60, 10, 60);
+            ctx.fillStyle = '#c4a676';
+            ctx.fillRect(-8, -60, 16, 10);
+            
+            ctx.restore();
+            
+            // Batsman body
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.arc(250, 320, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillRect(240, 335, 20, 40);
+        }
+        
+        function drawBall() {
+            if (!ball.bowling) return;
+            
+            ctx.fillStyle = '#e74c3c';
+            ctx.shadowColor = '#e74c3c';
+            ctx.shadowBlur = 5;
+            ctx.beginPath();
+            ctx.arc(250, ball.y, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        
+        function draw() {
+            // Ground
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            drawPitch();
+            drawBall();
+            drawBatsman();
+            
+            if (!ball.bowling && balls < 30 && wickets < 3) {
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#fff';
+                ctx.font = '24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Click to bowl!', canvas.width/2, canvas.height/2);
+            }
+        }
+        
+        function update() {
+            if (!ball.bowling) return;
+            
+            ball.y += ball.speed;
+            
+            // Swing animation
+            if (swinging) {
+                swingTimer++;
+                batAngle = Math.sin(swingTimer * 0.3) * 0.5;
+                if (swingTimer > 20) {
+                    swinging = false;
+                    swingTimer = 0;
+                    batAngle = 0;
+                }
+            }
+            
+            // Hit detection
+            if (ball.y > 260 && ball.y < 340 && swinging) {
+                // Hit! Score runs based on timing
+                const timing = Math.abs(ball.y - 300);
+                let scored = 0;
+                
+                if (timing < 15) {
+                    scored = 6;  // Six!
+                } else if (timing < 30) {
+                    scored = 4;  // Four!
+                } else if (timing < 50) {
+                    scored = Math.floor(Math.random() * 3) + 1;  // 1-3 runs
+                }
+                
+                runs += scored;
+                document.getElementById('runs').textContent = runs;
+                ball.bowling = false;
+                ball.y = -50;
+            }
+            
+            // Miss - wicket
+            if (ball.y > 340) {
+                wickets++;
+                document.getElementById('wickets').textContent = wickets;
+                ball.bowling = false;
+                ball.y = -50;
+                
+                if (wickets >= 3 || balls >= 30) {
+                    endGame();
+                }
+            }
+        }
+        
+        function bowl() {
+            if (ball.bowling || balls >= 30 || wickets >= 3) return;
+            
+            ball.bowling = true;
+            ball.y = -50;
+            ball.speed = 4 + Math.random() * 3;
+            balls++;
+            document.getElementById('balls').textContent = balls;
+            
+            if (balls >= 30 || wickets >= 3) {
+                setTimeout(endGame, 1000);
+            }
+        }
+        
+        function swing() {
+            if (swinging || !ball.bowling) return;
+            swinging = true;
+            swingTimer = 0;
+        }
+        
+        function endGame() {
+            clearInterval(gameLoop);
+            setTimeout(() => {
+                alert(`Game Over!\nRuns: ${runs}\nBalls: ${balls}\nWickets: ${wickets}\n\nClick OK to play again!`);
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        canvas.addEventListener('click', () => {
+            if (!ball.bowling) {
+                bowl();
+            } else {
+                swing();
+            }
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

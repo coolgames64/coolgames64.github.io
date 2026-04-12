@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔨 Whack a Mole</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(180deg, #8B4513 0%, #654321 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 4px solid #fff; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #ddd; font-size: 1rem; }
+        .instructions span { background: #e74c3c; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.2); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.3); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🔨 WHACK A MOLE</h1>
+    <div class="score-board">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Time: <strong id="time">30</strong>s</span>
+    </div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div class="instructions">Click the <span>🎯 MOLES</span> when they pop up!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let moles = [];
+        let score = 0;
+        let timeLeft = 30;
+        let gameLoop;
+        let gameRunning = false;
+        let spawnTimer = 0;
+        
+        function init() {
+            moles = [];
+            score = 0;
+            timeLeft = 30;
+            gameRunning = true;
+            spawnTimer = 0;
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('time').textContent = '30';
+            
+            gameLoop = setInterval(() => {
+                update();
+                draw();
+            }, 1000 / 60);
+            
+            // Timer
+            let timer = setInterval(() => {
+                if (!gameRunning) {
+                    clearInterval(timer);
+                    return;
+                }
+                timeLeft--;
+                document.getElementById('time').textContent = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    endGame();
+                    clearInterval(timer);
+                }
+            }, 1000);
+        }
+        
+        function spawnMole() {
+            const holes = [
+                {x: 70, y: 100}, {x: 200, y: 100}, {x: 330, y: 100},
+                {x: 70, y: 220}, {x: 200, y: 220}, {x: 330, y: 220},
+                {x: 70, y: 340}, {x: 200, y: 340}, {x: 330, y: 340}
+            ];
+            
+            const hole = holes[Math.floor(Math.random() * holes.length)];
+            moles.push({
+                x: hole.x,
+                y: hole.y,
+                up: true,
+                upTime: 60 + Math.random() * 60,
+                type: Math.random() > 0.9 ? 'bonus' : 'normal'
+            });
+        }
+        
+        function drawHole(x, y) {
+            // Hole shadow
+            ctx.fillStyle = '#3d2914';
+            ctx.beginPath();
+            ctx.ellipse(x, y + 30, 40, 20, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Hole
+            ctx.fillStyle = '#1a0f00';
+            ctx.beginPath();
+            ctx.ellipse(x, y + 25, 35, 18, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function drawMole(m) {
+            if (!m.up) return;
+            
+            const offsetY = Math.sin((60 - m.upTime) / 60 * Math.PI) * 50;
+            const y = m.y - offsetY;
+            
+            // Mole body
+            ctx.fillStyle = m.type === 'bonus' ? '#f1c40f' : '#8B4513';
+            ctx.beginPath();
+            ctx.arc(m.x, y, 25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Face
+            ctx.fillStyle = '#654321';
+            ctx.beginPath();
+            ctx.arc(m.x - 8, y - 5, 4, 0, Math.PI * 2);
+            ctx.arc(m.x + 8, y - 5, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Nose
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(m.x, y + 5, 6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Teeth
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(m.x - 6, y + 12, 4, 6);
+            ctx.fillRect(m.x + 2, y + 12, 4, 6);
+            
+            if (m.type === 'bonus') {
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('⭐', m.x, y - 30);
+            }
+        }
+        
+        function draw() {
+            // Dirt background
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Dirt pattern
+            ctx.fillStyle = '#7a3c11';
+            for (let i = 0; i < 20; i++) {
+                for (let j = 0; j < 20; j++) {
+                    if ((i + j) % 2 === 0) {
+                        ctx.fillRect(i * 22, j * 22, 20, 20);
+                    }
+                }
+            }
+            
+            // Draw holes first
+            const holes = [
+                {x: 70, y: 100}, {x: 200, y: 100}, {x: 330, y: 100},
+                {x: 70, y: 220}, {x: 200, y: 220}, {x: 330, y: 220},
+                {x: 70, y: 340}, {x: 200, y: 340}, {x: 330, y: 340}
+            ];
+            
+            holes.forEach(h => drawHole(h.x, h.y));
+            
+            // Draw moles
+            moles.forEach(drawMole);
+        }
+        
+        function update() {
+            if (!gameRunning) return;
+            
+            spawnTimer++;
+            if (spawnTimer > 30) {
+                spawnMole();
+                spawnTimer = 0;
+            }
+            
+            moles.forEach(m => {
+                if (m.up) {
+                    m.upTime--;
+                    if (m.upTime <= 0) {
+                        m.up = false;
+                    }
+                }
+            });
+            
+            moles = moles.filter(m => m.up || m.upTime > -30);
+        }
+        
+        function endGame() {
+            gameRunning = false;
+            clearInterval(gameLoop);
+            setTimeout(() => {
+                alert(`Time's Up!\nScore: ${score}\n\nClick OK to play again!`);
+                init();
+            }, 100);
+        }
+        
+        canvas.addEventListener('click', (e) => {
+            if (!gameRunning) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            
+            moles.forEach(m => {
+                if (!m.up) return;
+                
+                const offsetY = Math.sin((60 - m.upTime) / 60 * Math.PI) * 50;
+                const y = m.y - offsetY;
+                
+                const dist = Math.sqrt((mx - m.x) ** 2 + (my - y) ** 2);
+                if (dist < 30) {
+                    m.up = false;
+                    const points = m.type === 'bonus' ? 50 : 10;
+                    score += points;
+                    document.getElementById('score').textContent = score;
+                }
+            });
+        });
+        
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const mx = touch.clientX - rect.left;
+            const my = touch.clientY - rect.top;
+            
+            moles.forEach(m => {
+                if (!m.up) return;
+                
+                const offsetY = Math.sin((60 - m.upTime) / 60 * Math.PI) * 50;
+                const y = m.y - offsetY;
+                
+                const dist = Math.sqrt((mx - m.x) ** 2 + (my - y) ** 2);
+                if (dist < 30) {
+                    m.up = false;
+                    const points = m.type === 'bonus' ? 50 : 10;
+                    score += points;
+                    document.getElementById('score').textContent = score;
+                }
+            });
+        });
+        
+        init();
+        draw();
+    </script>
+</body>
+</html>

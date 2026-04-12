@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="LFolYFY1ySO4aIcMbyo8EdJKYLqHW9MS6_B1y7e5MPQ" />
+    <title>Ball Bounce | Cool Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: linear-gradient(135deg, #1a1a2e, #16213e); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
+        h1 { color: white; font-size: 2rem; margin-bottom: 10px; text-shadow: 2px 2px 10px rgba(102,126,234,0.5); }
+        .score-board { display: flex; gap: 30px; color: white; font-size: 1.2rem; margin-bottom: 20px; }
+        .score-board span { background: rgba(255,255,255,0.1); padding: 8px 20px; border-radius: 20px; }
+        #gameCanvas { border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .instructions { color: rgba(255,255,255,0.6); margin-top: 15px; font-size: 0.9rem; }
+        .back-btn { position: fixed; top: 20px; left: 20px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 10px 20px; border-radius: 25px; text-decoration: none; font-weight: 600; box-shadow: 0 4px 15px rgba(102,126,234,0.4); transition: all 0.3s; }
+        .back-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(102,126,234,0.5); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🎾 Ball Bounce</h1>
+    <div class="score-board">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Best: <strong id="best">0</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <p class="instructions">Click or tap to bounce the ball!</p>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const bestEl = document.getElementById('best');
+        
+        let ball = { x: 200, y: 300, radius: 12, vy: 3, color: '#ffd700' };
+        let platforms = [];
+        let score = 0;
+        let best = localStorage.getItem('ballBounceBest') || 0;
+        let gameOver = false;
+        
+        bestEl.textContent = best;
+        
+        // Create platforms
+        function createPlatforms() {
+            platforms = [];
+            for (let i = 0; i < 8; i++) {
+                platforms.push({
+                    x: Math.random() * 300 + 50,
+                    y: 100 + i * 75,
+                    width: 80 + Math.random() * 40,
+                    height: 15,
+                    color: `hsl(${Math.random() * 360}, 70%, 60%)`
+                });
+            }
+        }
+        
+        createPlatforms();
+        
+        canvas.addEventListener('click', () => {
+            if (gameOver) {
+                gameOver = false;
+                score = 0;
+                ball.y = 300;
+                ball.vy = 3;
+                createPlatforms();
+                return;
+            }
+            ball.vy = -8;
+            ball.color = `hsl(${Math.random() * 360}, 80%, 60%)`;
+        });
+        
+        function draw() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, 400, 600);
+            
+            // Draw platforms
+            platforms.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.roundRect(p.x, p.y, p.width, p.height, 8);
+                ctx.fill();
+                
+                // Glow effect
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 15;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+            
+            // Draw ball
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fillStyle = ball.color;
+            ctx.fill();
+            ctx.shadowColor = ball.color;
+            ctx.shadowBlur = 20;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Draw ball trail
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y - 20, ball.radius * 0.5, 0, Math.PI * 2);
+            ctx.fillStyle = ball.color + '40';
+            ctx.fill();
+            
+            // Score
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 24px Poppins';
+            ctx.textAlign = 'center';
+            ctx.fillText(score, 200, 50);
+            
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0, 0, 400, 600);
+                ctx.fillStyle = '#ff6b6b';
+                ctx.font = 'bold 36px Poppins';
+                ctx.fillText('GAME OVER!', 200, 270);
+                ctx.fillStyle = 'white';
+                ctx.font = '20px Poppins';
+                ctx.fillText('Click to Restart', 200, 320);
+            }
+        }
+        
+        function update() {
+            if (gameOver) return;
+            
+            ball.vy += 0.3;
+            ball.y += ball.vy;
+            
+            // Side walls
+            if (ball.x < ball.radius || ball.x > 400 - ball.radius) {
+                ball.x = ball.x < ball.radius ? ball.radius : 400 - ball.radius;
+                ball.vx *= -1;
+            }
+            
+            // Top
+            if (ball.y < ball.radius) {
+                ball.y = ball.radius;
+                ball.vy *= -1;
+            }
+            
+            // Bottom - game over
+            if (ball.y > 600) {
+                gameOver = true;
+                if (score > best) {
+                    best = score;
+                    localStorage.setItem('ballBounceBest', best);
+                    bestEl.textContent = best;
+                }
+            }
+            
+            // Platform collision
+            platforms.forEach((p, i) => {
+                if (ball.y + ball.radius > p.y && ball.y - ball.radius < p.y + p.height &&
+                    ball.x > p.x && ball.x < p.x + p.width && ball.vy > 0) {
+                    ball.y = p.y - ball.radius;
+                    ball.vy = -ball.vy - 0.5;
+                    ball.color = p.color;
+                    score++;
+                    scoreEl.textContent = score;
+                    
+                    // Move platform down
+                    p.y += 20;
+                    if (p.y > 500) p.y = 50;
+                }
+            });
+            
+            // Add new platforms
+            if (platforms[platforms.length - 1].y > 150) {
+                platforms.push({
+                    x: Math.random() * 300 + 50,
+                    y: platforms[0].y - 75,
+                    width: 80 + Math.random() * 40,
+                    height: 15,
+                    color: `hsl(${Math.random() * 360}, 70%, 60%)`
+                });
+            }
+        }
+        
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        gameLoop();
+    </script>
+</body>
+</html>

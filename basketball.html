@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏀 Basketball</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #e67e22; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(230,126,34,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #e67e22; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #e67e22; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🏀 BASKETBALL</h1>
+    <div class="score-board">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Shots: <strong id="shots">0</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="400" height="500"></canvas>
+    <div class="instructions"><span>CLICK & DRAG</span> to shoot! Release to throw!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let ball = { x: 200, y: 400, vx: 0, vy: 0, thrown: false };
+        let score = 0;
+        let shots = 0;
+        let gameLoop;
+        let dragging = false;
+        let dragStart = { x: 0, y: 0 };
+        const hoopX = 280;
+        const hoopY = 100;
+        
+        function init() {
+            ball = { x: 200, y: 400, vx: 0, vy: 0, thrown: false };
+            score = 0;
+            shots = 0;
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('shots').textContent = '0';
+        }
+        
+        function draw() {
+            // Court
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Court lines
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+            
+            // Three point line
+            ctx.beginPath();
+            ctx.arc(hoopX, hoopY + 20, 120, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Backboard
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(hoopX + 40, hoopY - 30, 10, 80);
+            
+            // Hoop
+            ctx.strokeStyle = '#e67e22';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(hoopX + 45, hoopY + 20, 20, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Net
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 6; i++) {
+                const angle = (i / 6) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.moveTo(hoopX + 45 + Math.cos(angle) * 20, hoopY + 20 + Math.sin(angle) * 20);
+                ctx.lineTo(hoopX + 45 + Math.cos(angle) * 10, hoopY + 55);
+                ctx.stroke();
+            }
+            
+            // Ball
+            ctx.fillStyle = '#e67e22';
+            ctx.shadowColor = '#e67e22';
+            ctx.shadowBlur = ball.thrown ? 0 : 10;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Ball lines
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, 15, 0, Math.PI * 2);
+            ctx.moveTo(ball.x - 15, ball.y);
+            ctx.lineTo(ball.x + 15, ball.y);
+            ctx.stroke();
+            
+            // Power indicator
+            if (dragging) {
+                ctx.strokeStyle = '#f1c40f';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(ball.x, ball.y);
+                ctx.lineTo(dragStart.x + (dragStart.x - ball.x), dragStart.y + (dragStart.y - ball.y));
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+        
+        function update() {
+            if (!ball.thrown) return;
+            
+            ball.vy += 0.4;  // Gravity
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            
+            // Hoop collision
+            const distToHoop = Math.sqrt((ball.x - hoopX - 45) ** 2 + (ball.y - hoopY - 20) ** 2);
+            
+            if (distToHoop < 25 && ball.y < hoopY + 40) {
+                // Check if going down and through hoop
+                if (ball.vy > 0 && ball.y > hoopY) {
+                    score++;
+                    document.getElementById('score').textContent = score;
+                }
+                ball.thrown = false;
+                resetBall();
+            }
+            
+            // Backboard collision
+            if (ball.x > hoopX + 45 && ball.x < hoopX + 55 &&
+                ball.y > hoopY - 30 && ball.y < hoopY + 50) {
+                ball.vx *= -0.7;
+                ball.x = hoopX + 45;
+            }
+            
+            // Out of bounds
+            if (ball.y > canvas.height + 50 || ball.x < -50 || ball.x > canvas.width + 50) {
+                ball.thrown = false;
+                resetBall();
+            }
+        }
+        
+        function resetBall() {
+            ball.x = 100 + Math.random() * 100;
+            ball.y = 420;
+            ball.vx = 0;
+            ball.vy = 0;
+        }
+        
+        canvas.addEventListener('mousedown', (e) => {
+            if (ball.thrown) return;
+            const rect = canvas.getBoundingClientRect();
+            dragStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            dragging = true;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            const rect = canvas.getBoundingClientRect();
+            ball.x = e.clientX - rect.left;
+            ball.y = e.clientY - rect.top;
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            if (!dragging) return;
+            dragging = false;
+            
+            ball.vx = (dragStart.x - ball.x) * 0.15;
+            ball.vy = (dragStart.y - ball.y) * 0.15;
+            
+            if (Math.abs(ball.vy) > 3) {
+                ball.thrown = true;
+                shots++;
+                document.getElementById('shots').textContent = shots;
+            } else {
+                resetBall();
+            }
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

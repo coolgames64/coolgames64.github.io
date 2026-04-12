@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐦 Angry Birds</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(180deg, #87CEEB 0%, #98D8C8 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: #333;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #333; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(255,255,255,0.5); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #333; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #555; font-size: 1rem; }
+        .instructions span { background: #e74c3c; color: white; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: #333; color: white; border: none; padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: #555; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🐦 ANGRY BIRDS</h1>
+    <div class="score-board">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Birds: <strong id="birds">5</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <div class="instructions"><span>DRAG & RELEASE</span> to launch the bird!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let bird = { x: 100, y: 300, vx: 0, vy: 0, launched: false, trajectory: [] };
+        let blocks = [];
+        let pigs = [];
+        let score = 0;
+        let birdsLeft = 5;
+        let gameLoop;
+        let dragging = false;
+        let dragStart = { x: 0, y: 0 };
+        
+        function init() {
+            bird = { x: 100, y: 300, vx: 0, vy: 0, launched: false, trajectory: [] };
+            blocks = [];
+            pigs = [];
+            score = 0;
+            birdsLeft = 5;
+            dragging = false;
+            
+            // Create blocks (wooden structures)
+            blocks.push(
+                { x: 400, y: 320, w: 20, h: 80, type: 'wood' },
+                { x: 450, y: 320, w: 20, h: 80, type: 'wood' },
+                { x: 400, y: 250, w: 80, h: 20, type: 'wood' }
+            );
+            
+            // Create pigs
+            pigs.push(
+                { x: 425, y: 280, r: 20 },
+                { x: 500, y: 340, r: 18 },
+                { x: 480, y: 220, r: 15 }
+            );
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('birds').textContent = '5';
+        }
+        
+        function drawBird() {
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(bird.x, bird.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Beak
+            ctx.fillStyle = '#f39c12';
+            ctx.beginPath();
+            ctx.moveTo(bird.x + 12, bird.y);
+            ctx.lineTo(bird.x + 22, bird.y + 3);
+            ctx.lineTo(bird.x + 12, bird.y + 6);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Eye
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(bird.x + 5, bird.y - 3, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(bird.x + 6, bird.y - 3, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyebrow (angry)
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(bird.x + 2, bird.y - 10);
+            ctx.lineTo(bird.x + 10, bird.y - 7);
+            ctx.stroke();
+        }
+        
+        function drawBlock(b) {
+            if (b.type === 'wood') {
+                ctx.fillStyle = '#8B4513';
+            } else {
+                ctx.fillStyle = '#808080';
+            }
+            ctx.fillRect(b.x, b.y, b.w, b.h);
+            
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(b.x, b.y, b.w, b.h);
+        }
+        
+        function drawPig(p) {
+            ctx.fillStyle = '#27ae60';
+            ctx.shadowColor = '#27ae60';
+            ctx.shadowBlur = 5;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Eyes
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(p.x - 5, p.y - 3, 5, 0, Math.PI * 2);
+            ctx.arc(p.x + 5, p.y - 3, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(p.x - 4, p.y - 3, 2, 0, Math.PI * 2);
+            ctx.arc(p.x + 6, p.y - 3, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Mouth
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y + 5, 5, 0, Math.PI);
+            ctx.stroke();
+        }
+        
+        function drawTrajectory() {
+            if (!bird.launched && bird.trajectory.length > 0) {
+                ctx.strokeStyle = 'rgba(231, 76, 60, 0.5)';
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(bird.trajectory[0].x, bird.trajectory[0].y);
+                for (let i = 1; i < bird.trajectory.length; i++) {
+                    ctx.lineTo(bird.trajectory[i].x, bird.trajectory[i].y);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+        
+        function draw() {
+            // Sky
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Ground
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, 360, canvas.width, 40);
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, 350, canvas.width, 15);
+            
+            // Slingshot
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.moveTo(60, 380);
+            ctx.lineTo(60, 280);
+            ctx.moveTo(60, 280);
+            ctx.lineTo(50, 250);
+            ctx.moveTo(60, 280);
+            ctx.lineTo(70, 250);
+            ctx.stroke();
+            
+            drawTrajectory();
+            
+            blocks.forEach(drawBlock);
+            pigs.forEach(drawPig);
+            
+            if (!bird.launched || bird.y < 400) {
+                drawBird();
+            }
+        }
+        
+        function update() {
+            if (bird.launched) {
+                bird.vy += 0.3;
+                bird.x += bird.vx;
+                bird.y += bird.vy;
+                
+                // Check block collisions
+                blocks.forEach(b => {
+                    if (bird.x > b.x && bird.x < b.x + b.w &&
+                        bird.y > b.y && bird.y < b.y + b.h) {
+                        // Collision!
+                        const dx = bird.vx;
+                        const dy = bird.vy;
+                        const speed = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (speed > 5) {
+                            b.destroyed = true;
+                            score += 50;
+                        }
+                        
+                        bird.vx *= -0.5;
+                        bird.vy *= -0.5;
+                    }
+                });
+                
+                // Check pig collisions
+                pigs.forEach(p => {
+                    const dist = Math.sqrt((bird.x - p.x) ** 2 + (bird.y - p.y) ** 2);
+                    if (dist < p.r + 15) {
+                        p.hit = true;
+                        score += 500;
+                    }
+                });
+                
+                // Ground collision
+                if (bird.y > 350) {
+                    bird.launched = false;
+                    bird.x = 100;
+                    bird.y = 300;
+                    bird.vx = 0;
+                    bird.vy = 0;
+                    birdsLeft--;
+                    document.getElementById('birds').textContent = birdsLeft;
+                    document.getElementById('score').textContent = score;
+                    
+                    if (birdsLeft <= 0 || pigs.every(p => p.hit)) {
+                        endGame();
+                    }
+                }
+            }
+            
+            blocks = blocks.filter(b => !b.destroyed);
+            pigs = pigs.filter(p => !p.hit);
+            
+            // Check if all pigs destroyed
+            if (pigs.length === 0 && bird.y > 350) {
+                nextLevel();
+            }
+        }
+        
+        function nextLevel() {
+            bird = { x: 100, y: 300, vx: 0, vy: 0, launched: false, trajectory: [] };
+            
+            // More blocks
+            blocks.push(
+                { x: 420 + Math.random() * 100, y: 320, w: 20, h: 80, type: 'wood' },
+                { x: 470 + Math.random() * 100, y: 320, w: 20, h: 80, type: 'stone' },
+                { x: 420 + Math.random() * 100, y: 250, w: 80, h: 20, type: 'wood' }
+            );
+            
+            pigs.push(
+                { x: 450 + Math.random() * 80, y: 280, r: 18 },
+                { x: 500 + Math.random() * 50, y: 340, r: 15 }
+            );
+        }
+        
+        function endGame() {
+            clearInterval(gameLoop);
+            setTimeout(() => {
+                alert(`Level Complete!\nScore: ${score}\n\nClick OK to play again!`);
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        canvas.addEventListener('mousedown', (e) => {
+            if (bird.launched) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const dist = Math.sqrt((x - bird.x) ** 2 + (y - bird.y) ** 2);
+            if (dist < 30) {
+                dragging = true;
+                dragStart = { x: bird.x, y: bird.y };
+            }
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            const rect = canvas.getBoundingClientRect();
+            bird.x = e.clientX - rect.left;
+            bird.y = e.clientY - rect.top;
+            
+            // Limit drag distance
+            const dx = bird.x - dragStart.x;
+            const dy = bird.y - dragStart.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 80) {
+                bird.x = dragStart.x + (dx / dist) * 80;
+                bird.y = dragStart.y + (dy / dist) * 80;
+            }
+            
+            // Calculate trajectory
+            bird.trajectory = [];
+            let tx = bird.x;
+            let ty = bird.y;
+            let tvx = (dragStart.x - bird.x) * 0.15;
+            let tvy = (dragStart.y - bird.y) * 0.15;
+            for (let i = 0; i < 20; i++) {
+                bird.trajectory.push({ x: tx, y: ty });
+                tx += tvx;
+                ty += tvy;
+                tvy += 0.3;
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            if (!dragging) return;
+            dragging = false;
+            
+            bird.vx = (dragStart.x - bird.x) * 0.15;
+            bird.vy = (dragStart.y - bird.y) * 0.15;
+            bird.launched = true;
+            bird.trajectory = [];
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>

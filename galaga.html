@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Galaga</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #000;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #e74c3c; }
+        .score-board { font-size: 1.3rem; margin-bottom: 15px; }
+        .score-board span { background: rgba(231,76,60,0.2); padding: 5px 15px; border-radius: 15px; }
+        canvas { border: 3px solid #e74c3c; border-radius: 10px; }
+        .instructions { margin-top: 15px; color: #888; font-size: 1rem; }
+        .instructions span { background: #e74c3c; padding: 3px 10px; border-radius: 5px; }
+        .back-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            border: 2px solid rgba(255,255,255,0.3); padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back to Games</a>
+    <h1>🚀 GALAGA</h1>
+    <div class="score-board">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Lives: <strong id="lives">3</strong></span>
+    </div>
+    <canvas id="gameCanvas" width="400" height="500"></canvas>
+    <div class="instructions"><span>← →</span> move | <span>SPACE</span> shoot</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let ship = { x: 200, y: 450, lives: 3 };
+        let bullets = [];
+        let enemies = [];
+        let score = 0;
+        let gameLoop;
+        let enemyTimer = 0;
+        let keys = { left: false, right: false, space: false };
+        let shootTimer = 0;
+        
+        function init() {
+            ship = { x: 200, y: 450, lives: 3 };
+            bullets = [];
+            enemies = [];
+            score = 0;
+            enemyTimer = 0;
+            
+            // Create enemy formation
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 8; col++) {
+                    enemies.push({
+                        x: 60 + col * 40,
+                        y: 50 + row * 40,
+                        dir: 1,
+                        type: row === 0 ? 'boss' : 'normal',
+                        hp: row === 0 ? 3 : 1
+                    });
+                }
+            }
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('lives').textContent = '3';
+        }
+        
+        function drawShip() {
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.moveTo(ship.x, ship.y - 15);
+            ctx.lineTo(ship.x - 15, ship.y + 15);
+            ctx.lineTo(ship.x + 15, ship.y + 15);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Cockpit
+            ctx.fillStyle = '#2980b9';
+            ctx.beginPath();
+            ctx.arc(ship.x, ship.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function drawEnemy(enemy) {
+            ctx.fillStyle = enemy.type === 'boss' ? '#e74c3c' : '#9b59b6';
+            
+            if (enemy.type === 'boss') {
+                // Boss enemy
+                ctx.beginPath();
+                ctx.moveTo(enemy.x, enemy.y - 15);
+                ctx.lineTo(enemy.x - 20, enemy.y + 10);
+                ctx.lineTo(enemy.x + 20, enemy.y + 10);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Wings
+                ctx.fillRect(enemy.x - 25, enemy.y, 10, 15);
+                ctx.fillRect(enemy.x + 15, enemy.y, 10, 15);
+            } else {
+                // Normal enemy
+                ctx.beginPath();
+                ctx.arc(enemy.x, enemy.y, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#8e44ad';
+                ctx.beginPath();
+                ctx.arc(enemy.x, enemy.y - 5, 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Eyes
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(enemy.x - 4, enemy.y - 2, 3, 0, Math.PI * 2);
+            ctx.arc(enemy.x + 4, enemy.y - 2, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function drawBullet(bullet) {
+            ctx.fillStyle = '#f1c40f';
+            ctx.shadowColor = '#f1c40f';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(bullet.x, bullet.y, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Stars
+            ctx.fillStyle = '#fff';
+            for (let i = 0; i < 50; i++) {
+                ctx.fillRect((i * 73) % canvas.width, (i * 37) % canvas.height, 2, 2);
+            }
+            
+            bullets.forEach(drawBullet);
+            enemies.forEach(drawEnemy);
+            drawShip();
+        }
+        
+        function update() {
+            // Ship movement
+            if (keys.left) ship.x = Math.max(20, ship.x - 5);
+            if (keys.right) ship.x = Math.min(380, ship.x + 5);
+            
+            // Shooting
+            shootTimer++;
+            if (keys.space && shootTimer > 10) {
+                bullets.push({ x: ship.x, y: ship.y - 20, vy: -10 });
+                shootTimer = 0;
+            }
+            
+            // Move bullets
+            bullets.forEach(b => b.y += b.vy);
+            bullets = bullets.filter(b => b.y > 0);
+            
+            // Move enemies
+            let hitEdge = false;
+            enemies.forEach(enemy => {
+                enemy.x += enemy.dir * (enemy.type === 'boss' ? 1 : 2);
+                if (enemy.x < 30 || enemy.x > 370) hitEdge = true;
+                
+                // Shoot back
+                if (Math.random() < 0.01) {
+                    bullets.push({ x: enemy.x, y: enemy.y + 15, vy: 5 });
+                }
+            });
+            
+            if (hitEdge) {
+                enemies.forEach(e => {
+                    e.dir *= -1;
+                    e.y += 10;
+                });
+            }
+            
+            // Bullet-enemy collision
+            bullets.forEach(bullet => {
+                enemies.forEach(enemy => {
+                    const dist = Math.sqrt((bullet.x - enemy.x) ** 2 + (bullet.y - enemy.y) ** 2);
+                    if (dist < 20) {
+                        bullet.hit = true;
+                        enemy.hp--;
+                        if (enemy.hp <= 0) {
+                            enemy.dead = true;
+                            score += enemy.type === 'boss' ? 200 : 50;
+                            document.getElementById('score').textContent = score;
+                        }
+                    }
+                });
+            });
+            
+            bullets = bullets.filter(b => !b.hit);
+            enemies = enemies.filter(e => !e.dead);
+            
+            // Bullet-ship collision
+            bullets.forEach(bullet => {
+                const dist = Math.sqrt((bullet.x - ship.x) ** 2 + (bullet.y - ship.y) ** 2);
+                if (dist < 15) {
+                    bullet.hit = true;
+                    ship.lives--;
+                    document.getElementById('lives').textContent = ship.lives;
+                    
+                    if (ship.lives <= 0) {
+                        endGame();
+                    }
+                }
+            });
+            
+            // Enemy reached bottom
+            enemies.forEach(enemy => {
+                if (enemy.y > 430) {
+                    endGame();
+                }
+            });
+            
+            // Win condition
+            if (enemies.length === 0) {
+                score += 500;
+                document.getElementById('score').textContent = score;
+                // Spawn new wave
+                for (let row = 0; row < 3; row++) {
+                    for (let col = 0; col < 8; col++) {
+                        enemies.push({
+                            x: 60 + col * 40,
+                            y: 50 + row * 40,
+                            dir: 1,
+                            type: row === 0 ? 'boss' : 'normal',
+                            hp: row === 0 ? 3 : 1
+                        });
+                    }
+                }
+            }
+        }
+        
+        function endGame() {
+            clearInterval(gameLoop);
+            setTimeout(() => {
+                alert(`Game Over! 💥\nFinal Score: ${score}\n\nClick OK to play again!`);
+                init();
+                gameLoop = setInterval(() => {
+                    update();
+                    draw();
+                }, 1000 / 60);
+            }, 100);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'ArrowLeft') keys.left = true;
+            if (e.code === 'ArrowRight') keys.right = true;
+            if (e.code === 'Space') keys.space = true;
+        });
+        
+        document.addEventListener('keyup', e => {
+            if (e.code === 'ArrowLeft') keys.left = false;
+            if (e.code === 'ArrowRight') keys.right = false;
+            if (e.code === 'Space') keys.space = false;
+        });
+        
+        init();
+        draw();
+        gameLoop = setInterval(() => {
+            update();
+            draw();
+        }, 1000 / 60);
+    </script>
+</body>
+</html>
