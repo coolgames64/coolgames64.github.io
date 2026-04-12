@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog & Announcements | Cool Games 64x</title>
+    <meta name="google-adsense-account" content="ca-pub-2848704978790894">
+    <meta name="google-site-verification" content="ES1QNfxvlb-x5ECOA4-Te2SIIOcDG1PL6OAyTPfToXg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .header {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .nav {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        .nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 1.1em;
+            padding: 8px 20px;
+            border-radius: 25px;
+            transition: all 0.3s;
+        }
+        .nav a:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .blog-post {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .blog-post:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .post-date {
+            color: #667eea;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        .post-title {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            color: #ffd700;
+        }
+        .post-content {
+            font-size: 1.1em;
+            line-height: 1.8;
+            opacity: 0.9;
+        }
+        .post-emoji {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        .add-post-btn {
+            display: inline-block;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            transition: transform 0.3s;
+        }
+        .add-post-btn:hover {
+            transform: scale(1.05);
+        }
+        .emoji-box {
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .emoji-box span {
+            font-size: 2em;
+            margin-right: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .emoji-box span:hover {
+            transform: scale(1.3);
+        }
+        .footer {
+            text-align: center;
+            padding: 30px;
+            opacity: 0.7;
+            margin-top: 50px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            opacity: 0.7;
+        }
+        .empty-state .emoji {
+            font-size: 5em;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📢 Blog & Announcements</h1>
+        <p>Stay updated with the latest news from Cool Games 64x!</p>
+    </div>
+    
+    <nav class="nav">
+        <a href="index.html">🏠 Home</a>
+        <a href="games.html">🎮 All Games</a>
+        <a href="featured.html">⭐ Featured</a>
+        <a href="about.html">ℹ️ About</a>
+        <a href="contact.html">💬 Contact</a>
+    </nav>
+
+    <div class="container">
+        <!-- <a href="#" class="add-post-btn" onclick="showPostForm(); return false;">➕ Add New Announcement</a> -->
+        
+        <div id="posts-container">
+            <!-- Posts will be loaded here -->
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>© 2024 Cool Games 64x | Made with ❤️ for gamers</p>
+    </div>
+
+    <script>
+        // Blog posts data - ADD NEW POSTS HERE!
+        const blogPosts = [
+            {
+                emoji: "🎉",
+                title: "Welcome to Cool Games 64x!",
+                date: "April 12, 2026",
+                content: "Hello everyone! Cool Games 64x is now LIVE with over 70 free games! We have all your favorites like Snake, Tetris, Flappy Bird, and MORE! Check back often for new games every week!"
+            },
+            {
+                emoji: "🎤",
+                title: "NEW: Sing Along Challenge Game!",
+                date: "April 10, 2026",
+                content: "Sing along to your favorite video game songs! Works on any computer - no microphone needed! Just press SPACE or TAP when you think you're singing the right note. Try Minecraft, Mario Kart, Pokemon songs and more!"
+            },
+            {
+                emoji: "🎮",
+                title: "NEW: Video Game Karaoke!",
+                date: "April 9, 2026",
+                content: "Want to really test your singing? Try our Video Game Karaoke with microphone! Record your voice and hear yourself mixed with the backing track. Perfect for singers with microphones on their devices!"
+            },
+            {
+                emoji: "⛏️",
+                title: "NEW: ExploreCraft - Mining Adventure!",
+                date: "April 7, 2026",
+                content: "Dig deep into the earth and find rare ores! Diamond, gold, iron, and coal - the deeper you go, the rarer the finds! Use WASD or Arrow keys to move, hold SPACE to dig. Can you find all the diamonds?"
+            },
+            {
+                emoji: "🚀",
+                title: "More Games Coming Soon!",
+                date: "April 2, 2026",
+                content: "Cool Games 64x is growing! New games are being added every week. Got an idea for a game? Use the Game Wishes section on our contact page to let us know!"
+            }
+        ];
+
+        // Load posts
+        function loadPosts() {
+            const container = document.getElementById('posts-container');
+            
+            if (blogPosts.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="emoji">📢</div>
+                        <h2>No announcements yet!</h2>
+                        <p>Check back soon for updates.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            blogPosts.forEach(post => {
+                html += `
+                    <div class="blog-post">
+                        <div class="post-emoji">${post.emoji}</div>
+                        <div class="post-date">📅 ${post.date}</div>
+                        <h2 class="post-title">${post.title}</h2>
+                        <div class="post-content">${post.content}</div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // Load posts on page load
+        loadPosts();
+    </script>
+</body>
+</html>
