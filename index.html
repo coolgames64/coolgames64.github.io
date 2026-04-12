@@ -91,6 +91,17 @@
         .social-link:hover { background: #667eea; transform: translateY(-3px); }
         .footer-bottom { text-align: center; padding-top: 30px; margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.4); font-size: 0.8rem; }
         @media (max-width: 768px) { .header-content { flex-direction: column; gap: 12px; } .nav-links { gap: 12px; font-size: 0.85rem; } .hero h1 { font-size: 2rem; } .hero-stats { gap: 25px; } .games-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; } }
+        .share-bar { position: fixed; bottom: 20px; right: 20px; display: flex; gap: 10px; z-index: 1000; }
+        .share-btn { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-decoration: none; }
+        .share-btn:hover { transform: scale(1.1); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
+        .share-btn.whatsapp { background: #25D366; }
+        .share-btn.facebook { background: #1877F2; }
+        .share-btn.twitter { background: #1DA1F2; }
+        .share-btn.telegram { background: #0088cc; }
+        .share-btn.copy { background: #667eea; }
+        .copied-msg { position: fixed; bottom: 80px; right: 20px; background: #38ef7d; color: #1a1a2e; padding: 10px 20px; border-radius: 25px; font-weight: bold; opacity: 0; transition: opacity 0.3s; z-index: 1001; }
+        .copied-msg.show { opacity: 1; }
+        .share-label { position: fixed; bottom: 78px; right: 85px; font-size: 0.75rem; color: rgba(255,255,255,0.6); writing-mode: vertical-rl; text-orientation: mixed; }
     </style>
 </head>
 <body>
@@ -264,6 +275,24 @@
         (adsbygoogle = window.adsbygoogle || []).push({});
         (adsbygoogle = window.adsbygoogle || []).push({});
         (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+    <div class="share-label">SHARE</div>
+    <div class="share-bar">
+        <a class="share-btn whatsapp" href="javascript:void(0)" onclick="shareWhatsApp()" title="Share on WhatsApp">💬</a>
+        <a class="share-btn facebook" href="javascript:void(0)" onclick="shareFacebook()" title="Share on Facebook">📘</a>
+        <a class="share-btn twitter" href="javascript:void(0)" onclick="shareTwitter()" title="Share on Twitter">🐦</a>
+        <a class="share-btn telegram" href="javascript:void(0)" onclick="shareTelegram()" title="Share on Telegram">✈️</a>
+        <a class="share-btn copy" href="javascript:void(0)" onclick="copyLink()" title="Copy Link">🔗</a>
+    </div>
+    <div class="copied-msg" id="copiedMsg">Link Copied! ✅</div>
+    <script>
+    function getPageURL() { return window.location.href; }
+    function getPageTitle() { return document.title || 'Cool Games 64x - Free Online Games!'; }
+    function shareWhatsApp() { window.open('https://wa.me/?text=' + encodeURIComponent(getPageTitle() + ' ' + getPageURL()), '_blank'); }
+    function shareFacebook() { window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(getPageURL()), '_blank'); }
+    function shareTwitter() { window.open('https://twitter.com/intent/tweet?url=' + encodeURIComponent(getPageURL()) + '&text=' + encodeURIComponent(getPageTitle()), '_blank'); }
+    function shareTelegram() { window.open('https://t.me/share/url?url=' + encodeURIComponent(getPageURL()) + '&text=' + encodeURIComponent(getPageTitle()), '_blank'); }
+    function copyLink() { navigator.clipboard.writeText(getPageURL()).then(function() { var msg = document.getElementById('copiedMsg'); msg.classList.add('show'); setTimeout(function() { msg.classList.remove('show'); }, 2000); }); }
     </script>
 </body>
 </html>

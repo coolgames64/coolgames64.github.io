@@ -1,0 +1,55 @@
+<div class="share-bar">
+    <button class="share-btn whatsapp" onclick="shareWhatsApp()" title="Share on WhatsApp">💬</button>
+    <button class="share-btn facebook" onclick="shareFacebook()" title="Share on Facebook">📘</button>
+    <button class="share-btn twitter" onclick="shareTwitter()" title="Share on Twitter">🐦</button>
+    <button class="share-btn telegram" onclick="shareTelegram()" title="Share on Telegram">✈️</button>
+    <button class="share-btn copy" onclick="copyLink()" title="Copy Link">🔗</button>
+</div>
+<div class="copied-msg" id="copiedMsg">Link Copied! ✅</div>
+
+<script>
+function getPageURL() {
+    return window.location.href;
+}
+
+function getPageTitle() {
+    return document.title || 'Cool Games 64x - Free Online Games!';
+}
+
+function shareWhatsApp() {
+    const url = 'https://wa.me/?text=' + encodeURIComponent(getPageTitle() + ' ' + getPageURL());
+    window.open(url, '_blank');
+}
+
+function shareFacebook() {
+    const url = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(getPageURL());
+    window.open(url, '_blank');
+}
+
+function shareTwitter() {
+    const url = 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(getPageURL()) + '&text=' + encodeURIComponent(getPageTitle());
+    window.open(url, '_blank');
+}
+
+function shareTelegram() {
+    const url = 'https://t.me/share/url?url=' + encodeURIComponent(getPageURL()) + '&text=' + encodeURIComponent(getPageTitle());
+    window.open(url, '_blank');
+}
+
+function copyLink() {
+    navigator.clipboard.writeText(getPageURL()).then(function() {
+        const msg = document.getElementById('copiedMsg');
+        msg.classList.add('show');
+        setTimeout(function() {
+            msg.classList.remove('show');
+        }, 2000);
+    });
+}
+
+// Mobile native share
+if (navigator.share) {
+    document.querySelector('.share-bar').addEventListener('click', function(e) {
+        if (e.target.closest('.share-btn')) return;
+    });
+}
+</script>
