@@ -126,7 +126,7 @@
     <header class="header">
         <div class="header-content">
             <div class="logo"><span class="logo-icon">🎮</span><span class="logo-text">Cool Games</span><span class="logo-tag">FREE</span></div>
-            <nav><ul class="nav-links"><li><a href="index.html" class="active">Home</a></li><li><a href="games.html">Games</a></li><li><a href="featured.html">Featured</a></li><li><a href="about.html">About</a></li><li><a href="contact.html">Contact</a></li><li><a href="blog.html">Blog</a></li><li><a href="how-to-build-website.html">📚 Guide</a></li><li><a href="video-game-history.html">📜 History</a></li><li><a href="javascript:void(0)" onclick="doGTranslate('en|zh-CN')" style="color:#ffd700;">🌐 中文</a></li></ul></nav>
+            <nav><ul class="nav-links"><li><a href="index.html" class="active">Home</a></li><li><a href="games.html">Games</a></li><li><a href="featured.html">Featured</a></li><li><a href="about.html">About</a></li><li><a href="contact.html">Contact</a></li><li><a href="blog.html">Blog</a></li><li><a href="how-to-build-website.html">📚 Guide</a></li><li><a href="video-game-history.html">📜 History</a></li><li><a href="javascript:void(0)" onclick="showTranslateModal()" style="color:#ffd700;">🌐 中文</a></li></ul></nav>
         </div>
     </header>
     <section class="hero" id="home">
@@ -329,8 +329,9 @@
     function copyLink() { navigator.clipboard.writeText(getPageURL()).then(function() { var msg = document.getElementById('copiedMsg'); msg.classList.add('show'); setTimeout(function() { msg.classList.remove('show'); }, 2000); }); }
     function shareWeChat() { var modal = document.getElementById('wechatQrModal'); var qrDiv = document.getElementById('wechatQrCode'); qrDiv.innerHTML = '<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(getPageURL()) + '" alt="WeChat QR Code">'; modal.classList.add('show'); }
     function closeWeChatQR() { var modal = document.getElementById('wechatQrModal'); modal.classList.remove('show'); }
-    function doGTranslate(langpair) { if(window.gtranslateSettings) { window.gtranslateSettings.currentlang = langpair.split('|')[1]; } window.location = 'https://' + window.location.host + '/#googtrans(en/' + langpair.split('|')[1] + ')'; location.reload(); }
     function closeTranslate() { var modal = document.getElementById('translateModal'); modal.classList.remove('show'); }
+    function showTranslateModal() { var modal = document.getElementById('translateModal'); modal.classList.add('show'); if(document.getElementById('google_translate_widget').innerHTML === '') { var widgetDiv = document.createElement('div'); widgetDiv.id = 'google_translate_element'; document.getElementById('google_translate_widget').appendChild(widgetDiv); var script = document.createElement('script'); script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit'; document.head.appendChild(script); } }
+    function googleTranslateElementInit() { new google.translate.TranslateElement({pageLanguage: 'en', includedLanguages: 'zh-CN', layout: google.translate.TranslateElement.InlineLayout.SIMPLE}, 'google_translate_element'); }
     </script>
 </body>
 </html>
