@@ -119,13 +119,14 @@
         .translate-content button:hover { background: #5568d3; }
         #google_translate_widget { min-height: 100px; }
     </style>
+    <script>window.gtranslateSettings = {"default_language":"en","detect_browser_language":true,"languages":["en","zh-CN"],"gl_placeholder":"Search games...","gl_results_to_places":false}; function doGTranslate(langpair) { var skipLangCheck = false; if(window.location.hash === '#googtrans(en|zh-CN)') { skipLangCheck = true; } if(skipLangCheck || confirm('Redirect to Google Translate?')) { window.location = 'https://coolgames64.github.io/#googtrans/' + langpair.replace('|', '/'); location.reload(); } } </script>
 </head>
 <body>
     <div class="loader-wrapper" id="loader"><div class="loader"></div><div class="loader-text">Loading awesome games...</div></div>
     <header class="header">
         <div class="header-content">
             <div class="logo"><span class="logo-icon">🎮</span><span class="logo-text">Cool Games</span><span class="logo-tag">FREE</span></div>
-            <nav><ul class="nav-links"><li><a href="index.html" class="active">Home</a></li><li><a href="games.html">Games</a></li><li><a href="featured.html">Featured</a></li><li><a href="about.html">About</a></li><li><a href="contact.html">Contact</a></li><li><a href="blog.html">Blog</a></li><li><a href="how-to-build-website.html">📚 Guide</a></li><li><a href="video-game-history.html">📜 History</a></li><li><a href="javascript:void(0)" onclick="translatePage()" style="color:#ffd700;">🌐 中文</a></li></ul></nav>
+            <nav><ul class="nav-links"><li><a href="index.html" class="active">Home</a></li><li><a href="games.html">Games</a></li><li><a href="featured.html">Featured</a></li><li><a href="about.html">About</a></li><li><a href="contact.html">Contact</a></li><li><a href="blog.html">Blog</a></li><li><a href="how-to-build-website.html">📚 Guide</a></li><li><a href="video-game-history.html">📜 History</a></li><li><a href="javascript:void(0)" onclick="doGTranslate('en|zh-CN')" style="color:#ffd700;">🌐 中文</a></li></ul></nav>
         </div>
     </header>
     <section class="hero" id="home">
@@ -328,7 +329,7 @@
     function copyLink() { navigator.clipboard.writeText(getPageURL()).then(function() { var msg = document.getElementById('copiedMsg'); msg.classList.add('show'); setTimeout(function() { msg.classList.remove('show'); }, 2000); }); }
     function shareWeChat() { var modal = document.getElementById('wechatQrModal'); var qrDiv = document.getElementById('wechatQrCode'); qrDiv.innerHTML = '<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(getPageURL()) + '" alt="WeChat QR Code">'; modal.classList.add('show'); }
     function closeWeChatQR() { var modal = document.getElementById('wechatQrModal'); modal.classList.remove('show'); }
-    function translatePage() { window.open('https://www.bing.com/translator?ref=hitrig&to=zh-Hans&text=' + encodeURIComponent(window.location.href), '_blank'); }
+    function doGTranslate(langpair) { if(window.gtranslateSettings) { window.gtranslateSettings.currentlang = langpair.split('|')[1]; } window.location = 'https://' + window.location.host + '/#googtrans(en/' + langpair.split('|')[1] + ')'; location.reload(); }
     function closeTranslate() { var modal = document.getElementById('translateModal'); modal.classList.remove('show'); }
     </script>
 </body>
