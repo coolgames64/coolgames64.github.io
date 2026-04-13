@@ -328,7 +328,7 @@
     function copyLink() { navigator.clipboard.writeText(getPageURL()).then(function() { var msg = document.getElementById('copiedMsg'); msg.classList.add('show'); setTimeout(function() { msg.classList.remove('show'); }, 2000); }); }
     function shareWeChat() { var modal = document.getElementById('wechatQrModal'); var qrDiv = document.getElementById('wechatQrCode'); qrDiv.innerHTML = '<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(getPageURL()) + '" alt="WeChat QR Code">'; modal.classList.add('show'); }
     function closeWeChatQR() { var modal = document.getElementById('wechatQrModal'); modal.classList.remove('show'); }
-    function translatePage() { window.open('https://fanyi.baidu.com/#en/zh/' + encodeURIComponent(window.location.href), '_blank'); }
+    function translatePage() { window.open('https://www.bing.com/translator?ref=hitrig&to=zh-Hans&text=' + encodeURIComponent(window.location.href), '_blank'); }
     function closeTranslate() { var modal = document.getElementById('translateModal'); modal.classList.remove('show'); }
     </script>
 </body>
