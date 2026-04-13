@@ -111,6 +111,13 @@
         .wechat-qr-content img { width: 200px; height: 200px; margin: 0 auto; display: block; }
         .wechat-qr-content button { margin-top: 15px; padding: 10px 25px; background: #07C160; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 1rem; }
         .wechat-qr-content button:hover { background: #059f4a; }
+        .translate-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center; }
+        .translate-modal.show { display: flex; }
+        .translate-content { background: white; border-radius: 20px; padding: 30px; text-align: center; color: #333; max-width: 350px; }
+        .translate-content h3 { margin-bottom: 20px; color: #667eea; }
+        .translate-content button { margin-top: 15px; padding: 10px 25px; background: #667eea; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 1rem; }
+        .translate-content button:hover { background: #5568d3; }
+        #google_translate_widget { min-height: 100px; }
     </style>
 </head>
 <body>
@@ -285,6 +292,14 @@
         (adsbygoogle = window.adsbygoogle || []).push({});
         (adsbygoogle = window.adsbygoogle || []).push({});
     </script>
+    <div id="google_translate_element" style="display:none;"></div>
+    <div class="translate-modal" id="translateModal">
+        <div class="translate-content">
+            <h3>🌐 Translate to Chinese</h3>
+            <div id="google_translate_widget"></div>
+            <button onclick="closeTranslate()">✕ Close</button>
+        </div>
+    </div>
     <div class="share-label">SHARE</div>
     <div class="share-bar">
         <a class="share-btn wechat" href="javascript:void(0)" onclick="shareWeChat()" title="Share on WeChat">💚</a>
@@ -314,6 +329,7 @@
     function shareWeChat() { var modal = document.getElementById('wechatQrModal'); var qrDiv = document.getElementById('wechatQrCode'); qrDiv.innerHTML = '<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(getPageURL()) + '" alt="WeChat QR Code">'; modal.classList.add('show'); }
     function closeWeChatQR() { var modal = document.getElementById('wechatQrModal'); modal.classList.remove('show'); }
     function translatePage() { window.open('https://fanyi.baidu.com/#en/zh/' + encodeURIComponent(window.location.href), '_blank'); }
+    function closeTranslate() { var modal = document.getElementById('translateModal'); modal.classList.remove('show'); }
     </script>
 </body>
 </html>
