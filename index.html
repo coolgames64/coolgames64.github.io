@@ -97,11 +97,20 @@
         .share-btn.whatsapp { background: #25D366; }
         .share-btn.facebook { background: #1877F2; }
         .share-btn.twitter { background: #1DA1F2; }
+        .share-btn.wechat { background: #07C160; }
         .share-btn.telegram { background: #0088cc; }
         .share-btn.copy { background: #667eea; }
         .copied-msg { position: fixed; bottom: 80px; right: 20px; background: #38ef7d; color: #1a1a2e; padding: 10px 20px; border-radius: 25px; font-weight: bold; opacity: 0; transition: opacity 0.3s; z-index: 1001; }
         .copied-msg.show { opacity: 1; }
         .share-label { position: fixed; bottom: 78px; right: 85px; font-size: 0.75rem; color: rgba(255,255,255,0.6); writing-mode: vertical-rl; text-orientation: mixed; }
+        .wechat-qr-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center; }
+        .wechat-qr-modal.show { display: flex; }
+        .wechat-qr-content { background: white; border-radius: 20px; padding: 30px; text-align: center; color: #333; max-width: 300px; }
+        .wechat-qr-content h3 { margin-bottom: 10px; color: #07C160; }
+        .wechat-qr-content p { margin-bottom: 20px; font-size: 0.9rem; }
+        .wechat-qr-content img { width: 200px; height: 200px; margin: 0 auto; display: block; }
+        .wechat-qr-content button { margin-top: 15px; padding: 10px 25px; background: #07C160; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 1rem; }
+        .wechat-qr-content button:hover { background: #059f4a; }
     </style>
 </head>
 <body>
@@ -278,11 +287,20 @@
     </script>
     <div class="share-label">SHARE</div>
     <div class="share-bar">
+        <a class="share-btn wechat" href="javascript:void(0)" onclick="shareWeChat()" title="Share on WeChat">💚</a>
         <a class="share-btn whatsapp" href="javascript:void(0)" onclick="shareWhatsApp()" title="Share on WhatsApp">💬</a>
         <a class="share-btn facebook" href="javascript:void(0)" onclick="shareFacebook()" title="Share on Facebook">📘</a>
         <a class="share-btn twitter" href="javascript:void(0)" onclick="shareTwitter()" title="Share on Twitter">🐦</a>
         <a class="share-btn telegram" href="javascript:void(0)" onclick="shareTelegram()" title="Share on Telegram">✈️</a>
         <a class="share-btn copy" href="javascript:void(0)" onclick="copyLink()" title="Copy Link">🔗</a>
+    </div>
+    <div class="wechat-qr-modal" id="wechatQrModal">
+        <div class="wechat-qr-content">
+            <h3>Share via WeChat 💚</h3>
+            <p>Scan this QR code with WeChat:</p>
+            <div id="wechatQrCode"></div>
+            <button onclick="closeWeChatQR()">✕ Close</button>
+        </div>
     </div>
     <div class="copied-msg" id="copiedMsg">Link Copied! ✅</div>
     <script>
@@ -293,6 +311,8 @@
     function shareTwitter() { window.open('https://twitter.com/intent/tweet?url=' + encodeURIComponent(getPageURL()) + '&text=' + encodeURIComponent(getPageTitle()), '_blank'); }
     function shareTelegram() { window.open('https://t.me/share/url?url=' + encodeURIComponent(getPageURL()) + '&text=' + encodeURIComponent(getPageTitle()), '_blank'); }
     function copyLink() { navigator.clipboard.writeText(getPageURL()).then(function() { var msg = document.getElementById('copiedMsg'); msg.classList.add('show'); setTimeout(function() { msg.classList.remove('show'); }, 2000); }); }
+    function shareWeChat() { var modal = document.getElementById('wechatQrModal'); var qrDiv = document.getElementById('wechatQrCode'); qrDiv.innerHTML = '<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(getPageURL()) + '" alt="WeChat QR Code">'; modal.classList.add('show'); }
+    function closeWeChatQR() { var modal = document.getElementById('wechatQrModal'); modal.classList.remove('show'); }
     </script>
 </body>
 </html>
