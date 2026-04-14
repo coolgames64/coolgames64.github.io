@@ -287,7 +287,7 @@
         
         // Timer
         let timeLeft = 180; // 3 minutes default
-        let timeLimit = 60;
+        let timeLimit = 180;
         
         // Keys
         let keys = { down: false };
@@ -623,8 +623,8 @@
             gameRunning = true;
             gameWon = false;
             
-            // Timer based on oxygen upgrade
-            timeLimit = upgrades.oxygen.bought ? 180 : 60;
+            // Timer based on oxygen upgrade (default 3 minutes if not bought)
+            timeLimit = upgrades.oxygen.bought ? 180 : 180;
             timeLeft = timeLimit;
             
             document.getElementById('timerBar').style.display = 'flex';
