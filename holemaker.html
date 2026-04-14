@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hole Maker - Free Diving Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #0a1628;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        canvas {
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 150, 255, 0.5);
+        }
+        #instructions {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            text-align: center;
+            font-size: 14px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+        #startScreen, #winScreen, #shopOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(10, 22, 40, 0.95);
+            color: white;
+            z-index: 10;
+        }
+        #winScreen, #shopOverlay { display: none; }
+        #shopOverlay {
+            background: rgba(10, 22, 40, 0.98);
+            justify-content: center;
+        }
+        h1 { font-size: 36px; margin-bottom: 10px; }
+        h2 { font-size: 24px; color: #ffd93d; }
+        .subtitle { font-size: 16px; color: #a0a0ff; margin-bottom: 20px; }
+        .robot { font-size: 60px; margin: 15px 0; }
+        .start-btn {
+            background: linear-gradient(135deg, #4d96ff, #6bcb77);
+            border: none;
+            padding: 12px 30px;
+            font-size: 18px;
+            color: white;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+        }
+        .start-btn:hover { transform: scale(1.05); }
+        .start-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .stat {
+            background: rgba(255,255,255,0.1);
+            padding: 12px 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .stat-value { font-size: 24px; color: #ffd93d; }
+        .stat-label { font-size: 11px; color: #a0a0ff; }
+        
+        /* Shop Styles */
+        .shop-title { font-size: 32px; margin-bottom: 5px; }
+        .shop-coins { font-size: 20px; color: #ffd93d; margin-bottom: 20px; }
+        .upgrade-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 25px;
+            border-radius: 15px;
+            margin: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            min-width: 300px;
+        }
+        .upgrade-icon { font-size: 36px; }
+        .upgrade-info { flex: 1; text-align: left; }
+        .upgrade-name { font-size: 18px; font-weight: bold; }
+        .upgrade-desc { font-size: 12px; color: #a0a0ff; }
+        .upgrade-btn {
+            background: linear-gradient(135deg, #ffd93d, #ff8e53);
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            color: #333;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .upgrade-btn:hover { transform: scale(1.1); }
+        .upgrade-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .upgrade-btn.bought { background: #6bcb77; color: white; }
+        .close-shop {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .timer-bar {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.5);
+            padding: 8px 20px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .timer-text { color: white; font-size: 16px; font-weight: bold; }
+        .timer-progress {
+            width: 150px;
+            height: 10px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .timer-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6bcb77, #4d96ff);
+            transition: width 0.1s;
+        }
+    </style>
+</head>
+<body>
+    <div id="instructions">⬇️ Hold DOWN to dive | ⬆️ Press UP for shop | ⭐ Collect stars for upgrades!</div>
+    
+    <div id="startScreen">
+        <h1>🕳️ HOLE MAKER</h1>
+        <div class="subtitle">Dive deep. Collect stars. Make the biggest hole!</div>
+        <div class="robot">🤖</div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value">⬇️</div>
+                <div class="stat-label">Hold DOWN</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">⬆️</div>
+                <div class="stat-label">UP for Shop</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">⭐</div>
+                <div class="stat-label">15 coins = upgrade</div>
+            </div>
+        </div>
+        <button class="start-btn" onclick="startGame()">▶️ START DIVING!</button>
+    </div>
+    
+    <div id="shopOverlay">
+        <button class="close-shop" onclick="closeShop()">✕</button>
+        <div class="shop-title">🛒 UPGRADE SHOP</div>
+        <div class="shop-coins">⭐ You have: <span id="shopCoins">0</span> coins</div>
+        
+        <div class="upgrade-item">
+            <div class="upgrade-icon">🧲</div>
+            <div class="upgrade-info">
+                <div class="upgrade-name">Coin Magnet</div>
+                <div class="upgrade-desc">Collect coins from 2x farther!</div>
+            </div>
+            <button class="upgrade-btn" id="magnetBtn" onclick="buyUpgrade('magnet')">⭐ 15</button>
+        </div>
+        
+        <div class="upgrade-item">
+            <div class="upgrade-icon">⏱️</div>
+            <div class="upgrade-info">
+                <div class="upgrade-name">Oxygen Tank+</div>
+                <div class="upgrade-desc">Dive for 3 minutes instead of 1!</div>
+            </div>
+            <button class="upgrade-btn" id="oxygenBtn" onclick="buyUpgrade('oxygen')">⭐ 15</button>
+        </div>
+        
+        <div class="upgrade-item">
+            <div class="upgrade-icon">💨</div>
+            <div class="upgrade-info">
+                <div class="upgrade-name">Speed Engine</div>
+                <div class="upgrade-desc">Go 50% faster!</div>
+            </div>
+            <button class="upgrade-btn" id="speedBtn" onclick="buyUpgrade('speed')">⭐ 15</button>
+        </div>
+        
+        <button class="start-btn" onclick="closeShop()">▶️ START DIVE!</button>
+    </div>
+    
+    <div id="winScreen">
+        <h1>🌋 YOU WIN! 🌋</h1>
+        <div class="robot">🤖</div>
+        <h2>MASSIVE EARTHQUAKE!</h2>
+        <div class="subtitle">You created the BIGGEST hole!</div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="finalStars">0</div>
+                <div class="stat-label">⭐ Stars</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="finalDepth">0</div>
+                <div class="stat-label">Meters</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="finalCoins">0</div>
+                <div class="stat-label">💰 Coins</div>
+            </div>
+        </div>
+        <button class="start-btn" onclick="restartGame()">🔄 PLAY AGAIN!</button>
+    </div>
+    
+    <div id="timerBar" class="timer-bar" style="display: none;">
+        <div class="timer-text">⏱️ <span id="timerText">1:00</span></div>
+        <div class="timer-progress">
+            <div class="timer-fill" id="timerFill" style="width: 100%;"></div>
+        </div>
+    </div>
+    
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    
+    <script>
+        // === GAME SETUP ===
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game state
+        let gameRunning = false;
+        let gameWon = false;
+        let screenShake = 0;
+        let coins = 0;
+        
+        // Upgrades
+        let upgrades = {
+            magnet: { bought: false, cost: 15 },
+            oxygen: { bought: false, cost: 15 },
+            speed: { bought: false, cost: 15 }
+        };
+        
+        // Robot (player)
+        const robot = {
+            x: canvas.width / 2,
+            y: 100,
+            width: 40,
+            height: 50,
+            speed: 0,
+            baseSpeed: 3,
+            maxSpeed: 12,
+            stars: 0
+        };
+        
+        // Stars to collect
+        let stars = [];
+        
+        // Ground/hole progress
+        let holeProgress = 0;
+        let holeTarget = 100;
+        
+        // World
+        let worldY = 0;
+        let depth = 0;
+        
+        // Timer
+        let timeLeft = 60; // 1 minute default
+        let timeLimit = 60;
+        
+        // Keys
+        let keys = { down: false };
+        
+        // === CREATE STARS ===
+        function createStars() {
+            stars = [];
+            for (let i = 0; i < 20; i++) {
+                stars.push({
+                    x: Math.random() * (canvas.width - 60) + 30,
+                    y: 200 + i * 100 + Math.random() * 50,
+                    size: 25,
+                    collected: false,
+                    twinkle: Math.random() * Math.PI * 2
+                });
+            }
+        }
+        
+        // === DRAW ROBOT ===
+        function drawRobot() {
+            const x = robot.x;
+            const y = robot.y;
+            
+            // Magnet glow when bought
+            if (upgrades.magnet.bought) {
+                ctx.fillStyle = 'rgba(255, 217, 61, 0.2)';
+                ctx.beginPath();
+                ctx.arc(x, y, 60, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Body
+            ctx.fillStyle = '#4d96ff';
+            ctx.fillRect(x - 15, y - 20, 30, 35);
+            
+            // Head
+            ctx.fillStyle = '#6bcb77';
+            ctx.fillRect(x - 12, y - 35, 24, 20);
+            
+            // Eyes
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(x - 8, y - 30, 6, 6);
+            ctx.fillRect(x + 2, y - 30, 6, 6);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(x - 6, y - 28, 3, 3);
+            ctx.fillRect(x + 4, y - 28, 3, 3);
+            
+            // Antenna
+            ctx.strokeStyle = '#ffd93d';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y - 35);
+            ctx.lineTo(x, y - 45);
+            ctx.stroke();
+            ctx.fillStyle = '#ff6b6b';
+            ctx.beginPath();
+            ctx.arc(x, y - 47, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Drill
+            ctx.fillStyle = '#888';
+            ctx.beginPath();
+            ctx.moveTo(x - 10, y + 15);
+            ctx.lineTo(x, y + 30 + (robot.speed * 2));
+            ctx.lineTo(x + 10, y + 15);
+            ctx.fill();
+            
+            // Speed lines
+            if (robot.speed > 5) {
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = 2;
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(x - 20, y + 10 + i * 15);
+                    ctx.lineTo(x - 35, y + 10 + i * 15);
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        // === DRAW STAR ===
+        function drawStar(star) {
+            if (star.collected) return;
+            
+            const x = star.x;
+            const y = star.y + worldY;
+            const size = star.size;
+            
+            star.twinkle += 0.1;
+            const scale = 1 + Math.sin(star.twinkle) * 0.2;
+            
+            ctx.fillStyle = '#ffd93d';
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * 4 * Math.PI / 5) - Math.PI / 2;
+                const px = x + Math.cos(angle) * size * scale;
+                const py = y + Math.sin(angle) * size * scale;
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fill();
+            
+            // Glow
+            ctx.fillStyle = 'rgba(255, 217, 61, 0.3)';
+            ctx.beginPath();
+            ctx.arc(x, y, size * 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Coin indicator
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 10px Arial';
+            ctx.fillText('15', x - 6, y + 5);
+        }
+        
+        // === DRAW BACKGROUND ===
+        function drawBackground() {
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(0.3, '#4d96ff');
+            gradient.addColorStop(1, '#1a3a5c');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Bubbles
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            for (let i = 0; i < 20; i++) {
+                const bx = (i * 73 + worldY * 0.5) % canvas.width;
+                const by = (i * 89 + worldY * 0.3) % canvas.height;
+                ctx.beginPath();
+                ctx.arc(bx, by, 3 + (i % 3), 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Ground
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+            ctx.fillStyle = '#654321';
+            ctx.fillRect(0, canvas.height - 40, canvas.width, 20);
+            ctx.fillStyle = '#5D4E37';
+            ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+        }
+        
+        // === DRAW HOLE ===
+        function drawHole() {
+            if (holeProgress > 10) {
+                const holeSize = holeProgress / 2;
+                ctx.fillStyle = '#1a0a00';
+                ctx.beginPath();
+                ctx.ellipse(canvas.width / 2, canvas.height - 30 + worldY * 0.1, holeSize * 3, holeSize, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                if (holeProgress > 30) {
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 3;
+                    for (let i = 0; i < 4; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(canvas.width / 2, canvas.height - 30 + worldY * 0.1);
+                        const angle = (i * Math.PI / 2) + Math.PI / 4;
+                        ctx.lineTo(
+                            canvas.width / 2 + Math.cos(angle) * holeSize * 4,
+                            canvas.height - 30 + worldY * 0.1 + Math.sin(angle) * holeSize * 2
+                        );
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+        
+        // === DRAW HUD ===
+        function drawHUD() {
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('📍 ' + Math.floor(depth) + 'm', 10, 30);
+            ctx.fillText('⭐ ' + robot.stars, 10, 55);
+            ctx.fillText('💰 ' + coins, 10, 80);
+            ctx.fillText('💨 ' + robot.speed.toFixed(1) + ' m/s', 10, 105);
+        }
+        
+        // === DRAW HOLE METER ===
+        function drawHoleMeter() {
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(canvas.width - 30, 20, 20, canvas.height - 40);
+            
+            const holeHeight = (holeProgress / holeTarget) * (canvas.height - 40);
+            ctx.fillStyle = '#2d1b4e';
+            ctx.fillRect(canvas.width - 28, canvas.height - 20 - holeHeight, 16, holeHeight);
+            
+            ctx.strokeStyle = '#8a2be2';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(canvas.width - 30, 20, 20, canvas.height - 40);
+            
+            ctx.font = '16px Arial';
+            ctx.fillText('🕳️', canvas.width - 27, 15);
+            
+            ctx.fillStyle = '#ffd93d';
+            ctx.font = '12px Arial';
+            ctx.fillText(Math.floor((holeProgress / holeTarget) * 100) + '%', canvas.width - 35, canvas.height - 5);
+        }
+        
+        // === DRAW EARTHQUAKE ===
+        function drawEarthquake() {
+            if (gameWon && screenShake > 0) {
+                const offsetX = (Math.random() - 0.5) * screenShake;
+                const offsetY = (Math.random() - 0.5) * screenShake;
+                ctx.translate(offsetX, offsetY);
+            }
+        }
+        
+        // === UPDATE TIMER ===
+        function updateTimer() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            document.getElementById('timerText').textContent = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+            document.getElementById('timerFill').style.width = (timeLeft / timeLimit * 100) + '%';
+        }
+        
+        // === WIN GAME ===
+        function triggerWin() {
+            gameWon = true;
+            gameRunning = false;
+            screenShake = 50;
+            document.getElementById('finalStars').textContent = robot.stars;
+            document.getElementById('finalDepth').textContent = Math.floor(depth) + 'm';
+            document.getElementById('finalCoins').textContent = coins;
+            document.getElementById('winScreen').style.display = 'flex';
+            document.getElementById('timerBar').style.display = 'none';
+            
+            let shakeInterval = setInterval(() => {
+                screenShake -= 2;
+                if (screenShake <= 0) {
+                    screenShake = 0;
+                    clearInterval(shakeInterval);
+                }
+            }, 50);
+        }
+        
+        // === GAME LOOP ===
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            drawBackground();
+            ctx.save();
+            drawEarthquake();
+            drawHole();
+            
+            // Get magnet range
+            const magnetRange = upgrades.magnet.bought ? 80 : 40;
+            
+            // Draw and update stars
+            stars.forEach(star => {
+                drawStar(star);
+                
+                if (!star.collected) {
+                    const dx = robot.x - star.x;
+                    const dy = robot.y - (star.y + worldY);
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < magnetRange) {
+                        star.collected = true;
+                        robot.stars++;
+                        coins += 15; // Each star gives 15 coins
+                        robot.speed = Math.min(robot.speed + 0.5, robot.maxSpeed);
+                        holeProgress += 2;
+                    }
+                }
+            });
+            
+            // Update speed based on upgrades
+            let currentMaxSpeed = robot.maxSpeed;
+            if (upgrades.speed.bought) currentMaxSpeed *= 1.5;
+            
+            // Move robot
+            if (keys.down) {
+                robot.speed = Math.min(robot.speed + 0.08, currentMaxSpeed);
+            } else {
+                robot.speed = Math.max(robot.speed - 0.03, 0);
+            }
+            
+            robot.y += robot.speed;
+            worldY -= robot.speed;
+            depth += robot.speed / 5;
+            
+            // Hole progress
+            if (robot.speed > 2) {
+                holeProgress += (robot.speed - 2) / 10;
+            }
+            
+            drawRobot();
+            drawHoleMeter();
+            drawHUD();
+            
+            ctx.restore();
+            
+            // Win condition
+            if (holeProgress >= holeTarget) {
+                triggerWin();
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // === TIMER LOOP ===
+        function timerLoop() {
+            if (!gameRunning || gameWon) return;
+            
+            timeLeft--;
+            updateTimer();
+            
+            if (timeLeft <= 0) {
+                triggerWin();
+                return;
+            }
+            
+            setTimeout(timerLoop, 1000);
+        }
+        
+        // === START GAME ===
+        function startGame() {
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('winScreen').style.display = 'none';
+            document.getElementById('shopOverlay').style.display = 'none';
+            
+            // Reset
+            robot.x = canvas.width / 2;
+            robot.y = 100;
+            robot.speed = 0;
+            robot.stars = 0;
+            holeProgress = 0;
+            worldY = 0;
+            depth = 0;
+            coins = 0;
+            gameRunning = true;
+            gameWon = false;
+            
+            // Timer based on oxygen upgrade
+            timeLimit = upgrades.oxygen.bought ? 180 : 60;
+            timeLeft = timeLimit;
+            
+            document.getElementById('timerBar').style.display = 'flex';
+            updateTimer();
+            
+            createStars();
+            gameLoop();
+            timerLoop();
+        }
+        
+        function restartGame() {
+            // Reset upgrades for new game
+            upgrades = {
+                magnet: { bought: false, cost: 15 },
+                oxygen: { bought: false, cost: 15 },
+                speed: { bought: false, cost: 15 }
+            };
+            startGame();
+        }
+        
+        // === SHOP FUNCTIONS ===
+        function openShop() {
+            if (!gameRunning || gameWon) return;
+            gameRunning = false;
+            document.getElementById('shopOverlay').style.display = 'flex';
+            document.getElementById('shopCoins').textContent = coins;
+            updateShopButtons();
+        }
+        
+        function closeShop() {
+            document.getElementById('shopOverlay').style.display = 'none';
+            if (!gameWon) {
+                gameRunning = true;
+                gameLoop();
+            }
+        }
+        
+        function updateShopButtons() {
+            const magnetBtn = document.getElementById('magnetBtn');
+            const oxygenBtn = document.getElementById('oxygenBtn');
+            const speedBtn = document.getElementById('speedBtn');
+            
+            // Magnet
+            if (upgrades.magnet.bought) {
+                magnetBtn.textContent = '✓ OWNED';
+                magnetBtn.classList.add('bought');
+                magnetBtn.disabled = true;
+            } else if (coins < upgrades.magnet.cost) {
+                magnetBtn.textContent = '⭐ 15';
+                magnetBtn.disabled = true;
+            } else {
+                magnetBtn.textContent = '⭐ 15';
+                magnetBtn.disabled = false;
+            }
+            
+            // Oxygen
+            if (upgrades.oxygen.bought) {
+                oxygenBtn.textContent = '✓ OWNED';
+                oxygenBtn.classList.add('bought');
+                oxygenBtn.disabled = true;
+            } else if (coins < upgrades.oxygen.cost) {
+                oxygenBtn.textContent = '⭐ 15';
+                oxygenBtn.disabled = true;
+            } else {
+                oxygenBtn.textContent = '⭐ 15';
+                oxygenBtn.disabled = false;
+            }
+            
+            // Speed
+            if (upgrades.speed.bought) {
+                speedBtn.textContent = '✓ OWNED';
+                speedBtn.classList.add('bought');
+                speedBtn.disabled = true;
+            } else if (coins < upgrades.speed.cost) {
+                speedBtn.textContent = '⭐ 15';
+                speedBtn.disabled = true;
+            } else {
+                speedBtn.textContent = '⭐ 15';
+                speedBtn.disabled = false;
+            }
+        }
+        
+        function buyUpgrade(type) {
+            if (coins >= upgrades[type].cost && !upgrades[type].bought) {
+                coins -= upgrades[type].cost;
+                upgrades[type].bought = true;
+                document.getElementById('shopCoins').textContent = coins;
+                updateShopButtons();
+            }
+        }
+        
+        // === CONTROLS ===
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown' || e.key === 's') {
+                keys.down = true;
+                e.preventDefault();
+            }
+            if (e.key === 'ArrowUp' || e.key === 'w') {
+                openShop();
+                e.preventDefault();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowDown' || e.key === 's') {
+                keys.down = false;
+            }
+        });
+        
+        canvas.addEventListener('touchstart', (e) => {
+            keys.down = true;
+            e.preventDefault();
+        });
+        
+        canvas.addEventListener('touchend', (e) => {
+            keys.down = false;
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>
