@@ -279,14 +279,14 @@
         
         // Ground/hole progress
         let holeProgress = 0;
-        let holeTarget = 200; // Much bigger hole to fill!
+        let holeTarget = 500; // MUCH bigger hole to fill!
         
         // World
         let worldY = 0;
         let depth = 0;
         
         // Timer
-        let timeLeft = 60; // 1 minute default
+        let timeLeft = 180; // 3 minutes default
         let timeLimit = 60;
         
         // Keys
@@ -551,7 +551,7 @@
                         robot.stars++;
                         coins += 15; // Each star gives 15 coins
                         robot.speed = Math.min(robot.speed + 0.3, robot.maxSpeed);
-                        holeProgress += 2;
+                        holeProgress += 0.3;
                     }
                 }
             });
@@ -573,7 +573,7 @@
             
             // Hole progress - much slower
             if (robot.speed > 2) {
-                holeProgress += (robot.speed - 2) / 50;
+                holeProgress += (robot.speed - 2) / 200;
             }
             
             drawRobot();
