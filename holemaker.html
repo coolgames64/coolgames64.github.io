@@ -279,7 +279,7 @@
         
         // Ground/hole progress
         let holeProgress = 0;
-        let holeTarget = 100;
+        let holeTarget = 200; // Much bigger hole to fill!
         
         // World
         let worldY = 0;
@@ -550,7 +550,7 @@
                         star.collected = true;
                         robot.stars++;
                         coins += 15; // Each star gives 15 coins
-                        robot.speed = Math.min(robot.speed + 0.5, robot.maxSpeed);
+                        robot.speed = Math.min(robot.speed + 0.3, robot.maxSpeed);
                         holeProgress += 2;
                     }
                 }
@@ -571,9 +571,9 @@
             worldY -= robot.speed;
             depth += robot.speed / 5;
             
-            // Hole progress
+            // Hole progress - much slower
             if (robot.speed > 2) {
-                holeProgress += (robot.speed - 2) / 10;
+                holeProgress += (robot.speed - 2) / 50;
             }
             
             drawRobot();
