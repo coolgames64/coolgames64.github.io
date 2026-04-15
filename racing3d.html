@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Racing - Cool Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: #1a1a2e; overflow: hidden; }
+        #game-container { width: 100vw; height: 100vh; display: block; }
+        #hud {
+            position: fixed; top: 0; left: 0; right: 0; padding: 20px;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            color: white; pointer-events: none; z-index: 100;
+        }
+        .hud-item { background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 10px; }
+        .hud-label { font-size: 0.7rem; opacity: 0.7; }
+        .hud-value { font-size: 1.5rem; font-weight: 700; color: #4ade80; }
+        #speed-value { color: #f97316; }
+        #message {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 3rem; font-weight: 800; color: white; text-shadow: 0 0 30px rgba(255,255,255,0.5);
+            opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 200;
+        }
+        #controls-hint {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 10px;
+            color: white; font-size: 0.9rem; pointer-events: none;
+        }
+        #powerup-indicator {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 10px; pointer-events: none;
+        }
+        .powerup-slot {
+            width: 50px; height: 50px; border-radius: 10px; background: rgba(0,0,0,0.6);
+            border: 3px solid #333; display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+        }
+        .powerup-slot.active { border-color: #4ade80; animation: pulse 0.5s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        #minimap {
+            position: fixed; bottom: 20px; right: 20px; width: 150px; height: 150px;
+            background: rgba(0,0,0,0.7); border-radius: 10px; border: 2px solid #333;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="hud">
+        <div class="hud-item">
+            <div class="hud-label">LAP</div>
+            <div class="hud-value"><span id="lap">1</span>/3</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">POSITION</div>
+            <div class="hud-value"><span id="position">1</span>/2</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">COINS</div>
+            <div class="hud-value" id="coins">0</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">SPEED</div>
+            <div class="hud-value" id="speed-value">0</div>
+        </div>
+    </div>
+    <div id="message"></div>
+    <div id="powerup-indicator">
+        <div class="powerup-slot" id="slot0">⚡</div>
+        <div class="powerup-slot" id="slot1">💎</div>
+    </div>
+    <div id="controls-hint">⬆️ Accelerate | ⬇️ Brake | ⬅️➡️ Steer | SPACE Use Power-up</div>
+    <canvas id="minimap"></canvas>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+    const canvas = document.getElementById('game-container');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.setClearColor(0x87ceeb);
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x87ceeb, 100, 500);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+    // Track parameters
+    const trackWidth = 18;
+    const trackLength = 400;
+    const trackSegments = 64;
+    const buildingHeight = 15;
+
+    // Player car
+    const carGroup = new THREE.Group();
+    const carBody = new THREE.Mesh(
+        new THREE.BoxGeometry(2, 0.8, 4),
+        new THREE.MeshPhongMaterial({ color: 0xcc0000 })
+    );
+    carBody.castShadow = true;
+    carGroup.add(carBody);
+    const carCabin = new THREE.Mesh(
+        new THREE.BoxGeometry(1.5, 0.6, 2),
+        new THREE.MeshPhongMaterial({ color: 0x333333 })
+    );
+    carCabin.position.y = 0.7;
+    carGroup.add(carCabin);
+    carGroup.position.y = 0.5;
+    scene.add(carGroup);
+
+    // AI car
+    const aiCar = new THREE.Group();
+    const aiBody = new THREE.Mesh(
+        new THREE.BoxGeometry(2, 0.8, 4),
+        new THREE.MeshPhongMaterial({ color: 0x0066cc })
+    );
+    aiBody.castShadow = true;
+    aiCar.add(aiBody);
+    const aiCabin = new THREE.Mesh(
+        new THREE.BoxGeometry(1.5, 0.6, 2),
+        new THREE.MeshPhongMaterial({ color: 0x333333 })
+    );
+    aiCabin.position.y = 0.7;
+    aiCar.add(aiCabin);
+    aiCar.position.y = 0.5;
+    scene.add(aiCar);
+
+    // Lights
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambient);
+    const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+    sun.position.set(50, 100, 50);
+    sun.castShadow = true;
+    sun.shadow.mapSize.width = 2048;
+    sun.shadow.mapSize.height = 2048;
+    sun.shadow.camera.near = 0.5;
+    sun.shadow.camera.far = 500;
+    sun.shadow.camera.left = -150;
+    sun.shadow.camera.right = 150;
+    sun.shadow.camera.top = 150;
+    sun.shadow.camera.bottom = -150;
+    scene.add(sun);
+
+    // Ground
+    const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(1000, 1000),
+        new THREE.MeshPhongMaterial({ color: 0x228b22 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Track path - oval with curves
+    const trackPoints = [];
+    for (let i = 0; i <= trackSegments; i++) {
+        const t = (i / trackSegments) * Math.PI * 2;
+        const x = Math.sin(t) * 80;
+        const z = Math.cos(t) * 120;
+        trackPoints.push(new THREE.Vector3(x, 0.05, z));
+    }
+
+    // Track surface
+    const trackShape = new THREE.Shape();
+    trackShape.moveTo(0, 0);
+    trackPoints.forEach(p => trackShape.lineTo(p.x, p.z));
+
+    const trackGeo = new THREE.BufferGeometry();
+    const trackVerts = [];
+    const trackNormals = [];
+
+    for (let i = 0; i < trackPoints.length - 1; i++) {
+        const curr = trackPoints[i];
+        const next = trackPoints[i + 1];
+        const dx = next.x - curr.x;
+        const dz = next.z - curr.z;
+        const len = Math.sqrt(dx * dx + dz * dz);
+        const nx = -dz / len;
+        const nz = dx / len;
+
+        const inner1 = { x: curr.x + nx * trackWidth, z: curr.z + nz * trackWidth };
+        const outer1 = { x: curr.x - nx * trackWidth, z: curr.z - nz * trackWidth };
+        const inner2 = { x: next.x + nx * trackWidth, z: next.z + nz * trackWidth };
+        const outer2 = { x: next.x - nx * trackWidth, z: next.z - nz * trackWidth };
+
+        trackVerts.push(inner1.x, 0.1, inner1.z, outer1.x, 0.1, outer1.z, inner2.x, 0.1, inner2.z);
+        trackVerts.push(outer1.x, 0.1, outer1.z, outer2.x, 0.1, outer2.z, inner2.x, 0.1, inner2.z);
+    }
+
+    trackGeo.setAttribute('position', new THREE.Float32BufferAttribute(trackVerts, 3));
+    trackGeo.computeVertexNormals();
+    const trackMesh = new THREE.Mesh(
+        trackGeo,
+        new THREE.MeshPhongMaterial({ color: 0x333333 })
+    );
+    scene.add(trackMesh);
+
+    // Track stripes
+    const stripeGeo = new THREE.BufferGeometry();
+    const stripeVerts = [];
+    for (let i = 0; i < trackPoints.length - 1; i++) {
+        const t = i / trackPoints.length;
+        const p = trackPoints[i];
+        stripeVerts.push(p.x - 1, 0.12, p.z);
+        stripeVerts.push(p.x + 1, 0.12, p.z);
+    }
+    stripeGeo.setAttribute('position', new THREE.Float32BufferAttribute(stripeVerts, 3));
+    const stripeMesh = new THREE.Mesh(
+        stripeGeo,
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+    );
+    scene.add(stripeMesh);
+
+    // Buildings and scenery
+    const buildingMat = new THREE.MeshPhongMaterial({ color: 0x888888 });
+    for (let i = 0; i < 40; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 120 + Math.random() * 100;
+        const bx = Math.cos(angle) * dist;
+        const bz = Math.sin(angle) * dist;
+        const bh = 5 + Math.random() * buildingHeight;
+        const building = new THREE.Mesh(
+            new THREE.BoxGeometry(8 + Math.random() * 8, bh, 8 + Math.random() * 8),
+            buildingMat
+        );
+        building.position.set(bx, bh / 2, bz);
+        building.castShadow = true;
+        building.receiveShadow = true;
+        scene.add(building);
+    }
+
+    // Trees
+    for (let i = 0; i < 60; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 100 + Math.random() * 80;
+        const tx = Math.cos(angle) * dist;
+        const tz = Math.sin(angle) * dist;
+        
+        const trunk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.3, 0.4, 3),
+            new THREE.MeshPhongMaterial({ color: 0x8b4513 })
+        );
+        trunk.position.set(tx, 1.5, tz);
+        scene.add(trunk);
+        
+        const leaves = new THREE.Mesh(
+            new THREE.SphereGeometry(2 + Math.random(), 8, 8),
+            new THREE.MeshPhongMaterial({ color: 0x228b22 })
+        );
+        leaves.position.set(tx, 5 + Math.random(), tz);
+        scene.add(leaves);
+    }
+
+    // Checkpoints
+    const checkpoints = [];
+    for (let i = 0; i < 4; i++) {
+        const idx = Math.floor(i * trackPoints.length / 4);
+        checkpoints.push({
+            position: trackPoints[idx],
+            passed: i === 0
+        });
+        
+        const archGeo = new THREE.TorusGeometry(trackWidth * 0.8, 0.5, 8, 16, Math.PI);
+        const archMat = new THREE.MeshPhongMaterial({ color: 0xffd700 });
+        const arch = new THREE.Mesh(archGeo, archMat);
+        arch.position.copy(trackPoints[idx]);
+        arch.position.y = 5;
+        arch.rotation.x = Math.PI / 2;
+        scene.add(arch);
+    }
+
+    // Power-ups
+    const powerups = [];
+    const powerupGeo = new THREE.OctahedronGeometry(1.5);
+    function spawnPowerup() {
+        const idx = Math.floor(Math.random() * (trackPoints.length - 1));
+        const p = trackPoints[idx];
+        const angle = Math.random() * Math.PI * 2;
+        const offset = (Math.random() - 0.5) * trackWidth * 1.5;
+        
+        const color = Math.random() > 0.5 ? 0xffff00 : 0x00ffff;
+        const mat = new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.5 });
+        const pu = new THREE.Mesh(powerupGeo, mat);
+        pu.position.set(p.x + offset, 2, p.z);
+        pu.rotation.y = Math.random() * Math.PI;
+        pu.userData = { type: Math.random() > 0.5 ? 'speed' : 'coin' };
+        scene.add(pu);
+        powerups.push(pu);
+    }
+
+    // Coins
+    const coins = [];
+    const coinGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.2, 16);
+    const coinMat = new THREE.MeshPhongMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.3 });
+    function spawnCoin() {
+        const idx = Math.floor(Math.random() * (trackPoints.length - 1));
+        const p = trackPoints[idx];
+        const offset = (Math.random() - 0.5) * trackWidth;
+        
+        const coin = new THREE.Mesh(coinGeo, coinMat);
+        coin.position.set(p.x + offset, 1.5, p.z);
+        coin.rotation.x = Math.PI / 2;
+        scene.add(coin);
+        coins.push(coin);
+    }
+
+    // Game state
+    let lap = 1;
+    let coinsCollected = 0;
+    let playerProgress = 0;
+    let aiProgress = 0;
+    let lastCheckpoint = 0;
+    let aiLastCheckpoint = 0;
+    let gameOver = false;
+    let speed = 0;
+    let maxSpeed = 1.5;
+    let playerAngle = 0;
+    let aiAngle = 0;
+    let velocity = 0;
+    let aiVelocity = 0.7;
+    let powerupActive = false;
+    let powerupTimer = 0;
+    let collectedPowerups = [];
+
+    // Input
+    const keys = {};
+    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keyup', e => keys[e.code] = false);
+
+    // Minimap
+    const minimapCanvas = document.getElementById('minimap');
+    const minimapCtx = minimapCanvas.getContext('2d');
+    minimapCanvas.width = 150;
+    minimapCanvas.height = 150;
+
+    function updateHUD() {
+        document.getElementById('lap').textContent = lap;
+        document.getElementById('coins').textContent = coinsCollected;
+        document.getElementById('speed-value').textContent = Math.floor(speed * 100);
+        
+        const posEl = document.getElementById('position');
+        posEl.textContent = playerProgress >= aiProgress ? '1' : '2';
+        posEl.style.color = playerProgress >= aiProgress ? '#4ade80' : '#f97316';
+    }
+
+    function showMessage(text, duration = 2000) {
+        const msg = document.getElementById('message');
+        msg.textContent = text;
+        msg.style.opacity = '1';
+        setTimeout(() => msg.style.opacity = '0', duration);
+    }
+
+    function getClosestTrackPoint(pos) {
+        let closest = 0;
+        let minDist = Infinity;
+        for (let i = 0; i < trackPoints.length; i++) {
+            const dx = pos.x - trackPoints[i].x;
+            const dz = pos.z - trackPoints[i].z;
+            const dist = dx * dx + dz * dz;
+            if (dist < minDist) {
+                minDist = dist;
+                closest = i;
+            }
+        }
+        return closest;
+    }
+
+    function getTrackDirection(idx) {
+        const curr = trackPoints[idx];
+        const next = trackPoints[(idx + 1) % trackPoints.length];
+        return Math.atan2(next.x - curr.x, next.z - curr.z);
+    }
+
+    function update() {
+        if (gameOver) return;
+
+        // Player controls
+        if (keys['ArrowUp']) {
+            speed = Math.min(speed + 0.02, maxSpeed * (powerupActive ? 1.8 : 1));
+        } else if (keys['ArrowDown']) {
+            speed = Math.max(speed - 0.03, -maxSpeed * 0.3);
+        } else {
+            speed *= 0.98;
+        }
+
+        if (keys['ArrowLeft']) playerAngle += 0.04;
+        if (keys['ArrowRight']) playerAngle -= 0.04;
+
+        // Power-up use
+        if (keys['Space'] && collectedPowerups.length > 0 && !powerupActive) {
+            const pu = collectedPowerups.shift();
+            if (pu === 'speed') {
+                powerupActive = true;
+                powerupTimer = 180;
+            }
+            updatePowerupSlots();
+        }
+
+        if (powerupActive) {
+            powerupTimer--;
+            if (powerupTimer <= 0) powerupActive = false;
+        }
+
+        // Move player
+        const moveSpeed = speed * (powerupActive ? 1.8 : 1);
+        carGroup.position.x += Math.sin(playerAngle) * moveSpeed;
+        carGroup.position.z += Math.cos(playerAngle) * moveSpeed;
+        carGroup.rotation.y = playerAngle;
+
+        // Track progress
+        const playerTrackPos = getClosestTrackPoint(carGroup.position);
+        const aiTrackPos = getClosestTrackPoint(aiCar.position);
+        
+        if (playerTrackPos > lastCheckpoint && playerTrackPos < lastCheckpoint + 5) {
+            lastCheckpoint = playerTrackPos;
+            if (lastCheckpoint >= trackPoints.length * 0.75 && lap < 3) {
+                lap++;
+                showMessage('LAP ' + lap + '!', 1500);
+                lastCheckpoint = 0;
+            }
+        }
+        
+        playerProgress = lap * trackPoints.length + playerTrackPos;
+
+        // AI movement
+        const aiTargetAngle = getTrackDirection(aiTrackPos);
+        let angleDiff = aiTargetAngle - aiAngle;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+        aiAngle += angleDiff * 0.05;
+
+        aiCar.position.x += Math.sin(aiAngle) * aiVelocity;
+        aiCar.position.z += Math.cos(aiAngle) * aiVelocity;
+        aiCar.rotation.y = aiAngle;
+        
+        aiProgress = lap * trackPoints.length + aiTrackPos;
+
+        // Check win
+        if (playerProgress >= 3 * trackPoints.length) {
+            gameOver = true;
+            showMessage('🏆 YOU WIN!', 5000);
+        }
+        if (aiProgress >= 3 * trackPoints.length) {
+            gameOver = true;
+            showMessage('😢 AI WINS!', 5000);
+        }
+
+        // Power-up collision
+        for (let i = powerups.length - 1; i >= 0; i--) {
+            const pu = powerups[i];
+            const dx = carGroup.position.x - pu.position.x;
+            const dz = carGroup.position.z - pu.position.z;
+            if (dx * dx + dz * dz < 25) {
+                if (collectedPowerups.length < 2) {
+                    collectedPowerups.push(pu.userData.type);
+                    updatePowerupSlots();
+                }
+                scene.remove(pu);
+                powerups.splice(i, 1);
+            }
+            pu.rotation.y += 0.05;
+            pu.position.y = 2 + Math.sin(Date.now() * 0.003) * 0.5;
+        }
+
+        // Coin collision
+        for (let i = coins.length - 1; i >= 0; i--) {
+            const coin = coins[i];
+            const dx = carGroup.position.x - coin.position.x;
+            const dz = carGroup.position.z - coin.position.z;
+            if (dx * dx + dz * dz < 16) {
+                coinsCollected += 10;
+                scene.remove(coin);
+                coins.splice(i, 1);
+            }
+            coin.rotation.z += 0.1;
+        }
+
+        // Camera follow
+        const camDist = 15;
+        const camHeight = 8;
+        const targetCamX = carGroup.position.x - Math.sin(playerAngle) * camDist;
+        const targetCamZ = carGroup.position.z - Math.cos(playerAngle) * camDist;
+        camera.position.x += (targetCamX - camera.position.x) * 0.05;
+        camera.position.z += (targetCamZ - camera.position.z) * 0.05;
+        camera.position.y += (carGroup.position.y + camHeight - camera.position.y) * 0.05;
+        camera.lookAt(carGroup.position.x, carGroup.position.y + 2, carGroup.position.z);
+
+        updateHUD();
+
+        // Spawn items
+        if (Math.random() < 0.01 && powerups.length < 3) spawnPowerup();
+        if (Math.random() < 0.02 && coins.length < 10) spawnCoin();
+    }
+
+    function updatePowerupSlots() {
+        for (let i = 0; i < 2; i++) {
+            const slot = document.getElementById('slot' + i);
+            slot.classList.remove('active');
+            if (collectedPowerups[i]) {
+                slot.textContent = collectedPowerups[i] === 'speed' ? '⚡' : '💎';
+                if (i === 0) slot.classList.add('active');
+            } else {
+                slot.textContent = '⚡';
+            }
+        }
+    }
+
+    function drawMinimap() {
+        minimapCtx.fillStyle = '#1a1a2e';
+        minimapCtx.fillRect(0, 0, 150, 150);
+        
+        // Draw track
+        minimapCtx.strokeStyle = '#333';
+        minimapCtx.lineWidth = 4;
+        minimapCtx.beginPath();
+        for (let i = 0; i < trackPoints.length; i++) {
+            const x = 75 + trackPoints[i].x / 3;
+            const y = 75 + trackPoints[i].z / 3;
+            if (i === 0) minimapCtx.moveTo(x, y);
+            else minimapCtx.lineTo(x, y);
+        }
+        minimapCtx.closePath();
+        minimapCtx.stroke();
+
+        // Draw player
+        const px = 75 + carGroup.position.x / 3;
+        const py = 75 + carGroup.position.z / 3;
+        minimapCtx.fillStyle = '#cc0000';
+        minimapCtx.beginPath();
+        minimapCtx.arc(px, py, 5, 0, Math.PI * 2);
+        minimapCtx.fill();
+
+        // Draw AI
+        const ax = 75 + aiCar.position.x / 3;
+        const ay = 75 + aiCar.position.z / 3;
+        minimapCtx.fillStyle = '#0066cc';
+        minimapCtx.beginPath();
+        minimapCtx.arc(ax, ay, 5, 0, Math.PI * 2);
+        minimapCtx.fill();
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        update();
+        drawMinimap();
+        renderer.render(scene, camera);
+    }
+
+    // Initialize
+    carGroup.position.set(trackPoints[0].x, 0.5, trackPoints[0].z);
+    aiCar.position.set(trackPoints[0].x + 5, 0.5, trackPoints[0].z);
+    playerAngle = getTrackDirection(0);
+    aiAngle = getTrackDirection(0);
+
+    showMessage('GO! 🏁', 1500);
+
+    // Spawn initial items
+    for (let i = 0; i < 5; i++) spawnPowerup();
+    for (let i = 0; i < 8; i++) spawnCoin();
+
+    animate();
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+    </script>
+</body>
+</html>

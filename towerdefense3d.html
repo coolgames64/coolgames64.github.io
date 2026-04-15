@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Tower Defense - Cool Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: #1a1a2e; overflow: hidden; }
+        #game-container { width: 100vw; height: 100vh; display: block; }
+        #hud {
+            position: fixed; top: 0; left: 0; right: 0; padding: 20px;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            color: white; pointer-events: none; z-index: 100;
+        }
+        .hud-item { background: rgba(0,0,0,0.7); padding: 10px 15px; border-radius: 10px; text-align: center; }
+        .hud-label { font-size: 0.65rem; opacity: 0.7; text-transform: uppercase; }
+        .hud-value { font-size: 1.3rem; font-weight: 700; }
+        #wave-value { color: #f97316; }
+        #gold-value { color: #ffd700; }
+        #lives-value { color: #ef4444; }
+        #tower-select {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 15px; background: rgba(0,0,0,0.8); padding: 15px 25px;
+            border-radius: 15px; pointer-events: all; z-index: 100;
+        }
+        .tower-btn {
+            width: 70px; height: 70px; border-radius: 12px; border: 3px solid #444;
+            background: rgba(30,30,50,0.9); cursor: pointer; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; color: white; transition: all 0.2s;
+        }
+        .tower-btn:hover { border-color: #667eea; transform: scale(1.05); }
+        .tower-btn.selected { border-color: #4ade80; background: rgba(74,222,128,0.2); }
+        .tower-btn .icon { font-size: 1.8rem; }
+        .tower-btn .cost { font-size: 0.7rem; color: #ffd700; margin-top: 2px; }
+        .tower-btn .key { font-size: 0.6rem; opacity: 0.5; }
+        #wave-btn {
+            position: fixed; bottom: 20px; right: 20px; padding: 15px 30px;
+            background: linear-gradient(135deg, #f97316, #ea580c); border: none;
+            border-radius: 12px; color: white; font-size: 1rem; font-weight: 700;
+            cursor: pointer; pointer-events: all; z-index: 100;
+        }
+        #wave-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #message {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 2.5rem; font-weight: 800; color: white; text-shadow: 0 0 30px rgba(255,255,255,0.5);
+            opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 200;
+        }
+        #game-over {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9); padding: 40px 60px; border-radius: 20px;
+            text-align: center; display: none; z-index: 300;
+        }
+        #game-over h1 { color: #ef4444; font-size: 2.5rem; margin-bottom: 10px; }
+        #game-over p { color: white; font-size: 1.2rem; margin-bottom: 20px; }
+        #restart-btn {
+            padding: 15px 40px; background: linear-gradient(135deg, #4ade80, #22c55e);
+            border: none; border-radius: 10px; color: white; font-size: 1.1rem; font-weight: 700;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="hud">
+        <div class="hud-item">
+            <div class="hud-label">Wave</div>
+            <div class="hud-value" id="wave-value">1</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">Gold</div>
+            <div class="hud-value" id="gold-value">100</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">Lives</div>
+            <div class="hud-value" id="lives-value">20</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">Score</div>
+            <div class="hud-value" id="score-value">0</div>
+        </div>
+    </div>
+    <div id="tower-select">
+        <div class="tower-btn selected" data-tower="laser" onclick="selectTower('laser')">
+            <span class="icon">⚡</span>
+            <span class="cost">💰 50</span>
+            <span class="key">[1]</span>
+        </div>
+        <div class="tower-btn" data-tower="cannon" onclick="selectTower('cannon')">
+            <span class="icon">💣</span>
+            <span class="cost">💰 75</span>
+            <span class="key">[2]</span>
+        </div>
+        <div class="tower-btn" data-tower="magic" onclick="selectTower('magic')">
+            <span class="icon">🔮</span>
+            <span class="cost">💰 100</span>
+            <span class="key">[3]</span>
+        </div>
+    </div>
+    <button id="wave-btn" onclick="startWave()">START WAVE</button>
+    <div id="message"></div>
+    <div id="game-over">
+        <h1>GAME OVER</h1>
+        <p>Score: <span id="final-score">0</span></p>
+        <button id="restart-btn" onclick="restartGame()">PLAY AGAIN</button>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+    const { scene, camera, renderer, canvas } = (() => {
+        const c = document.createElement('canvas');
+        c.id = 'game-container';
+        document.body.appendChild(c);
+        const r = new THREE.WebGLRenderer({ canvas: c, antialias: true });
+        r.setSize(window.innerWidth, window.innerHeight);
+        r.shadowMap.enabled = true;
+        r.setClearColor(0x87ceeb);
+        const s = new THREE.Scene();
+        const fov = 60, aspect = window.innerWidth / window.innerHeight, near = 0.1, far = 1000;
+        const cam = new THREE.PerspectiveCamera(fov, aspect, near, far);
+        cam.position.set(0, 50, 50);
+        cam.lookAt(0, 0, 0);
+        s.fog = new THREE.Fog(0x87ceeb, 80, 200);
+        return { scene: s, camera: cam, renderer: r, canvas: c };
+    })();
+
+    // Game state
+    let gold = 100;
+    let lives = 20;
+    let wave = 1;
+    let score = 0;
+    let gameRunning = true;
+    let waveInProgress = false;
+    let selectedTowerType = 'laser';
+    let enemies = [];
+    let towers = [];
+    let projectiles = [];
+    let selectedTower = null;
+    let mousePos = new THREE.Vector2();
+    let hoverMarker = null;
+
+    // Tower costs
+    const TOWER_COSTS = { laser: 50, cannon: 75, magic: 100 };
+
+    // Scene setup
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambient);
+    const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+    sun.position.set(30, 50, 30);
+    sun.castShadow = true;
+    sun.shadow.mapSize.width = 2048;
+    sun.shadow.mapSize.height = 2048;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 150;
+    sun.shadow.camera.left = -60;
+    sun.shadow.camera.right = 60;
+    sun.shadow.camera.top = 60;
+    sun.shadow.camera.bottom = -60;
+    scene.add(sun);
+
+    // Ground
+    const groundGeo = new THREE.PlaneGeometry(100, 100);
+    const groundMat = new THREE.MeshPhongMaterial({ color: 0x228b22 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Path
+    const pathPoints = [
+        { x: -50, z: 0 }, { x: -30, z: 0 }, { x: -30, z: -20 },
+        { x: 20, z: -20 }, { x: 20, z: 15 }, { x: -10, z: 15 },
+        { x: -10, z: 30 }, { x: 40, z: 30 }, { x: 50, z: 0 }
+    ];
+
+    const pathMat = new THREE.MeshPhongMaterial({ color: 0x8b7355 });
+    for (let i = 0; i < pathPoints.length - 1; i++) {
+        const p1 = pathPoints[i], p2 = pathPoints[i + 1];
+        const len = Math.sqrt((p2.x - p1.x) ** 2 + (p2.z - p1.z) ** 2);
+        const pathGeo = new THREE.PlaneGeometry(len + 0.5, 5);
+        const path = new THREE.Mesh(pathGeo, pathMat);
+        path.rotation.x = -Math.PI / 2;
+        path.position.set((p1.x + p2.x) / 2, 0.01, (p1.z + p2.z) / 2);
+        path.rotation.z = Math.atan2(p2.z - p1.z, p2.x - p1.x);
+        path.receiveShadow = true;
+        scene.add(path);
+    }
+
+    // Decorations
+    for (let i = 0; i < 30; i++) {
+        const x = (Math.random() - 0.5) * 80;
+        const z = (Math.random() - 0.5) * 80;
+        const trunk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.3, 0.4, 3),
+            new THREE.MeshPhongMaterial({ color: 0x8b4513 })
+        );
+        trunk.position.set(x, 1.5, z);
+        scene.add(trunk);
+        const leaves = new THREE.Mesh(
+            new THREE.SphereGeometry(1.5 + Math.random(), 6, 6),
+            new THREE.MeshPhongMaterial({ color: 0x228b22 })
+        );
+        leaves.position.set(x, 4, z);
+        scene.add(leaves);
+    }
+
+    // Hover marker
+    const hoverGeo = new THREE.RingGeometry(2.8, 3, 32);
+    const hoverMat = new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+    hoverMarker = new THREE.Mesh(hoverGeo, hoverMat);
+    hoverMarker.rotation.x = -Math.PI / 2;
+    hoverMarker.position.y = 0.1;
+    hoverMarker.visible = false;
+    scene.add(hoverMarker);
+
+    // HUD functions
+    function updateHUD() {
+        document.getElementById('wave-value').textContent = wave;
+        document.getElementById('gold-value').textContent = gold;
+        document.getElementById('lives-value').textContent = lives;
+        document.getElementById('score-value').textContent = score;
+        document.getElementById('wave-btn').disabled = waveInProgress;
+    }
+
+    function showMessage(text, duration = 1500) {
+        const msg = document.getElementById('message');
+        msg.textContent = text;
+        msg.style.opacity = '1';
+        setTimeout(() => msg.style.opacity = '0', duration);
+    }
+
+    // Tower selection
+    function selectTower(type) {
+        selectedTowerType = type;
+        document.querySelectorAll('.tower-btn').forEach(btn => {
+            btn.classList.toggle('selected', btn.dataset.tower === type);
+        });
+    }
+
+    window.addEventListener('keydown', e => {
+        if (e.key === '1') selectTower('laser');
+        if (e.key === '2') selectTower('cannon');
+        if (e.key === '3') selectTower('magic');
+    });
+
+    // Raycasting for tower placement
+    const raycaster = new THREE.Raycaster();
+    raycaster.params.Points.threshold = 5;
+
+    canvas.addEventListener('mousemove', e => {
+        mousePos.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mousePos.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    });
+
+    canvas.addEventListener('click', e => {
+        if (!gameRunning) return;
+        raycaster.setFromCamera(mousePos, camera);
+        const hits = raycaster.intersectObject(ground);
+        if (hits.length > 0) {
+            const pt = hits[0].point;
+            const cost = TOWER_COSTS[selectedTowerType];
+            if (gold >= cost) {
+                placeTower(pt.x, pt.z, selectedTowerType);
+                gold -= cost;
+                updateHUD();
+            } else {
+                showMessage('Not enough gold! 💰', 1000);
+            }
+        }
+    });
+
+    // Tower types
+    function createTower(x, z, type) {
+        const group = new THREE.Group();
+        const colors = { laser: 0x00ffff, cannon: 0xff6600, magic: 0xff00ff };
+        const mat = new THREE.MeshPhongMaterial({ color: colors[type] });
+
+        // Base
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(2, 2.5, 1, 8), mat);
+        base.position.y = 0.5;
+        base.castShadow = true;
+        group.add(base);
+
+        // Tower body
+        if (type === 'laser') {
+            const tower = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.5, 4, 6), mat);
+            tower.position.y = 3;
+            tower.castShadow = true;
+            group.add(tower);
+            const tip = new THREE.Mesh(new THREE.ConeGeometry(0.8, 2, 6), mat);
+            tip.position.y = 6;
+            group.add(tip);
+        } else if (type === 'cannon') {
+            const tower = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 3, 8), mat);
+            tower.position.y = 2.5;
+            tower.castShadow = true;
+            group.add(tower);
+            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 4, 8), mat);
+            barrel.rotation.x = Math.PI / 2;
+            barrel.position.set(0, 4, 2);
+            group.add(barrel);
+        } else {
+            const tower = new THREE.Mesh(new THREE.OctahedronGeometry(2, 0), mat);
+            tower.position.y = 3;
+            tower.castShadow = true;
+            group.add(tower);
+            const orb = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), new THREE.MeshPhongMaterial({ color: 0xffff00, emissive: 0xffaa00 }));
+            orb.position.y = 6;
+            group.add(orb);
+        }
+
+        group.position.set(x, 0, z);
+        scene.add(group);
+        return { group, type, x, z, cooldown: 0 };
+    }
+
+    function placeTower(x, z, type) {
+        // Check if too close to path
+        for (let p of pathPoints) {
+            if (Math.sqrt((x - p.x) ** 2 + (z - p.z) ** 2) < 5) return false;
+        }
+        // Check if too close to other towers
+        for (let t of towers) {
+            if (Math.sqrt((x - t.x) ** 2 + (z - t.z) ** 2) < 5) return false;
+        }
+        const tower = createTower(x, z, type);
+        towers.push(tower);
+        return true;
+    }
+
+    // Enemy class
+    function createEnemy(type) {
+        const scale = 0.8 + wave * 0.1;
+        const hp = 30 + wave * 20;
+        const speed = 0.03 + wave * 0.005;
+        
+        const group = new THREE.Group();
+        const body = new THREE.Mesh(
+            new THREE.SphereGeometry(1.2 * scale, 8, 8),
+            new THREE.MeshPhongMaterial({ color: type === 'boss' ? 0xff0000 : 0x9932cc })
+        );
+        body.castShadow = true;
+        group.add(body);
+        
+        // Eyes
+        const eyeGeo = new THREE.SphereGeometry(0.3, 8, 8);
+        const eyeMat = new THREE.MeshPhongMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.5 });
+        const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+        leftEye.position.set(-0.5, 0.5, 1);
+        group.add(leftEye);
+        const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+        rightEye.position.set(0.5, 0.5, 1);
+        group.add(rightEye);
+        
+        // Tentacles
+        for (let i = 0; i < 4; i++) {
+            const tent = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.15, 0.1, 1.5, 6),
+                new THREE.MeshPhongMaterial({ color: 0x663399 })
+            );
+            tent.position.set(
+                Math.cos(i * Math.PI / 2) * 0.8,
+                -0.5,
+                Math.sin(i * Math.PI / 2) * 0.8
+            );
+            tent.rotation.x = 0.3;
+            group.add(tent);
+        }
+        
+        group.position.set(pathPoints[0].x, 1.5 * scale, pathPoints[0].z);
+        scene.add(group);
+        
+        return {
+            group, type, hp, maxHp: hp, speed, scale,
+            pathIndex: 0, progress: 0
+        };
+    }
+
+    // Projectile class
+    function createProjectile(x, z, target, type) {
+        const colors = { laser: 0x00ffff, cannon: 0xff6600, magic: 0xff00ff };
+        const geo = type === 'cannon' ? new THREE.SphereGeometry(0.5, 8, 8) : new THREE.CylinderGeometry(0.1, 0.1, 2, 8);
+        const mat = new THREE.MeshPhongMaterial({ color: colors[type], emissive: colors[type], emissiveIntensity: 0.5 });
+        const proj = new THREE.Mesh(geo, mat);
+        
+        if (type === 'laser') proj.rotation.x = Math.PI / 2;
+        if (type === 'cannon') {
+            proj.scale.set(2, 2, 2);
+        }
+        
+        proj.position.set(x, 3, z);
+        scene.add(proj);
+        
+        const dmg = type === 'laser' ? 15 : type === 'cannon' ? 40 : 25;
+        return { mesh: proj, target, type, damage: dmg + wave * 3, speed: type === 'cannon' ? 0.3 : 0.5 };
+    }
+
+    function startWave() {
+        if (waveInProgress || !gameRunning) return;
+        waveInProgress = true;
+        showMessage('WAVE ' + wave + '! 🌊', 1500);
+        
+        const enemyCount = 5 + wave * 2;
+        let spawned = 0;
+        let spawnInterval = setInterval(() => {
+            if (spawned >= enemyCount) {
+                clearInterval(spawnInterval);
+                return;
+            }
+            const isBoss = spawned === enemyCount - 1 && wave % 3 === 0;
+            enemies.push(createEnemy(isBoss ? 'boss' : 'normal'));
+            spawned++;
+        }, 1500 - Math.min(wave * 50, 800));
+        
+        document.getElementById('wave-btn').textContent = 'WAVE IN PROGRESS...';
+    }
+
+    function updateEnemies() {
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            const enemy = enemies[i];
+            
+            // Move along path
+            const target = pathPoints[enemy.pathIndex + 1];
+            if (!target) {
+                // Reached end
+                lives--;
+                scene.remove(enemy.group);
+                enemies.splice(i, 1);
+                updateHUD();
+                if (lives <= 0) {
+                    gameRunning = false;
+                    document.getElementById('game-over').style.display = 'block';
+                    document.getElementById('final-score').textContent = score;
+                }
+                continue;
+            }
+            
+            const dx = target.x - enemy.group.position.x;
+            const dz = target.z - enemy.group.position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            
+            enemy.group.position.x += (dx / dist) * enemy.speed;
+            enemy.group.position.z += (dz / dist) * enemy.speed;
+            enemy.group.rotation.y = Math.atan2(dx, dz);
+            enemy.group.position.y = 1.5 * enemy.scale + Math.sin(Date.now() * 0.005) * 0.2;
+            
+            // Check if reached next waypoint
+            if (dist < 1) {
+                enemy.pathIndex++;
+            }
+        }
+        
+        // Check wave complete
+        if (waveInProgress && enemies.length === 0) {
+            waveInProgress = false;
+            wave++;
+            gold += 50 + wave * 10;
+            score += 100 * wave;
+            updateHUD();
+            document.getElementById('wave-btn').textContent = 'START WAVE';
+            showMessage('WAVE COMPLETE! 💰 +' + (50 + wave * 10), 2000);
+        }
+    }
+
+    function updateTowers() {
+        for (const tower of towers) {
+            tower.cooldown = Math.max(0, tower.cooldown - 1);
+            
+            if (tower.cooldown > 0) continue;
+            
+            // Find closest enemy
+            let closest = null;
+            let closestDist = Infinity;
+            for (const enemy of enemies) {
+                const dx = enemy.group.position.x - tower.x;
+                const dz = enemy.group.position.z - tower.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+                if (dist < closestDist && dist < 25) {
+                    closestDist = dist;
+                    closest = enemy;
+                }
+            }
+            
+            if (closest) {
+                // Aim at enemy
+                tower.group.lookAt(closest.group.position.x, tower.group.position.y, closest.group.position.z);
+                
+                // Shoot
+                projectiles.push(createProjectile(tower.x, tower.z, closest, tower.type));
+                
+                const cooldowns = { laser: 30, cannon: 90, magic: 60 };
+                tower.cooldown = cooldowns[tower.type];
+            }
+        }
+    }
+
+    function updateProjectiles() {
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+            const proj = projectiles[i];
+            const dx = proj.target.group.position.x - proj.mesh.position.x;
+            const dz = proj.target.group.position.z - proj.mesh.position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            
+            if (dist < 2) {
+                // Hit
+                proj.target.hp -= proj.damage;
+                scene.remove(proj.mesh);
+                projectiles.splice(i, 1);
+                
+                if (proj.target.hp <= 0) {
+                    score += proj.target.type === 'boss' ? 500 : 50;
+                    gold += proj.target.type === 'boss' ? 200 : 20;
+                    scene.remove(proj.target.group);
+                    enemies.splice(enemies.indexOf(proj.target), 1);
+                    updateHUD();
+                }
+                continue;
+            }
+            
+            proj.mesh.position.x += (dx / dist) * proj.speed;
+            proj.mesh.position.z += (dz / dist) * proj.speed;
+            proj.mesh.lookAt(proj.target.group.position);
+            
+            if (proj.type !== 'cannon') {
+                proj.mesh.rotation.x += Math.PI / 2;
+            }
+        }
+    }
+
+    function updateHoverMarker() {
+        raycaster.setFromCamera(mousePos, camera);
+        const hits = raycaster.intersectObject(ground);
+        if (hits.length > 0) {
+            const pt = hits[0].point;
+            hoverMarker.position.set(pt.x, 0.1, pt.z);
+            hoverMarker.visible = true;
+            
+            // Check validity
+            let valid = gold >= TOWER_COSTS[selectedTowerType];
+            for (let p of pathPoints) {
+                if (Math.sqrt((pt.x - p.x) ** 2 + (pt.z - p.z) ** 2) < 5) valid = false;
+            }
+            for (let t of towers) {
+                if (Math.sqrt((pt.x - t.x) ** 2 + (pt.z - t.z) ** 2) < 5) valid = false;
+            }
+            
+            hoverMarker.material.color.setHex(valid ? 0x4ade80 : 0xef4444);
+        } else {
+            hoverMarker.visible = false;
+        }
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        if (gameRunning) {
+            updateEnemies();
+            updateTowers();
+            updateProjectiles();
+            updateHoverMarker();
+        }
+        renderer.render(scene, camera);
+    }
+
+    function restartGame() {
+        // Remove all enemies and towers
+        for (const e of enemies) scene.remove(e.group);
+        for (const t of towers) scene.remove(t.group);
+        for (const p of projectiles) scene.remove(p.mesh);
+        enemies = [];
+        towers = [];
+        projectiles = [];
+        
+        gold = 100;
+        lives = 20;
+        wave = 1;
+        score = 0;
+        gameRunning = true;
+        waveInProgress = false;
+        
+        updateHUD();
+        document.getElementById('game-over').style.display = 'none';
+        document.getElementById('wave-btn').textContent = 'START WAVE';
+    }
+
+    updateHUD();
+    animate();
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    window.selectTower = selectTower;
+    window.startWave = startWave;
+    window.restartGame = restartGame;
+    </script>
+</body>
+</html>
