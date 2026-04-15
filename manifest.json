@@ -1,0 +1,18 @@
+{
+  "name": "Cool Games 64",
+  "short_name": "CoolGames64",
+  "description": "Free online games for kids - play 80+ games instantly!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#6b21a8",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%231a1a2e'/><text x='256' y='320' font-size='200' text-anchor='middle' fill='%239331e9'>🎮</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
