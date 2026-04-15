@@ -73,8 +73,19 @@
     <canvas id="minimap"></canvas>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
+    // Check WebGL support - more robust method
     const canvas = document.getElementById('game-container');
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    let renderer;
+    try {
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    } catch(e) {
+        document.body.innerHTML = '<div style="color:white;text-align:center;padding:50px;font-family:sans-serif;background:#1a1a2e;"><h2>😢 WebGL Error</h2><p>' + e.message + '</p><p>Try updating your graphics drivers or using Firefox.</p></div>';
+        throw e;
+    }
+    if (!renderer) {
+        document.body.innerHTML = '<div style="color:white;text-align:center;padding:50px;font-family:sans-serif;background:#1a1a2e;"><h2>😢 Renderer Error</h2><p>Could not create 3D renderer.</p></div>';
+        throw new Error('No renderer');
+    }
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     renderer.setClearColor(0x87ceeb);
