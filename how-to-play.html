@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>How to Play - Cool Games 64</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            min-height: 100vh;
+            padding-bottom: 100px;
+        }
+        .nav {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .nav-left { display: flex; align-items: center; gap: 15px; }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: white;
+        }
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .logo-text { font-weight: 800; font-size: 20px; }
+        .nav-links { display: flex; gap: 25px; }
+        .nav-links a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        .nav-links a:hover { color: #667eea; }
+        .nav-links a.active { color: #667eea; }
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            padding: 5px;
+        }
+        .hamburger span {
+            width: 25px;
+            height: 3px;
+            background: white;
+            border-radius: 2px;
+            transition: 0.3s;
+        }
+        .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+        h1 {
+            font-size: 48px;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .subtitle {
+            text-align: center;
+            font-size: 18px;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 50px;
+        }
+        .section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .section h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .section h2 .icon {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+        .section p {
+            color: rgba(255,255,255,0.8);
+            line-height: 1.8;
+            margin-bottom: 20px;
+        }
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .control-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .control-key {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 10px;
+            min-width: 60px;
+        }
+        .control-name {
+            font-size: 14px;
+            color: rgba(255,255,255,0.7);
+        }
+        .game-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .game-tag {
+            background: rgba(102, 126, 234, 0.3);
+            border: 1px solid rgba(102, 126, 234, 0.5);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        .tip-box {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 0 12px 12px 0;
+            margin: 20px 0;
+        }
+        .tip-box strong { color: #667eea; }
+        .mobile-section {
+            background: linear-gradient(135deg, rgba(244, 114, 208, 0.1) 0%, rgba(102, 126, 234, 0.1) 100%);
+            border: 1px solid rgba(244, 114, 208, 0.3);
+        }
+        .mobile-section h2 .icon { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .step-number {
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .step-content h4 { margin-bottom: 5px; }
+        .step-content p { margin: 0; font-size: 14px; }
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: rgba(255,255,255,0.5);
+            font-size: 14px;
+        }
+        .footer a { color: #667eea; text-decoration: none; }
+        @media (max-width: 768px) {
+            .nav-links { 
+                display: none; 
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: rgba(26, 26, 46, 0.98);
+                flex-direction: column;
+                padding: 20px;
+                gap: 15px;
+            }
+            .nav-links.show { display: flex; }
+            .hamburger { display: flex; }
+            h1 { font-size: 32px; }
+            .section { padding: 20px; }
+            .control-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-left">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">🎮</div>
+                <span class="logo-text">Cool Games 64</span>
+            </a>
+        </div>
+        <div class="nav-links" id="navLinks">
+            <a href="index.html">🎮 Games</a>
+            <a href="search.html">🔍 Search</a>
+            <a href="how-to-play.html" class="active">❓ How to Play</a>
+            <a href="about.html">ℹ️ About</a>
+        </div>
+        <div class="hamburger" onclick="document.getElementById('navLinks').classList.toggle('show')">
+            <span></span><span></span><span></span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>🎯 How to Play</h1>
+        <p class="subtitle">Your complete guide to playing games on Cool Games 64</p>
+
+        <div class="section">
+            <h2><span class="icon">🏠</span> Getting Started</h2>
+            <p>Playing games on our website is super easy! Just follow these simple steps:</p>
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Browse Our Game Collection</h4>
+                    <p>Scroll through our homepage to see all available games. We have action, puzzle, racing, and more!</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Use Categories to Filter</h4>
+                    <p>Click buttons like "Action", "Puzzle", "Racing" to see only games in that category.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Search for a Specific Game</h4>
+                    <p>Type the game name in the search bar at the top to find it instantly!</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h4>Click to Play!</h4>
+                    <p>Click on any game card and it will open immediately in your browser. No downloads needed!</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon">⌨️</span> Keyboard Controls</h2>
+            <p>Most of our games use your keyboard to play. Here are the common controls:</p>
+            <div class="control-grid">
+                <div class="control-item">
+                    <div class="control-key">↑ ↓ ← →</div>
+                    <div class="control-name">Move / Steer</div>
+                </div>
+                <div class="control-item">
+                    <div class="control-key">W A S D</div>
+                    <div class="control-name">Alternative Move</div>
+                </div>
+                <div class="control-item">
+                    <div class="control-key">SPACE</div>
+                    <div class="control-name">Jump / Shoot / Drop</div>
+                </div>
+                <div class="control-item">
+                    <div class="control-key">P</div>
+                    <div class="control-name">Pause Game</div>
+                </div>
+                <div class="control-item">
+                    <div class="control-key">R</div>
+                    <div class="control-name">Restart</div>
+                </div>
+                <div class="control-item">
+                    <div class="control-key">ESC</div>
+                    <div class="control-name">Exit / Menu</div>
+                </div>
+            </div>
+            <p style="margin-top: 20px;">Each game shows its controls on the start screen. Look for "Press SPACE to Start" or similar prompts!</p>
+        </div>
+
+        <div class="section mobile-section">
+            <h2><span class="icon">📱</span> Mobile & Touch Controls</h2>
+            <p>No keyboard? No problem! Our games work on phones and tablets with touch controls:</p>
+            <div class="step">
+                <div class="step-number">📱</div>
+                <div class="step-content">
+                    <h4>Touch D-Pad Buttons</h4>
+                    <p>On games like Racing and Snake, you'll see ◀ ▲ ▶ buttons at the bottom of your screen. Tap them to move!</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">👆</div>
+                <div class="step-content">
+                    <h4>Tap to Click</h4>
+                    <p>For click-based games (bubble shooter, puzzle games), just tap anywhere on the screen!</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">👆👆</div>
+                <div class="step-content">
+                    <h4>Swipe to Move</h4>
+                    <p>In some games, swipe in any direction to control movement. Try Snake - swipe to change direction!</p>
+                </div>
+            </div>
+            <div class="tip-box">
+                <strong>💡 Pro Tip:</strong> On mobile, rotate your phone to landscape mode for a better gaming experience!
+            </div>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon">🎮</span> Game Categories</h2>
+            <p>We have lots of different game types. Here's how to find them:</p>
+            <div class="game-list">
+                <span class="game-tag">🎯 Action Games</span>
+                <span class="game-tag">🧩 Puzzle Games</span>
+                <span class="game-tag">🏎️ Racing Games</span>
+                <span class="game-tag">🎭 Arcade Games</span>
+                <span class="game-tag">🧠 Strategy Games</span>
+                <span class="game-tag">🎵 Music Games</span>
+                <span class="game-tag">⚔️ Adventure Games</span>
+                <span class="game-tag">🏀 Sports Games</span>
+            </div>
+            <p style="margin-top: 15px;">Click any category button at the top of our homepage to filter games by type!</p>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon">⭐</span> Popular Games to Try</h2>
+            <p>New here? Start with these awesome games:</p>
+            <div class="step">
+                <div class="step-number">🐍</div>
+                <div class="step-content">
+                    <h4>Snake Game</h4>
+                    <p>Classic snake game - eat the food, grow longer, don't hit the walls! Perfect for beginners.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">🏎️</div>
+                <div class="step-content">
+                    <h4>3D Racing</h4>
+                    <p>Fast 3D racing game with cool graphics. Use arrow keys to drive!</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">🧱</div>
+                <div class="step-content">
+                    <h4>2048</h4>
+                    <p>Addictive number puzzle - combine tiles to reach 2048!</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">🎵</div>
+                <div class="step-content">
+                    <h4>Video Game Karaoke</h4>
+                    <p>Sing along to video game music! Works with microphone on mobile.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon">💡</span> Tips & Tricks</h2>
+            <div class="tip-box">
+                <strong>🔍 Use Search:</strong> Can't find a game? Type the name in the search bar - it shows suggestions as you type!
+            </div>
+            <div class="tip-box">
+                <strong>📋 Add to Home Screen:</strong> On your phone, use your browser's "Add to Home Screen" option to play our games like a real app!
+            </div>
+            <div class="tip-box">
+                <strong>🎯 Star Ratings:</strong> Games have ⭐ ratings - higher rated games are more fun!
+            </div>
+            <div class="tip-box">
+                <strong>🔄 Refresh if Stuck:</strong> If a game freezes, press F5 or pull down to refresh the page!
+            </div>
+        </div>
+
+        <div class="section" style="text-align: center;">
+            <h2 style="justify-content: center;"><span class="icon">🚀</span> Ready to Play?</h2>
+            <p>Now you know how to play! Head back to our games page and start having fun!</p>
+            <a href="index.html" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 40px; border-radius: 30px; text-decoration: none; font-weight: 600; margin-top: 20px; transition: transform 0.3s;">
+                🎮 Browse All Games
+            </a>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>Made with ❤️ for gamers everywhere</p>
+        <p style="margin-top: 10px;"><a href="index.html">Back to Games</a> · <a href="contact.html">Contact</a> · <a href="privacy-policy.html">Privacy Policy</a></p>
+    </footer>
+</body>
+</html>
