@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="google-site-verification" content="LFolYFY1ySO4aIcMbyo8EdJKYLqHW9MS6_B1y7e5MPQ" />
     <title>Knife Hit | Cool Games</title>
     <style>
@@ -12,6 +12,79 @@
         .score-box { background: linear-gradient(135deg, #667eea, #764ba2); padding: 10px 25px; border-radius: 15px; color: white; font-weight: bold; font-size: 1.2rem; box-shadow: 0 4px 15px rgba(102,126,234,0.4); }
         #gameCanvas { border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
         .back-btn { position: fixed; top: 20px; left: 20px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 10px 20px; border-radius: 25px; text-decoration: none; font-weight: 600; }
+    
+        /* Mobile Touch Controls */
+        .touch-controls {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            z-index: 1000;
+        }
+        @media (pointer: coarse) {
+            .touch-controls { display: flex !important; }
+            body { padding-bottom: 120px !important; }
+        }
+        .dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            grid-template-rows: repeat(3, 60px);
+            gap: 5px;
+            margin: 0 auto;
+        }
+        .dpad-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 10px;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .dpad-btn:active {
+            background: rgba(255,255,255,0.4);
+        }
+        .dpad-center { background: rgba(0,0,0,0.2); }
+        @media (max-width: 500px) {
+            .dpad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); }
+            .dpad-btn { font-size: 20px; }
+        }
+    
+    
+        .tap-area {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 999;
+            display: none;
+        }
+        @media (pointer: coarse) {
+            .tap-area { display: block; }
+        }
+        .tap-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 80px; height: 80px;
+            background: rgba(255,255,255,0.3);
+            border: 3px solid rgba(255,255,255,0.6);
+            border-radius: 50%;
+            color: white;
+            font-size: 14px;
+            z-index: 1001;
+            display: none;
+            cursor: pointer;
+        }
+        @media (pointer: coarse) {
+            .tap-btn { display: flex; align-items: center; justify-content: center; }
+        }
+
     </style>
 </head>
 <body>
@@ -266,6 +339,26 @@
         }
         
         gameLoop();
+    
+        // Tap anywhere to click
+        document.addEventListener('touchstart', (e) => {
+            if(e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+                const touch = e.touches[0];
+                const clickEvent = new MouseEvent('click', {
+                    bubbles: true,
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                e.target.dispatchEvent(clickEvent);
+            }
+        }, true);
+        
+        // Space/action button for mobile
+        window.tapSpace = false;
+
     </script>
+
+    <button class="tap-btn" ontouchstart="window.tapSpace=true" ontouchend="window.tapSpace=false">TAP</button>
+
 </body>
 </html>

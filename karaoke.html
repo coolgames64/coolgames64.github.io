@@ -255,6 +255,34 @@
         
         .footer { text-align: center; padding: 20px; opacity: 0.6; font-size: 0.9rem; }
         .footer a { color: #ff6b9d; text-decoration: none; }
+    
+        .tap-area {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 999;
+            display: none;
+        }
+        @media (pointer: coarse) {
+            .tap-area { display: block; }
+        }
+        .tap-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 80px; height: 80px;
+            background: rgba(255,255,255,0.3);
+            border: 3px solid rgba(255,255,255,0.6);
+            border-radius: 50%;
+            color: white;
+            font-size: 14px;
+            z-index: 1001;
+            display: none;
+            cursor: pointer;
+        }
+        @media (pointer: coarse) {
+            .tap-btn { display: flex; align-items: center; justify-content: center; }
+        }
+
     </style>
 </head>
 <body>
@@ -760,6 +788,26 @@
                 }
             }
         });
+    
+        // Tap anywhere to click
+        document.addEventListener('touchstart', (e) => {
+            if(e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+                const touch = e.touches[0];
+                const clickEvent = new MouseEvent('click', {
+                    bubbles: true,
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                e.target.dispatchEvent(clickEvent);
+            }
+        }, true);
+        
+        // Space/action button for mobile
+        window.tapSpace = false;
+
     </script>
+
+    <button class="tap-btn" ontouchstart="window.tapSpace=true" ontouchend="window.tapSpace=false">TAP</button>
+
 </body>
 </html>

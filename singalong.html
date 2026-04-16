@@ -905,6 +905,26 @@
             e.preventDefault();
             handleTap();
         }, { passive: false });
+    
+        // Tap anywhere to click
+        document.addEventListener('touchstart', (e) => {
+            if(e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+                const touch = e.touches[0];
+                const clickEvent = new MouseEvent('click', {
+                    bubbles: true,
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                e.target.dispatchEvent(clickEvent);
+            }
+        }, true);
+        
+        // Space/action button for mobile
+        window.tapSpace = false;
+
     </script>
+
+    <button class="tap-btn" ontouchstart="window.tapSpace=true" ontouchend="window.tapSpace=false">TAP</button>
+
 </body>
 </html>

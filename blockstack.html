@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>🧱 Block Stack</title>
     <style>
         * {
@@ -39,7 +39,8 @@
             border-radius: 20px;
             border: 1px solid rgba(0, 212, 255, 0.3);
         }
-        canvas {
+        canvas { max-width: 100%; 
+            max-width: 100vw;
             border: 3px solid #00d4ff;
             border-radius: 10px;
             box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
@@ -137,6 +138,51 @@
             50% { transform: translate(-50%, -50%) scale(1.5); }
             100% { transform: translate(-50%, -50%) scale(1); }
         }
+    
+        /* Mobile Touch Controls */
+        .touch-controls {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            z-index: 1000;
+        }
+        @media (pointer: coarse) {
+            .touch-controls { display: flex !important; }
+            body { padding-bottom: 120px !important; }
+        }
+        .dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            grid-template-rows: repeat(3, 60px);
+            gap: 5px;
+            margin: 0 auto;
+        }
+        .dpad-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 10px;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .dpad-btn:active {
+            background: rgba(255,255,255,0.4);
+        }
+        .dpad-center { background: rgba(0,0,0,0.2); }
+        @media (max-width: 500px) {
+            .dpad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); }
+            .dpad-btn { font-size: 20px; }
+        }
+    
     </style>
 </head>
 <body>

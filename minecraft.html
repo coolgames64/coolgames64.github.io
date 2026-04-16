@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Minecraft - Cool Games</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { overflow: hidden; background: #87ceeb; font-family: Arial, sans-serif; }
-        canvas { display: block; }
+        canvas { max-width: 100%; 
+            max-width: 100vw; display: block; }
         #hud { position: fixed; top: 10px; left: 10px; color: white; font-size: 12px; text-shadow: 1px 1px 2px black; z-index: 100; }
         #hotbar { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; background: rgba(0,0,0,0.6); padding: 6px; border-radius: 6px; z-index: 100; }
         .slot { width: 40px; height: 40px; background: rgba(80,80,80,0.7); border: 2px solid #444; border-radius: 3px; display: flex; justify-content: center; align-items: center; font-size: 20px; cursor: pointer; }
@@ -22,6 +23,51 @@
         #start button { margin-top: 20px; padding: 12px 30px; font-size: 16px; background: #5d8c3e; border: none; color: white; border-radius: 25px; cursor: pointer; }
         #dayNight { position: fixed; top: 10px; right: 10px; font-size: 30px; z-index: 100; }
         #genStatus { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); color: white; font-size: 14px; text-shadow: 1px 1px 2px black; z-index: 100; }
+    
+        /* Mobile Touch Controls */
+        .touch-controls {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            z-index: 1000;
+        }
+        @media (pointer: coarse) {
+            .touch-controls { display: flex !important; }
+            body { padding-bottom: 120px !important; }
+        }
+        .dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            grid-template-rows: repeat(3, 60px);
+            gap: 5px;
+            margin: 0 auto;
+        }
+        .dpad-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 10px;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .dpad-btn:active {
+            background: rgba(255,255,255,0.4);
+        }
+        .dpad-center { background: rgba(0,0,0,0.2); }
+        @media (max-width: 500px) {
+            .dpad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); }
+            .dpad-btn { font-size: 20px; }
+        }
+    
     </style>
 </head>
 <body>
@@ -294,6 +340,24 @@
 
     init();
     requestAnimationFrame(genWorldParts);
+    
+        window.tL=false; window.tR=false; window.tU=false; window.tD=false;
+        setInterval(() => {
+            if(window.tL) keys.left=true; else keys.left=false;
+            if(window.tR) keys.right=true; else keys.right=false;
+            if(window.tU) keys.up=true; else keys.up=false;
+            if(window.tD) keys.down=true; else keys.down=false;
+        }, 50);
+
     </script>
+
+    <div class="touch-controls" style="display:none;position:fixed;bottom:15px;left:0;right:0;z-index:1000;pointer-events:none;">
+      <div style="display:flex;gap:20px;align-items:center;justify-content:center;pointer-events:auto;">
+        <button class="dpad-btn" ontouchstart="window.tL=true;window.tR=false;window.tU=false" ontouchend="window.tL=false" onmousedown="window.tL=true" onmouseup="window.tL=false" style="width:70px;height:70px;border-radius:50%;font-size:26px;background:rgba(255,255,255,0.25);border:3px solid rgba(255,255,255,0.5);color:white;">&#9664;</button>
+        <button class="dpad-btn" ontouchstart="window.tU=true;window.tL=false;window.tR=false" ontouchend="window.tU=false" onmousedown="window.tU=true" onmouseup="window.tU=false" style="width:70px;height:70px;border-radius:50%;font-size:26px;background:rgba(255,255,255,0.25);border:3px solid rgba(255,255,255,0.5);color:white;">&#9650;</button>
+        <button class="dpad-btn" ontouchstart="window.tR=true;window.tL=false;window.tU=false" ontouchend="window.tR=false" onmousedown="window.tR=true" onmouseup="window.tR=false" style="width:70px;height:70px;border-radius:50%;font-size:26px;background:rgba(255,255,255,0.25);border:3px solid rgba(255,255,255,0.5);color:white;">&#9654;</button>
+      </div>
+    </div>
+
 </body>
 </html>

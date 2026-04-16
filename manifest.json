@@ -1,16 +1,23 @@
 {
   "name": "Cool Games 64",
   "short_name": "CoolGames64",
-  "description": "Free online games for kids - play 80+ games instantly!",
-  "start_url": "/",
+  "description": "80+ free online games for kids - custom made, instant play!",
+  "start_url": "https://coolgames64.github.io/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#6b21a8",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%231a1a2e'/><text x='256' y='320' font-size='200' text-anchor='middle' fill='%239331e9'>🎮</text></svg>",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%231a1a2e'/><circle cx='256' cy='256' r='180' fill='%236b21a8'/><text x='256' y='320' font-size='180' text-anchor='middle'>🎮</text></svg>",
       "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='30' fill='%231a1a2e'/><circle cx='96' cy='96' r='70' fill='%236b21a8'/><text x='96' y='125' font-size='70' text-anchor='middle'>🎮</text></svg>",
+      "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }

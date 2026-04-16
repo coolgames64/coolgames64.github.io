@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>🎮 Connect Four</title>
     <style>
         * {
@@ -41,8 +41,9 @@
         }
         .player1-color { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
         .player2-color { background: #fbbf24; box-shadow: 0 0 10px #fbbf24; }
-        canvas {
-            border: 4px solid #3b82f6;
+        canvas { max-width: 100%; 
+            max-width: 100vw;
+            border: 3px solid #3b82f6;
             border-radius: 15px;
             box-shadow: 0 0 30px rgba(59, 130, 246, 0.4);
             cursor: pointer;
@@ -139,6 +140,79 @@
         .winner-circle.red { background: #ef4444; box-shadow: 0 0 20px #ef4444; }
         .winner-circle.yellow { background: #fbbf24; box-shadow: 0 0 20px #fbbf24; }
         .winner-circle.ai { background: #8b5cf6; box-shadow: 0 0 20px #8b5cf6; }
+    
+        /* Mobile Touch Controls */
+        .touch-controls {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            z-index: 1000;
+        }
+        @media (pointer: coarse) {
+            .touch-controls { display: flex !important; }
+            body { padding-bottom: 120px !important; }
+        }
+        .dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            grid-template-rows: repeat(3, 60px);
+            gap: 5px;
+            margin: 0 auto;
+        }
+        .dpad-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 10px;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .dpad-btn:active {
+            background: rgba(255,255,255,0.4);
+        }
+        .dpad-center { background: rgba(0,0,0,0.2); }
+        @media (max-width: 500px) {
+            .dpad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); }
+            .dpad-btn { font-size: 20px; }
+        }
+    
+    
+        .tap-area {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 999;
+            display: none;
+        }
+        @media (pointer: coarse) {
+            .tap-area { display: block; }
+        }
+        .tap-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 80px; height: 80px;
+            background: rgba(255,255,255,0.3);
+            border: 3px solid rgba(255,255,255,0.6);
+            border-radius: 50%;
+            color: white;
+            font-size: 14px;
+            z-index: 1001;
+            display: none;
+            cursor: pointer;
+        }
+        @media (pointer: coarse) {
+            .tap-btn { display: flex; align-items: center; justify-content: center; }
+        }
+
     </style>
 </head>
 <body>
@@ -533,6 +607,26 @@
         initBoard();
         updateStatus();
         drawBoard();
+    
+        // Tap anywhere to click
+        document.addEventListener('touchstart', (e) => {
+            if(e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+                const touch = e.touches[0];
+                const clickEvent = new MouseEvent('click', {
+                    bubbles: true,
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                e.target.dispatchEvent(clickEvent);
+            }
+        }, true);
+        
+        // Space/action button for mobile
+        window.tapSpace = false;
+
     </script>
+
+    <button class="tap-btn" ontouchstart="window.tapSpace=true" ontouchend="window.tapSpace=false">TAP</button>
+
 </body>
 </html>

@@ -58,6 +58,23 @@
             border: none; border-radius: 10px; color: white; font-size: 1.1rem; font-weight: 700;
             cursor: pointer;
         }
+    
+        .dpad-btn {
+            background: rgba(255,255,255,0.25);
+            border: 3px solid rgba(255,255,255,0.5);
+            border-radius: 12px;
+            color: white;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .dpad-btn:active { background: rgba(255,255,255,0.5); }
+
     </style>
 </head>
 <body>
@@ -592,6 +609,24 @@
     window.selectTower = selectTower;
     window.startWave = startWave;
     window.restartGame = restartGame;
+    
+        window.tL=false; window.tR=false; window.tU=false; window.tD=false;
+        setInterval(() => {
+            if(window.tL) keys.left=true; else keys.left=false;
+            if(window.tR) keys.right=true; else keys.right=false;
+            if(window.tU) keys.up=true; else keys.up=false;
+            if(window.tD) keys.down=true; else keys.down=false;
+        }, 50);
+
     </script>
+
+    <div class="touch-controls" style="display:none;position:fixed;bottom:15px;left:0;right:0;z-index:1000;">
+        <div style="display:flex;gap:15px;align-items:center;justify-content:center;">
+            <button class="dpad-btn" ontouchstart="window.tL=true" ontouchend="window.tL=false" onmousedown="window.tL=true" onmouseup="window.tL=false" style="width:65px;height:65px;border-radius:50%;font-size:24px;">&#9664;</button>
+            <button class="dpad-btn" ontouchstart="window.tU=true" ontouchend="window.tU=false" onmousedown="window.tU=true" onmouseup="window.tU=false" style="width:65px;height:65px;border-radius:50%;font-size:24px;">&#9650;</button>
+            <button class="dpad-btn" ontouchstart="window.tR=true" ontouchend="window.tR=false" onmousedown="window.tR=true" onmouseup="window.tR=false" style="width:65px;height:65px;border-radius:50%;font-size:24px;">&#9654;</button>
+        </div>
+    </div>
+
 </body>
 </html>
