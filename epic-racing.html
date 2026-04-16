@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🏎️ Epic Racing - Cool Games 64</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0a15 0%, #1a1a2e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden;
+        }
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            width: 400px;
+            max-width: 95vw;
+            margin-bottom: 10px;
+        }
+        .hud-item {
+            background: rgba(0,0,0,0.6);
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            border: 2px solid rgba(255,200,0,0.5);
+        }
+        .hud-item span { color: #ffc800; }
+        #gameCanvas {
+            border-radius: 12px;
+            border: 3px solid #ffc800;
+            box-shadow: 0 0 40px rgba(255,200,0,0.4), 0 0 80px rgba(255,200,0,0.2);
+        }
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+        }
+        .overlay.hidden { display: none; }
+        .overlay h1 {
+            font-size: 36px;
+            color: #ffc800;
+            text-shadow: 0 0 30px rgba(255,200,0,0.8);
+            margin-bottom: 10px;
+        }
+        .overlay p { color: rgba(255,255,255,0.7); margin-bottom: 25px; }
+        .btn {
+            background: linear-gradient(135deg, #ffc800 0%, #ff9500 100%);
+            color: #0a0a15;
+            border: none;
+            padding: 15px 50px;
+            font-size: 18px;
+            font-weight: 700;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(255,200,0,0.4);
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: scale(1.05); }
+        .touch-controls {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            justify-content: center;
+            gap: 20px;
+        }
+        @media (pointer: coarse) {
+            .touch-controls { display: flex; }
+            body { padding-bottom: 120px; }
+        }
+        .pedals {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .pedal {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(255,200,0,0.2);
+            border: 3px solid rgba(255,200,0,0.6);
+            color: #ffc800;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .pedal:active { background: rgba(255,200,0,0.5); }
+        .arrows {
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            grid-template-rows: repeat(2, 60px);
+            gap: 5px;
+        }
+        .arr {
+            background: rgba(255,200,0,0.2);
+            border: 2px solid rgba(255,200,0,0.5);
+            border-radius: 10px;
+            color: #ffc800;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .arr:active { background: rgba(255,200,0,0.5); }
+    </style>
+</head>
+<body>
+    <div class="hud">
+        <div class="hud-item">Lap: <span id="lap">1</span>/3</div>
+        <div class="hud-item">Speed: <span id="speed">0</span></div>
+        <div class="hud-item">Coins: <span id="coins">0</span></div>
+    </div>
+    <div style="position:relative;">
+        <canvas id="gameCanvas" width="400" height="500"></canvas>
+        <div class="overlay" id="startScreen">
+            <h1>🏎️ EPIC RACING</h1>
+            <p>Collect coins, boost, win!</p>
+            <button class="btn" onclick="startGame()">START RACE</button>
+        </div>
+        <div class="overlay hidden" id="gameOverScreen">
+            <h1>🏁 FINISHED!</h1>
+            <p id="finalTime">Time: 0s</p>
+            <button class="btn" onclick="startGame()">RACE AGAIN</button>
+        </div>
+    </div>
+    <div class="touch-controls">
+        <div class="arrows">
+            <div></div>
+            <button class="arr" id="upBtn">▲</button>
+            <div></div>
+            <button class="arr" id="leftBtn">◀</button>
+            <button class="arr" id="downBtn">▼</button>
+            <button class="arr" id="rightBtn">▶</button>
+        </div>
+        <div class="pedals">
+            <button class="pedal" id="gasBtn">🔥</button>
+            <button class="pedal" id="brakeBtn">🛑</button>
+        </div>
+    </div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Responsive
+function resize() {
+    const w = Math.min(window.innerWidth - 10, 400);
+    const h = Math.min(window.innerHeight - 200, 500);
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+let player, track, obstacles, coins, particles, gameLoop;
+let speed, lap, totalTime, gameState;
+
+function init() {
+    player = { x: 200, y: 400, vx: 0, vy: 0, angle: -Math.PI/2, boosting: false };
+    speed = 0;
+    lap = 1;
+    totalTime = 0;
+    gameState = 'racing';
+    obstacles = [];
+    coins = [];
+    particles = [];
+    
+    // Generate track obstacles (cones)
+    for (let i = 0; i < 15; i++) {
+        obstacles.push({
+            x: 50 + Math.random() * 300,
+            y: 100 + Math.random() * 300,
+            r: 10
+        });
+    }
+    // Generate coins
+    for (let i = 0; i < 10; i++) {
+        coins.push({
+            x: 50 + Math.random() * 300,
+            y: 100 + Math.random() * 300,
+            collected: false,
+            pulse: Math.random() * Math.PI * 2
+        });
+    }
+}
+
+function spawnParticles(x, y, color) {
+    for (let i = 0; i < 8; i++) {
+        particles.push({
+            x, y,
+            vx: (Math.random() - 0.5) * 6,
+            vy: (Math.random() - 0.5) * 6,
+            life: 20,
+            color
+        });
+    }
+}
+
+function update() {
+    if (gameState !== 'racing') return;
+    
+    totalTime++;
+    
+    // Controls
+    let accelerating = window.tU || keys.up;
+    let braking = window.tD || keys.down;
+    let turningLeft = window.tL || keys.left;
+    let turningRight = window.tR || keys.right;
+    
+    // Physics
+    if (accelerating) {
+        speed = Math.min(speed + 0.3, 5);
+        // Boost particles
+        if (totalTime % 3 === 0) {
+            spawnParticles(player.x, player.y + 15, '#ff9500');
+        }
+    }
+    if (braking) {
+        speed = Math.max(speed - 0.4, -2);
+    }
+    speed *= 0.98; // friction
+    if (!accelerating && !braking) speed *= 0.99;
+    
+    if (speed > 0.5) {
+        if (turningLeft) player.angle -= 0.05 * (speed / 3);
+        if (turningRight) player.angle += 0.05 * (speed / 3);
+    }
+    
+    player.vx = Math.cos(player.angle) * speed;
+    player.vy = Math.sin(player.angle) * speed;
+    player.x += player.vx;
+    player.y += player.vy;
+    
+    // Boundary
+    player.x = Math.max(20, Math.min(380, player.x));
+    player.y = Math.max(20, Math.min(480, player.y));
+    
+    // Lap detection
+    if (player.y < 30 && totalTime > 100) {
+        lap++;
+        if (lap > 3) {
+            gameState = 'finished';
+            document.getElementById('finalTime').textContent = `Time: ${(totalTime/60).toFixed(1)}s`;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+            clearInterval(gameLoop);
+        }
+    }
+    
+    // Coin collection
+    coins.forEach(c => {
+        if (!c.collected) {
+            const dx = c.x - player.x;
+            const dy = c.y - player.y;
+            if (dx*dx + dy*dy < 400) {
+                c.collected = true;
+                spawnParticles(c.x, c.y, '#ffc800');
+            }
+        }
+    });
+    
+    // Obstacle collision
+    obstacles.forEach(o => {
+        const dx = o.x - player.x;
+        const dy = o.y - player.y;
+        if (dx*dx + dy*dy < (o.r + 15) * (o.r + 15)) {
+            speed *= 0.5;
+            spawnParticles(player.x, player.y, '#ff4444');
+        }
+    });
+    
+    // Update particles
+    particles = particles.filter(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+        return p.life > 0;
+    });
+    
+    // Update UI
+    document.getElementById('speed').textContent = Math.floor(speed * 30);
+    document.getElementById('lap').textContent = Math.min(lap, 3);
+    document.getElementById('coins').textContent = coins.filter(c => c.collected).length;
+}
+
+function draw() {
+    // Sky gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, '#1a1a2e');
+    grad.addColorStop(1, '#16213e');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Track
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 100;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(200, 500);
+    ctx.lineTo(200, 100);
+    ctx.stroke();
+    
+    // Track lines
+    ctx.strokeStyle = '#ffc800';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([20, 20]);
+    ctx.beginPath();
+    ctx.moveTo(150, 500);
+    ctx.lineTo(150, 50);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(250, 500);
+    ctx.lineTo(250, 50);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Start/Finish line
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 10; i++) {
+        for (let j = 0; j < 2; j++) {
+            if ((i + j) % 2 === 0) {
+                ctx.fillRect(140 + i * 12, 20, 12, 12);
+            }
+        }
+    }
+    
+    // Draw coins
+    coins.forEach(c => {
+        if (!c.collected) {
+            c.pulse += 0.1;
+            const scale = 1 + Math.sin(c.pulse) * 0.2;
+            ctx.fillStyle = '#ffc800';
+            ctx.shadowColor = '#ffc800';
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, 12 * scale, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('💰', c.x, c.y);
+        }
+    });
+    
+    // Draw obstacles (cones)
+    obstacles.forEach(o => {
+        ctx.fillStyle = '#ff4444';
+        ctx.beginPath();
+        ctx.moveTo(o.x, o.y - o.r);
+        ctx.lineTo(o.x - o.r, o.y + o.r);
+        ctx.lineTo(o.x + o.r, o.y + o.r);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(o.x - 4, o.y - 2, 8, 4);
+    });
+    
+    // Draw particles
+    particles.forEach(p => {
+        ctx.globalAlpha = p.life / 20;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    
+    // Draw car
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(player.angle + Math.PI/2);
+    
+    // Car body
+    ctx.fillStyle = '#00ff88';
+    ctx.shadowColor = '#00ff88';
+    ctx.shadowBlur = 20;
+    ctx.beginPath();
+    ctx.roundRect(-10, -20, 20, 40, 5);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    // Windshield
+    ctx.fillStyle = '#00ccff';
+    ctx.fillRect(-6, -15, 12, 8);
+    
+    // Exhaust
+    if (speed > 2) {
+        ctx.fillStyle = '#ff9500';
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(-5, 20);
+        ctx.lineTo(5, 20);
+        ctx.lineTo(0, 25 + speed * 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+    }
+    
+    ctx.restore();
+    
+    // Speed lines
+    if (speed > 3) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            ctx.moveTo(player.x - 30 + Math.random() * 60, player.y - 50);
+            ctx.lineTo(player.x - 30 + Math.random() * 60, player.y - 50 - speed * 5);
+            ctx.stroke();
+        }
+    }
+}
+
+function gameLoopFn() {
+    update();
+    draw();
+}
+
+function startGame() {
+    document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('gameOverScreen').classList.add('hidden');
+    init();
+    if (gameLoop) clearInterval(gameLoop);
+    gameLoop = setInterval(gameLoopFn, 1000/60);
+}
+
+// Touch controls
+window.tL = window.tR = window.tU = window.tD = false;
+const btnMap = { upBtn: 'tU', downBtn: 'tD', leftBtn: 'tL', rightBtn: 'tR' };
+Object.keys(btnMap).forEach(id => {
+    const btn = document.getElementById(id);
+    const key = btnMap[id];
+    btn.addEventListener('touchstart', e => { e.preventDefault(); window[key] = true; });
+    btn.addEventListener('touchend', e => { e.preventDefault(); window[key] = false; });
+    btn.addEventListener('mousedown', () => window[key] = true);
+    btn.addEventListener('mouseup', () => window[key] = false);
+});
+
+// Keyboard
+document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowUp' || e.key === 'w') window.tU = true;
+    if (e.key === 'ArrowDown' || e.key === 's') window.tD = true;
+    if (e.key === 'ArrowLeft' || e.key === 'a') window.tL = true;
+    if (e.key === 'ArrowRight' || e.key === 'd') window.tR = true;
+    if (e.key === ' ') startGame();
+});
+document.addEventListener('keyup', e => {
+    if (e.key === 'ArrowUp' || e.key === 'w') window.tU = false;
+    if (e.key === 'ArrowDown' || e.key === 's') window.tD = false;
+    if (e.key === 'ArrowLeft' || e.key === 'a') window.tL = false;
+    if (e.key === 'ArrowRight' || e.key === 'd') window.tR = false;
+});
+
+if (!ctx.roundRect) {
+    ctx.roundRect = function(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+    };
+}
+
+init();
+draw();
+</script>
+</body>
+</html>

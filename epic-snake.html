@@ -6,7 +6,7 @@
     <title>🐍 Epic Snake - Cool Games 64</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { /* epic-game-styles */
+        body {
             background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
             min-height: 100vh;
             display: flex;
@@ -139,7 +139,7 @@
         }
         @media (pointer: coarse) {
             .touch-controls { display: flex; justify-content: center; }
-            body { /* epic-game-styles */ padding-bottom: 120px; }
+            body { padding-bottom: 120px; }
         }
         .dpad {
             display: grid;
@@ -680,15 +680,6 @@
 
     init();
     draw();
-    
-        window.tL=false; window.tR=false; window.tU=false; window.tD=false;
-        setInterval(() => {
-            if(window.tL) keys.left=true; else keys.left=false;
-            if(window.tR) keys.right=true; else keys.right=false;
-            if(window.tU) keys.up=true; else keys.up=false;
-            if(window.tD) keys.down=true; else keys.down=false;
-        }, 50);
-
     </script>
 </body>
 </html>

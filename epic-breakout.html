@@ -6,7 +6,7 @@
     <title>🏓 Epic Breakout - Cool Games 64</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { /* epic-game-styles */
+        body {
             background: linear-gradient(135deg, #0a0a15 0%, #1a1a2e 100%);
             min-height: 100vh;
             display: flex;
@@ -77,7 +77,7 @@
         }
         @media (pointer: coarse) {
             .touch-controls { display: flex; }
-            body { /* epic-game-styles */ padding-bottom: 120px; }
+            body { padding-bottom: 120px; }
         }
         .paddle-btns {
             display: flex;
@@ -96,130 +96,6 @@
             justify-content: center;
         }
         .paddle-btn:active { background: rgba(0,255,136,0.5); }
-    
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { /* epic-game-styles */
-            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            overflow: hidden;
-        }
-        .game-title {
-            font-size: 24px;
-            font-weight: 800;
-            color: #00ff88;
-            text-shadow: 0 0 20px rgba(0,255,136,0.5);
-            margin-bottom: 10px;
-        }
-        .score-board {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 15px;
-        }
-        .score-item {
-            text-align: center;
-            background: rgba(0,0,0,0.3);
-            padding: 8px 16px;
-            border-radius: 12px;
-            border: 1px solid rgba(0,255,136,0.3);
-        }
-        .score-label {
-            font-size: 10px;
-            color: rgba(255,255,255,0.6);
-            text-transform: uppercase;
-        }
-        .score-value {
-            font-size: 20px;
-            font-weight: 700;
-            color: #00ff88;
-        }
-        .game-container {
-            position: relative;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 0 40px rgba(0,255,136,0.3), 0 20px 60px rgba(0,0,0,0.5);
-        }
-        #gameCanvas {
-            display: block;
-            background: linear-gradient(180deg, #1a1a2e 0%, #0d0d1a 100%);
-            border: 3px solid #00ff88;
-            border-radius: 16px;
-        }
-        .overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.85);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 16px;
-        }
-        .overlay.hidden { display: none; }
-        .overlay-title {
-            font-size: 32px;
-            font-weight: 800;
-            color: #00ff88;
-            text-shadow: 0 0 30px rgba(0,255,136,0.8);
-            margin-bottom: 10px;
-        }
-        .overlay-subtitle {
-            color: rgba(255,255,255,0.7);
-            font-size: 14px;
-            margin-bottom: 25px;
-        }
-        .btn {
-            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
-            color: #0f0f1a;
-            border: none;
-            padding: 12px 40px;
-            font-size: 16px;
-            font-weight: 700;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 8px 25px rgba(0,255,136,0.4);
-        }
-        .btn:hover { transform: scale(1.05); box-shadow: 0 12px 35px rgba(0,255,136,0.6); }
-        .touch-controls {
-            display: none;
-            position: fixed;
-            bottom: 15px;
-            left: 0;
-            right: 0;
-            z-index: 100;
-            justify-content: center;
-        }
-        @media (pointer: coarse) {
-            .touch-controls { display: flex; }
-            body { /* epic-game-styles */ padding-bottom: 100px; }
-        }
-        .dpad {
-            display: grid;
-            grid-template-columns: repeat(3, 55px);
-            grid-template-rows: repeat(2, 55px);
-            gap: 6px;
-        }
-        .dpad-btn {
-            background: rgba(0,255,136,0.2);
-            border: 2px solid rgba(0,255,136,0.5);
-            border-radius: 10px;
-            color: #00ff88;
-            font-size: 22px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: manipulation;
-        }
-        .dpad-btn:active { background: rgba(0,255,136,0.5); }
-
     </style>
 </head>
 <body>
@@ -596,15 +472,6 @@ if (!ctx.roundRect) {
 
 init();
 draw();
-
-        window.tL=false; window.tR=false; window.tU=false; window.tD=false;
-        setInterval(() => {
-            if(window.tL) keys.left=true; else keys.left=false;
-            if(window.tR) keys.right=true; else keys.right=false;
-            if(window.tU) keys.up=true; else keys.up=false;
-            if(window.tD) keys.down=true; else keys.down=false;
-        }, 50);
-
-    </script>
+</script>
 </body>
 </html>

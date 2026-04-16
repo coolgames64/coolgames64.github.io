@@ -3,641 +3,509 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🐸 Doodle Jump</title>
+    <title>⬆️ Doodle Jump Epic - Cool Games 64</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
+            background: linear-gradient(180deg, #87CEEB 0%, #E0E0E0 100%);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-family: 'Comic Sans MS', cursive, sans-serif;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             overflow: hidden;
         }
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            color: #333;
-            text-shadow: 2px 2px 0 #fff;
-        }
-        .score-board {
-            font-size: 1.5rem;
-            margin-bottom: 15px;
-            color: #333;
-            background: rgba(255,255,255,0.5);
-            padding: 5px 20px;
-            border-radius: 20px;
-        }
-        canvas { max-width: 100%; 
-            max-width: 100vw;
-            border: 3px solid #333;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            background: linear-gradient(180deg, #87CEEB 0%, #98D8AA 100%);
-        }
-        .instructions {
-            margin-top: 15px;
-            font-size: 1rem;
-            color: #555;
-            background: rgba(255,255,255,0.7);
-            padding: 10px 20px;
-            border-radius: 10px;
-        }
-        .instructions span {
-            background: #333;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 5px;
-        }
-        #gameOver {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255,255,255,0.95);
-            padding: 40px;
-            border: 3px solid #ff6b6b;
-            border-radius: 20px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-        #gameOver h2 {
-            color: #ff6b6b;
-            font-size: 2rem;
-            margin-bottom: 15px;
-        }
-        #gameOver p {
-            font-size: 1.5rem;
-            color: #333;
-            margin-bottom: 10px;
-        }
-        #gameOver .high {
-            font-size: 1rem;
-            color: #888;
-            margin-bottom: 20px;
-        }
-        #gameOver button {
-            background: #4ECDC4;
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            font-size: 1.2rem;
-            border-radius: 30px;
-            cursor: pointer;
-            font-weight: bold;
-            box-shadow: 0 5px 0 #3BA99C;
-        }
-        #gameOver button:hover {
-            background: #3BA99C;
-            transform: translateY(2px);
-            box-shadow: 0 3px 0 #2E8B84;
-        }
-        .back-btn {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(255,255,255,0.9);
-            color: #333;
-            border: 2px solid #333;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            text-decoration: none;
-            font-size: 1rem;
-            font-weight: bold;
-        }
-        .back-btn:hover {
-            background: #333;
-            color: white;
-        }
-        .tilt-hint {
-            font-size: 0.8rem;
-            color: #888;
-            margin-top: 5px;
-        }
-    
-        /* Mobile Touch Controls */
-        .touch-controls {
-            display: none;
+        .hud {
             position: fixed;
-            bottom: 20px;
-            left: 0;
-            right: 0;
-            padding: 10px;
-            z-index: 1000;
-        }
-        @media (pointer: coarse) {
-            .touch-controls { display: flex !important; }
-            body { padding-bottom: 120px !important; }
-        }
-        .dpad {
-            display: grid;
-            grid-template-columns: repeat(3, 60px);
-            grid-template-rows: repeat(3, 60px);
-            gap: 5px;
-            margin: 0 auto;
-        }
-        .dpad-btn {
-            background: rgba(255,255,255,0.2);
-            border: 2px solid rgba(255,255,255,0.4);
-            border-radius: 10px;
-            color: white;
-            font-size: 24px;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
+            gap: 20px;
+            z-index: 100;
+        }
+        .hud-item {
+            background: rgba(255,255,255,0.95);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 16px;
+            color: #333;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .hud-item span { color: #e91e63; }
+        #gameCanvas {
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            z-index: 200;
+        }
+        .overlay.hidden { display: none; }
+        .overlay h1 {
+            font-size: 42px;
+            color: #e91e63;
+            text-shadow: 0 4px 20px rgba(233,30,99,0.5);
+            margin-bottom: 10px;
+        }
+        .overlay p { color: rgba(255,255,255,0.8); margin-bottom: 25px; font-size: 18px; }
+        .btn {
+            background: linear-gradient(135deg, #e91e63 0%, #9c27b0 100%);
+            color: white;
+            border: none;
+            padding: 15px 50px;
+            font-size: 20px;
+            font-weight: 700;
+            border-radius: 30px;
             cursor: pointer;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: manipulation;
+            box-shadow: 0 10px 30px rgba(233,30,99,0.4);
         }
-        .dpad-btn:active {
-            background: rgba(255,255,255,0.4);
+        .btn:hover { transform: scale(1.05); }
+        .touch-zone {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40%;
+            z-index: 50;
         }
-        .dpad-center { background: rgba(0,0,0,0.2); }
-        @media (max-width: 500px) {
-            .dpad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); }
-            .dpad-btn { font-size: 20px; }
+        @media (pointer: coarse) {
+            .touch-zone { display: block; }
+            body { padding-bottom: 0; }
         }
-    
+        .touch-left, .touch-right {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 50%;
+        }
+        .touch-left { left: 0; }
+        .touch-right { right: 0; }
     </style>
 </head>
 <body>
-    <a href="index.html" class="back-btn">← Back to Games</a>
-    <h1>🐸 DOODLE JUMP</h1>
-    <div class="score-board">Score: <span id="score">0</span> | Best: <span id="highScore">0</span></div>
-    <canvas id="gameCanvas" width="350" height="500"></canvas>
-    <div class="instructions">
-        <span>← →</span> Arrow Keys to move | Jump on platforms!
-        <div class="tilt-hint">(Tilt your device to move on mobile!)</div>
+    <div class="hud" id="hud" style="display: none;">
+        <div class="hud-item">Score: <span id="score">0</span></div>
+        <div class="hud-item">Best: <span id="best">0</span></div>
     </div>
     
-    <div id="gameOver">
-        <h2>😵 Game Over!</h2>
-        <p>Score: <span id="finalScore">0</span></p>
-        <p class="high">Best: <span id="finalHigh">0</span></p>
-        <button onclick="restartGame()">TRY AGAIN 🔄</button>
-    </div>
-
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        // Game settings
-        const GRAVITY = 0.4;
-        const JUMP_FORCE = -12;
-        const MOVE_SPEED = 6;
-        const PLATFORM_WIDTH = 70;
-        const PLATFORM_HEIGHT = 15;
-        const PLAYER_WIDTH = 40;
-        const PLAYER_HEIGHT = 40;
-        
-        let player = {
-            x: 155,
-            y: 300,
-            vx: 0,
-            vy: 0,
-            width: PLAYER_WIDTH,
-            height: PLAYER_HEIGHT,
-            jumping: false
-        };
-        
-        let platforms = [];
-        let cameraY = 0;
-        let score = 0;
-        let highScore = parseInt(localStorage.getItem('doodleJumpHighScore')) || 0;
-        let gameOver = false;
-        let gameLoop;
-        let lastHeight = 0;
-        
-        // Platform types
-        const PLATFORM_TYPES = {
-            normal: { color: '#4ECDC4', shadow: '#3BA99C' },
-            moving: { color: '#FFE66D', shadow: '#DDD35C' },
-            breaking: { color: '#FF6B6B', shadow: '#DD5C5C' }
-        };
-        
-        function init() {
-            player = {
-                x: canvas.width / 2 - PLAYER_WIDTH / 2,
-                y: 300,
-                vx: 0,
-                vy: 0,
-                width: PLAYER_WIDTH,
-                height: PLAYER_HEIGHT,
-                jumping: false
-            };
-            
-            platforms = [];
-            cameraY = 0;
-            score = 0;
-            gameOver = false;
-            lastHeight = 0;
-            
-            // Create initial platforms
-            // First platform directly under player
-            platforms.push({
-                x: player.x - 15,
-                y: player.y + player.height,
-                width: PLATFORM_WIDTH,
-                height: PLATFORM_HEIGHT,
-                type: 'normal'
-            });
-            
-            // Generate more platforms
-            for (let i = 0; i < 15; i++) {
-                createPlatform(canvas.height - 100 - i * 50);
-            }
-            
-            document.getElementById('score').textContent = score;
-            document.getElementById('highScore').textContent = highScore;
-            document.getElementById('gameOver').style.display = 'none';
-        }
-        
-        function createPlatform(y) {
-            const x = Math.random() * (canvas.width - PLATFORM_WIDTH);
-            
-            // Determine platform type (rare types appear less often)
-            let type = 'normal';
-            const rand = Math.random();
-            if (rand > 0.92) type = 'breaking';
-            else if (rand > 0.8) type = 'moving';
-            
-            const platform = {
-                x: x,
-                y: y,
-                width: PLATFORM_WIDTH,
-                height: PLATFORM_HEIGHT,
-                type: type,
-                moveDir: Math.random() > 0.5 ? 1 : -1,
-                moveSpeed: 1 + Math.random() * 1.5,
-                broken: false,
-                breakTimer: 0
-            };
-            
-            platforms.push(platform);
-            return platform;
-        }
-        
-        function drawPlayer() {
-            const screenY = player.y - cameraY;
-            
-            // Body (green frog-like creature)
-            ctx.fillStyle = '#7BC043';
-            ctx.beginPath();
-            ctx.ellipse(
-                player.x + player.width / 2,
-                screenY + player.height / 2 + 5,
-                player.width / 2 - 5,
-                player.height / 2 - 5,
-                0, 0, Math.PI * 2
-            );
-            ctx.fill();
-            
-            // Belly
-            ctx.fillStyle = '#98D8AA';
-            ctx.beginPath();
-            ctx.ellipse(
-                player.x + player.width / 2,
-                screenY + player.height / 2 + 8,
-                player.width / 3,
-                player.height / 3,
-                0, 0, Math.PI * 2
-            );
-            ctx.fill();
-            
-            // Eyes
-            ctx.fillStyle = 'white';
-            ctx.beginPath();
-            ctx.arc(player.x + 12, screenY + 10, 8, 0, Math.PI * 2);
-            ctx.arc(player.x + player.width - 12, screenY + 10, 8, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Pupils (look in direction of movement)
-            ctx.fillStyle = 'black';
-            const pupilOffset = player.vx > 0 ? 2 : (player.vx < 0 ? -2 : 0);
-            ctx.beginPath();
-            ctx.arc(player.x + 12 + pupilOffset, screenY + 10, 4, 0, Math.PI * 2);
-            ctx.arc(player.x + player.width - 12 + pupilOffset, screenY + 10, 4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Smile
-            ctx.strokeStyle = '#5DA427';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(player.x + player.width / 2, screenY + 22, 8, 0.2, Math.PI - 0.2);
-            ctx.stroke();
-            
-            // Feet when jumping
-            if (player.vy < 0) {
-                ctx.fillStyle = '#5DA427';
-                ctx.beginPath();
-                ctx.ellipse(player.x + 8, screenY + player.height - 2, 8, 5, -0.3, 0, Math.PI * 2);
-                ctx.ellipse(player.x + player.width - 8, screenY + player.height - 2, 8, 5, 0.3, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-        
-        function drawPlatform(platform) {
-            const screenY = platform.y - cameraY;
-            
-            // Don't draw if off screen
-            if (screenY > canvas.height + 50 || screenY < -50) return;
-            
-            const type = PLATFORM_TYPES[platform.type];
-            
-            // Platform shadow
-            ctx.fillStyle = platform.shadow;
-            ctx.beginPath();
-            ctx.roundRect(platform.x, screenY + 3, platform.width, platform.height, 5);
-            ctx.fill();
-            
-            // Platform top
-            if (platform.type === 'breaking' && platform.broken) {
-                ctx.fillStyle = '#ccc';
-            } else {
-                ctx.fillStyle = type.color;
-            }
-            ctx.beginPath();
-            ctx.roundRect(platform.x, screenY, platform.width, platform.height, 5);
-            ctx.fill();
-            
-            // Highlight
-            ctx.fillStyle = 'rgba(255,255,255,0.4)';
-            ctx.beginPath();
-            ctx.roundRect(platform.x + 5, screenY + 2, platform.width - 10, 4, 2);
-            ctx.fill();
-            
-            // Moving platform indicator
-            if (platform.type === 'moving') {
-                ctx.fillStyle = '#FF6B6B';
-                ctx.beginPath();
-                ctx.arc(platform.x + 10, screenY + platform.height / 2, 3, 0, Math.PI * 2);
-                ctx.arc(platform.x + platform.width - 10, screenY + platform.height / 2, 3, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            
-            // Breaking platform cracks
-            if (platform.type === 'breaking') {
-                ctx.strokeStyle = platform.shadow;
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(platform.x + 20, screenY + 3);
-                ctx.lineTo(platform.x + 25, screenY + platform.height - 3);
-                ctx.moveTo(platform.x + 45, screenY + 3);
-                ctx.lineTo(platform.x + 40, screenY + platform.height - 3);
-                ctx.stroke();
-            }
-        }
-        
-        function draw() {
-            // Sky gradient background
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#87CEEB');
-            gradient.addColorStop(1, '#E0F6FF');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw clouds (parallax)
-            ctx.fillStyle = 'rgba(255,255,255,0.8)';
-            for (let i = 0; i < 5; i++) {
-                const cloudX = ((i * 100 + cameraY * 0.1) % (canvas.width + 100)) - 50;
-                const cloudY = 50 + (i * 80) % 200;
-                drawCloud(cloudX, cloudY);
-            }
-            
-            // Draw platforms
-            platforms.forEach(platform => drawPlatform(platform));
-            
-            // Draw player
-            drawPlayer();
-        }
-        
-        function drawCloud(x, y) {
-            ctx.beginPath();
-            ctx.arc(x, y, 20, 0, Math.PI * 2);
-            ctx.arc(x + 25, y - 10, 25, 0, Math.PI * 2);
-            ctx.arc(x + 50, y, 20, 0, Math.PI * 2);
-            ctx.arc(x + 25, y + 5, 15, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        
-        function update() {
-            if (gameOver) return;
-            
-            // Apply gravity
-            player.vy += GRAVITY;
-            player.y += player.vy;
-            player.x += player.vx;
-            
-            // Friction
-            player.vx *= 0.9;
-            
-            // Wrap around screen edges
-            if (player.x + player.width < 0) {
-                player.x = canvas.width;
-            } else if (player.x > canvas.width) {
-                player.x = -player.width;
-            }
-            
-            // Update moving platforms
-            platforms.forEach(platform => {
-                if (platform.type === 'moving' && !platform.broken) {
-                    platform.x += platform.moveDir * platform.moveSpeed;
-                    if (platform.x <= 0 || platform.x + platform.width >= canvas.width) {
-                        platform.moveDir *= -1;
-                    }
-                }
-                
-                // Update breaking platforms
-                if (platform.type === 'breaking' && platform.broken) {
-                    platform.breakTimer++;
-                }
-            });
-            
-            // Remove broken platforms
-            platforms = platforms.filter(p => !(p.type === 'breaking' && p.broken && p.breakTimer > 10));
-            
-            // Check platform collisions (only when falling)
-            if (player.vy > 0) {
-                platforms.forEach(platform => {
-                    if (platform.broken) return;
-                    
-                    const playerBottom = player.y + player.height;
-                    const playerPrevBottom = playerBottom - player.vy;
-                    
-                    if (playerPrevBottom <= platform.y &&
-                        playerBottom >= platform.y &&
-                        player.x + player.width > platform.x &&
-                        player.x < platform.x + platform.width) {
-                        
-                        // Jump!
-                        player.y = platform.y - player.height;
-                        player.vy = JUMP_FORCE;
-                        player.jumping = true;
-                        
-                        // Handle breaking platforms
-                        if (platform.type === 'breaking') {
-                            platform.broken = true;
-                        }
-                    }
-                });
-            }
-            
-            // Camera follows player (smooth)
-            const targetCameraY = player.y - canvas.height / 3;
-            if (targetCameraY < cameraY) {
-                cameraY += (targetCameraY - cameraY) * 0.1;
-            }
-            
-            // Update score based on height
-            const currentHeight = Math.floor(-player.y / 10);
-            if (currentHeight > lastHeight) {
-                score = currentHeight;
-                lastHeight = currentHeight;
-                document.getElementById('score').textContent = score;
-                
-                if (score > highScore) {
-                    highScore = score;
-                    localStorage.setItem('doodleJumpHighScore', highScore);
-                    document.getElementById('highScore').textContent = highScore;
-                }
-            }
-            
-            // Generate new platforms as player goes up
-            const highestPlatform = Math.min(...platforms.map(p => p.y));
-            while (highestPlatform > cameraY - 100) {
-                const newY = Math.min(...platforms.map(p => p.y)) - 40 - Math.random() * 30;
-                createPlatform(newY);
-            }
-            
-            // Remove platforms that are way below camera
-            platforms = platforms.filter(p => p.y < cameraY + canvas.height + 100);
-            
-            // Check game over (fell below camera)
-            if (player.y - cameraY > canvas.height + 100) {
-                endGame();
-            }
-        }
-        
-        function endGame() {
-            gameOver = true;
-            clearInterval(gameLoop);
-            document.getElementById('finalScore').textContent = score;
-            document.getElementById('finalHigh').textContent = highScore;
-            document.getElementById('gameOver').style.display = 'block';
-        }
-        
-        function restartGame() {
-            clearInterval(gameLoop);
-            init();
-            gameLoop = setInterval(() => {
-                update();
-                draw();
-            }, 1000 / 60);
-        }
-        
-        // Controls
-        document.addEventListener('keydown', (e) => {
-            if (gameOver && e.code !== 'Space' && e.code !== 'Enter') return;
-            
-            switch(e.code) {
-                case 'ArrowLeft':
-                case 'KeyA':
-                    player.vx = -MOVE_SPEED;
-                    break;
-                case 'ArrowRight':
-                case 'KeyD':
-                    player.vx = MOVE_SPEED;
-                    break;
-                case 'Space':
-                case 'Enter':
-                    if (gameOver) restartGame();
-                    break;
-            }
-        });
-        
-        // Touch controls (tilt to move)
-        let touchStartX = 0;
-        let isTouching = false;
-        
-        canvas.addEventListener('touchstart', (e) => {
-            isTouching = true;
-            touchStartX = e.touches[0].clientX;
-        });
-        
-        canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            if (!isTouching) return;
-            
-            const touchX = e.touches[0].clientX;
-            const diff = touchX - touchStartX;
-            
-            if (Math.abs(diff) > 10) {
-                player.vx = diff * 0.1;
-                if (player.vx > MOVE_SPEED) player.vx = MOVE_SPEED;
-                if (player.vx < -MOVE_SPEED) player.vx = -MOVE_SPEED;
-                touchStartX = touchX;
-            }
-        });
-        
-        canvas.addEventListener('touchend', () => {
-            isTouching = false;
-        });
-        
-        // Device orientation (tilt)
-        if (window.DeviceOrientationEvent) {
-            window.addEventListener('deviceorientation', (e) => {
-                if (gameOver) return;
-                if (e.gamma !== null) {
-                    player.vx = e.gamma * 0.3;
-                    if (player.vx > MOVE_SPEED) player.vx = MOVE_SPEED;
-                    if (player.vx < -MOVE_SPEED) player.vx = -MOVE_SPEED;
-                }
-            });
-        }
-        
-        // Mouse controls
-        let mouseX = null;
-        canvas.addEventListener('mousemove', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            mouseX = e.clientX - rect.left;
-            const centerX = canvas.width / 2;
-            player.vx = (mouseX - centerX) * 0.05;
-        });
-        
-        // Start game
-        init();
-        draw();
-        gameLoop = setInterval(() => {
-            update();
-            draw();
-        }, 1000 / 60);
+    <canvas id="gameCanvas" width="320" height="500"></canvas>
     
-        window.tL=false; window.tR=false; window.tU=false; window.tD=false;
-        setInterval(() => {
-            if(window.tL) keys.left=true; else keys.left=false;
-            if(window.tR) keys.right=true; else keys.right=false;
-            if(window.tU) keys.up=true; else keys.up=false;
-            if(window.tD) keys.down=true; else keys.down=false;
-        }, 50);
-
-    </script>
-
-    <div class="touch-controls" style="display:none;position:fixed;bottom:15px;left:0;right:0;z-index:1000;pointer-events:none;">
-      <div style="display:flex;gap:20px;align-items:center;justify-content:center;pointer-events:auto;">
-        <button class="dpad-btn" ontouchstart="window.tL=true;window.tR=false;window.tU=false" ontouchend="window.tL=false" onmousedown="window.tL=true" onmouseup="window.tL=false" style="width:70px;height:70px;border-radius:50%;font-size:26px;background:rgba(255,255,255,0.25);border:3px solid rgba(255,255,255,0.5);color:white;">&#9664;</button>
-        <button class="dpad-btn" ontouchstart="window.tU=true;window.tL=false;window.tR=false" ontouchend="window.tU=false" onmousedown="window.tU=true" onmouseup="window.tU=false" style="width:70px;height:70px;border-radius:50%;font-size:26px;background:rgba(255,255,255,0.25);border:3px solid rgba(255,255,255,0.5);color:white;">&#9650;</button>
-        <button class="dpad-btn" ontouchstart="window.tR=true;window.tL=false;window.tU=false" ontouchend="window.tR=false" onmousedown="window.tR=true" onmouseup="window.tR=false" style="width:70px;height:70px;border-radius:50%;font-size:26px;background:rgba(255,255,255,0.25);border:3px solid rgba(255,255,255,0.5);color:white;">&#9654;</button>
-      </div>
+    <div class="touch-zone">
+        <div class="touch-left" id="touchLeft"></div>
+        <div class="touch-right" id="touchRight"></div>
+    </div>
+    
+    <div class="overlay" id="startScreen">
+        <h1>⬆️ DOODLE JUMP EPIC</h1>
+        <p>Jump higher and higher!</p>
+        <button class="btn" onclick="startGame()">START</button>
+        <p style="margin-top: 15px; font-size: 14px;">← → or Arrow Keys to move</p>
+    </div>
+    
+    <div class="overlay hidden" id="gameOverScreen">
+        <h1 id="gameOverTitle">💀 GAME OVER</h1>
+        <h2 id="finalScore">Score: 0</h2>
+        <p id="highScoreText">Best: 0</p>
+        <button class="btn" onclick="startGame()">TRY AGAIN</button>
     </div>
 
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let player, platforms, cameraY, score, best, gameLoop, gameState;
+let particles = [];
+let lastPlatformType = 'normal';
+
+const PLATFORMS_COUNT = 8;
+const PLATFORM_HEIGHT = 15;
+const JUMP_FORCE = -12;
+const GRAVITY = 0.3;
+
+class Particle {
+    constructor(x, y, color) {
+        this.x = x; this.y = y; this.color = color;
+        this.vx = (Math.random() - 0.5) * 6;
+        this.vy = (Math.random() - 0.5) * 6;
+        this.life = 30;
+        this.size = 3 + Math.random() * 3;
+    }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vy += 0.1;
+        this.life--;
+    }
+    draw() {
+        ctx.globalAlpha = this.life / 30;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+    }
+}
+
+class Platform {
+    constructor(x, y, type) {
+        this.x = x;
+        this.y = y;
+        this.width = 70;
+        this.type = type || 'normal';
+        
+        if (type === 'moving') {
+            this.vx = (Math.random() > 0.5 ? 1 : -1) * 2;
+        }
+    }
+    
+    draw() {
+        let colors = {
+            normal: { fill: '#4CAF50', shadow: '#2E7D32' },
+            moving: { fill: '#2196F3', shadow: '#1565C0' },
+            bouncy: { fill: '#FF9800', shadow: '#E65100' },
+            fragile: { fill: '#9E9E9E', shadow: '#616161' }
+        };
+        
+        let c = colors[this.type] || colors.normal;
+        
+        ctx.fillStyle = c.fill;
+        ctx.shadowColor = c.shadow;
+        ctx.shadowBlur = 8;
+        
+        if (this.type === 'bouncy') {
+            // Bouncy platform
+            ctx.beginPath();
+            ctx.ellipse(this.x + this.width/2, this.y + PLATFORM_HEIGHT/2, this.width/2, PLATFORM_HEIGHT/2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Spring effect
+            ctx.fillStyle = '#FFC107';
+            ctx.fillRect(this.x + this.width/2 - 5, this.y - 5, 10, 8);
+        } else {
+            ctx.beginPath();
+            ctx.roundRect(this.x, this.y, this.width, PLATFORM_HEIGHT, 5);
+            ctx.fill();
+        }
+        
+        ctx.shadowBlur = 0;
+        
+        // Shine
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.fillRect(this.x + 5, this.y + 2, this.width - 10, 4);
+    }
+}
+
+function init() {
+    player = {
+        x: 160,
+        y: 400,
+        vx: 0,
+        vy: 0,
+        width: 40,
+        height: 40
+    };
+    
+    platforms = [];
+    cameraY = 0;
+    score = 0;
+    particles = [];
+    
+    // Create initial platforms
+    for (let i = 0; i < PLATFORMS_COUNT; i++) {
+        let y = i * 70;
+        let type = 'normal';
+        
+        if (i > 3 && Math.random() < 0.2) {
+            type = ['moving', 'bouncy', 'fragile'][Math.floor(Math.random() * 3)];
+        }
+        
+        let x = Math.random() * (canvas.width - 70);
+        platforms.push(new Platform(x, y, type));
+    }
+}
+
+function spawnParticles(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+        particles.push(new Particle(x, y, color));
+    }
+}
+
+function update() {
+    if (gameState !== 'playing') return;
+    
+    // Gravity
+    player.vy += GRAVITY;
+    
+    // Horizontal movement
+    if (keys.left || window.tLeft) player.vx -= 0.5;
+    if (keys.right || window.tRight) player.vx += 0.5;
+    
+    // Friction
+    player.vx *= 0.95;
+    
+    // Clamp velocity
+    player.vx = Math.max(-8, Math.min(8, player.vx));
+    
+    // Apply velocity
+    player.x += player.vx;
+    player.y += player.vy;
+    
+    // Screen boundaries
+    if (player.x < 0) player.x = 0;
+    if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+    
+    // Fall off bottom
+    if (player.y > cameraY + canvas.height + 100) {
+        gameOver();
+        return;
+    }
+    
+    // Platform collision (only when falling)
+    if (player.vy > 0) {
+        platforms.forEach(p => {
+            if (player.x + player.width > p.x && 
+                player.x < p.x + p.width &&
+                player.y + player.height > p.y &&
+                player.y + player.height < p.y + PLATFORM_HEIGHT + player.vy) {
+                
+                if (p.type === 'fragile') {
+                    spawnParticles(p.x + p.width/2, p.y, '#9E9E9E', 10);
+                    p.type = 'broken';
+                } else if (p.type === 'bouncy') {
+                    player.vy = JUMP_FORCE * 1.5;
+                    spawnParticles(player.x + player.width/2, player.y + player.height, '#FF9800', 8);
+                } else {
+                    player.vy = JUMP_FORCE;
+                    spawnParticles(player.x + player.width/2, player.y + player.height, '#4CAF50', 5);
+                }
+                
+                if (p.type === 'moving') {
+                    player.vx += p.vx * 0.5;
+                }
+            }
+        });
+    }
+    
+    // Update moving platforms
+    platforms.forEach(p => {
+        if (p.type === 'moving') {
+            p.x += p.vx;
+            if (p.x <= 0 || p.x + p.width >= canvas.width) {
+                p.vx *= -1;
+            }
+        }
+    });
+    
+    // Camera follow
+    let targetCameraY = player.y - canvas.height / 3;
+    if (targetCameraY < cameraY) {
+        cameraY = targetCameraY;
+        
+        // Score based on height
+        let newScore = Math.floor(Math.abs(cameraY) / 10);
+        if (newScore > score) {
+            score = newScore;
+            if (score > best) {
+                best = score;
+                localStorage.setItem('doodleBest', best);
+            }
+        }
+    }
+    
+    // Generate new platforms
+    let topPlatform = platforms.reduce((a, b) => a.y < b.y ? a : b);
+    while (topPlatform.y < cameraY + canvas.height + 200) {
+        let y = topPlatform.y - 70;
+        let type = 'normal';
+        let rand = Math.random();
+        
+        if (rand < 0.15) type = 'moving';
+        else if (rand < 0.25) type = 'bouncy';
+        else if (rand < 0.35) type = 'fragile';
+        
+        let x = Math.random() * (canvas.width - 70);
+        platforms.push(new Platform(x, y, type));
+        topPlatform = platforms[platforms.length - 1];
+    }
+    
+    // Remove off-screen platforms
+    platforms = platforms.filter(p => p.y < cameraY + canvas.height + 100);
+    
+    // Update particles
+    particles = particles.filter(p => { p.update(); return p.life > 0; });
+    
+    // Update HUD
+    document.getElementById('score').textContent = score;
+    document.getElementById('best').textContent = best;
+}
+
+function draw() {
+    // Sky gradient
+    let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    skyGrad.addColorStop(0, '#87CEEB');
+    skyGrad.addColorStop(1, '#B0E0E6');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Clouds (parallax)
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    for (let i = 0; i < 6; i++) {
+        let cx = ((i * 120 - cameraY * 0.2) % (canvas.width + 100)) - 50;
+        let cy = 50 + (i % 3) * 40 + cameraY * 0.1;
+        drawCloud(cx, cy);
+    }
+    
+    ctx.save();
+    ctx.translate(0, -cameraY);
+    
+    // Draw platforms
+    platforms.forEach(p => {
+        if (p.y > cameraY - 50 && p.y < cameraY + canvas.height + 50) {
+            p.draw();
+        }
+    });
+    
+    // Draw player (doodle character)
+    ctx.save();
+    ctx.translate(player.x + player.width/2, player.y + player.height/2);
+    
+    // Squash and stretch based on velocity
+    let scaleY = 1 + player.vy * 0.02;
+    scaleY = Math.max(0.7, Math.min(1.3, scaleY));
+    ctx.scale(1 / scaleY, scaleY);
+    
+    // Body
+    ctx.fillStyle = '#8BC34A';
+    ctx.shadowColor = '#689F38';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, player.width/2 - 5, player.height/2 - 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(-8, -5, 8, 0, Math.PI * 2);
+    ctx.arc(8, -5, 8, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Pupils
+    ctx.fillStyle = '#333';
+    let pupilOffset = player.vx * 0.3;
+    ctx.beginPath();
+    ctx.arc(-8 + pupilOffset, -5, 4, 0, Math.PI * 2);
+    ctx.arc(8 + pupilOffset, -5, 4, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Mouth (changes with velocity)
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (player.vy < -5) {
+        // Excited - open smile
+        ctx.arc(0, 3, 6, 0, Math.PI);
+    } else if (player.vy > 5) {
+        // Worried - frown
+        ctx.arc(0, 8, 6, Math.PI, 0);
+    } else {
+        // Normal smile
+        ctx.arc(0, 5, 4, 0.2, Math.PI - 0.2);
+    }
+    ctx.stroke();
+    
+    ctx.restore();
+    
+    // Particles
+    particles.forEach(p => p.draw());
+    
+    ctx.restore();
+}
+
+function drawCloud(x, y) {
+    ctx.beginPath();
+    ctx.arc(x, y, 25, 0, Math.PI * 2);
+    ctx.arc(x + 30, y - 10, 30, 0, Math.PI * 2);
+    ctx.arc(x + 60, y, 25, 0, Math.PI * 2);
+    ctx.arc(x + 30, y + 5, 20, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function gameOver() {
+    gameState = 'over';
+    
+    if (score > best) {
+        best = score;
+        localStorage.setItem('doodleBest', best);
+    }
+    
+    document.getElementById('gameOverTitle').textContent = score > 50 ? '🎉 AMAZING!' : '💀 GAME OVER';
+    document.getElementById('finalScore').textContent = 'Score: ' + score;
+    document.getElementById('highScoreText').textContent = 'Best: ' + best;
+    
+    clearInterval(gameLoop);
+    setTimeout(() => {
+        document.getElementById('gameOverScreen').classList.remove('hidden');
+    }, 300);
+}
+
+function startGame() {
+    document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('gameOverScreen').classList.add('hidden');
+    document.getElementById('hud').style.display = 'flex';
+    
+    init();
+    gameState = 'playing';
+    
+    if (gameLoop) clearInterval(gameLoop);
+    gameLoop = setInterval(() => { update(); draw(); }, 1000 / 60);
+}
+
+// Touch controls
+window.tLeft = window.tRight = false;
+
+document.getElementById('touchLeft').addEventListener('touchstart', e => { e.preventDefault(); window.tLeft = true; });
+document.getElementById('touchLeft').addEventListener('touchend', e => { e.preventDefault(); window.tLeft = false; });
+document.getElementById('touchRight').addEventListener('touchstart', e => { e.preventDefault(); window.tRight = true; });
+document.getElementById('touchRight').addEventListener('touchend', e => { e.preventDefault(); window.tRight = false; });
+
+// Keyboard
+document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+    if (e.key === ' ') startGame();
+});
+document.addEventListener('keyup', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+});
+
+// Click to start
+canvas.addEventListener('click', () => {
+    if (gameState !== 'playing') startGame();
+});
+canvas.addEventListener('touchstart', e => {
+    if (gameState !== 'playing') {
+        e.preventDefault();
+        startGame();
+    }
+});
+
+// Load best
+best = parseInt(localStorage.getItem('doodleBest') || '0');
+
+init();
+draw();
+</script>
 </body>
 </html>
