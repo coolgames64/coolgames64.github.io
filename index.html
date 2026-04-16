@@ -10,7 +10,7 @@
     <meta name="theme-color" content="#6b21a8">
     <link rel="manifest" href="manifest.json">
     <title>Cool Games 🎮 | 60+ Free Online Games - Action, Puzzle, Racing & More!</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wg@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: smooth; }
@@ -28,71 +28,85 @@
         .logo-text { font-size: 1.5rem; font-weight: 800; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
         .logo-tag { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 500; }
         .nav-links { display: flex; gap: 25px; list-style: none; }
-        .nav-links a { color: white; text-decoration: none; font-weight: 500; transition: all 0.3s; position: relative; }
-        .nav-links a:hover { color: #ffd700; }
-        .nav-links a::after { content: ''; position: absolute; bottom: -5px; left: 0; width: 0; height: 2px; background: #ffd700; transition: width 0.3s; }
-        .nav-links a:hover::after { width: 100%; }
-        .hero { padding: 60px 30px; text-align: center; background: linear-gradient(180deg, rgba(102,126,234,0.1) 0%, transparent 100%); }
-        .hero h1 { font-size: 3rem; font-weight: 800; margin-bottom: 15px; background: linear-gradient(135deg, #fff 0%, #667eea 50%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .hero p { font-size: 1.1rem; color: rgba(255,255,255,0.8); margin-bottom: 30px; }
-        .hero-stats { display: flex; justify-content: center; gap: 40px; flex-wrap: wrap; }
+        .nav-links a { color: white; text-decoration: none; font-weight: 500; transition: all 0.3s; padding: 8px 16px; border-radius: 25px; }
+        .nav-links a:hover, .nav-links a.active { background: rgba(255,255,255,0.2); }
+        .mobile-menu { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 10px; }
+        .mobile-menu span { width: 25px; height: 3px; background: white; border-radius: 3px; transition: all 0.3s; }
+        .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 60px 30px; text-align: center; position: relative; overflow: hidden; }
+        .hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); opacity: 0.5; }
+        .hero-content { max-width: 800px; margin: 0 auto; position: relative; z-index: 1; }
+        .hero h1 { font-size: 3.5rem; font-weight: 800; margin-bottom: 15px; text-shadow: 2px 4px 8px rgba(0,0,0,0.3); }
+        .hero p { font-size: 1.2rem; opacity: 0.9; margin-bottom: 30px; }
+        .hero-buttons { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .btn { padding: 15px 35px; border-radius: 50px; font-weight: 600; font-size: 1.1rem; cursor: pointer; transition: all 0.3s; text-decoration: none; display: inline-block; }
+        .btn-primary { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4); }
+        .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(245, 87, 108, 0.6); }
+        .btn-secondary { background: rgba(255,255,255,0.1); color: white; border: 2px solid rgba(255,255,255,0.3); backdrop-filter: blur(10px); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.5); }
+        .stats { display: flex; justify-content: center; gap: 40px; margin-top: 40px; flex-wrap: wrap; }
         .stat-item { text-align: center; }
-        .stat-number { font-size: 2rem; font-weight: 800; color: #667eea; }
-        .stat-label { font-size: 0.8rem; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 1px; }
-        .search-section { padding: 0 30px 30px; text-align: center; }
-        .search-container { max-width: 600px; margin: 0 auto; position: relative; }
-        .search-input { width: 100%; padding: 16px 25px; padding-left: 55px; border: none; border-radius: 50px; font-size: 1rem; background: rgba(255,255,255,0.1); color: white; outline: none; backdrop-filter: blur(10px); border: 2px solid rgba(255,255,255,0.1); transition: all 0.3s; font-family: 'Poppins', sans-serif; }
-        .search-input:focus { border-color: #667eea; box-shadow: 0 0 30px rgba(102,126,234,0.3); }
+        .stat-number { font-size: 2.5rem; font-weight: 800; }
+        .stat-label { font-size: 0.9rem; opacity: 0.8; }
+        .ad-section { padding: 15px 20px; background: rgba(0,0,0,0.2); }
+        .ad-container { background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.15); border-radius: 8px; padding: 10px; margin: 0 auto; max-width: 780px; }
+        .ad-label { font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; text-align: center; }
+        .search-section { padding: 40px 20px; max-width: 800px; margin: 0 auto; }
+        .search-container { position: relative; }
+        .search-icon { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; }
+        .search-input { width: 100%; padding: 18px 20px 18px 50px; border-radius: 50px; border: 2px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.1); color: white; font-size: 1rem; font-family: 'Poppins', sans-serif; backdrop-filter: blur(10px); transition: all 0.3s; }
+        .search-input:focus { outline: none; border-color: #667eea; background: rgba(255,255,255,0.15); }
         .search-input::placeholder { color: rgba(255,255,255,0.5); }
-        .search-icon { position: absolute; left: 22px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; opacity: 0.6; }
-        .search-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: rgba(30, 30, 60, 0.98); border-radius: 20px; margin-top: 8px; max-height: 300px; overflow-y: auto; z-index: 1000; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); display: none; }
+        .search-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: #1a1a2e; border-radius: 20px; margin-top: 10px; overflow: hidden; display: none; z-index: 1000; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
         .search-suggestions.show { display: block; }
-        .suggestion-item { padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: background 0.2s; }
-        .suggestion-item:hover { background: rgba(102, 126, 234, 0.3); }
-        .suggestion-icon { font-size: 1.3rem; }
-        .suggestion-name { flex: 1; font-size: 0.95rem; }
-        .suggestion-cat { font-size: 0.75rem; color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.1); padding: 3px 10px; border-radius: 20px; }
-        .categories-section { padding: 30px; background: rgba(255,255,255,0.02); }
-        .section-title { text-align: center; font-size: 1.8rem; font-weight: 700; margin-bottom: 25px; }
-        .section-title span { color: #667eea; }
-        .cat-grid { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; max-width: 1000px; margin: 0 auto; }
-        .cat-btn { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.1); color: white; padding: 10px 20px; border-radius: 50px; cursor: pointer; transition: all 0.3s; font-size: 0.95rem; font-family: 'Poppins', sans-serif; }
-        .cat-btn:hover, .cat-btn.active { background: linear-gradient(135deg, #667eea, #764ba2); border-color: transparent; transform: translateY(-3px); box-shadow: 0 10px 30px rgba(102,126,234,0.4); }
-        .cat-icon { font-size: 1.2rem; }
-        .cat-count { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; }
-        .ad-section { padding: 25px; text-align: center; }
-        .ad-container { max-width: 900px; margin: 0 auto; background: rgba(255,255,255,0.03); border-radius: 15px; padding: 15px; border: 1px solid rgba(255,255,255,0.05); }
-        .featured-section { padding: 50px 30px; }
-        .featured-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; max-width: 1000px; margin: 0 auto; }
-        .featured-card { background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05)); border-radius: 20px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s; cursor: pointer; }
-        .featured-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(102,126,234,0.3); border-color: #667eea; }
-        .featured-badge { display: inline-block; background: linear-gradient(135deg, #ffd700, #ffaa00); color: #000; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; margin-bottom: 12px; }
-        .featured-thumb { font-size: 3.5rem; text-align: center; padding: 25px; background: rgba(0,0,0,0.2); border-radius: 15px; margin-bottom: 12px; }
-        .featured-name { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
-        .featured-meta { display: flex; justify-content: space-between; color: rgba(255,255,255,0.6); font-size: 0.85rem; }
-        .featured-rating { color: #ffd700; }
-        .games-section { padding: 30px 30px 60px; }
-        .games-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
-        .game-card { background: linear-gradient(145deg, #2d2d4d, #1a1a3d); border-radius: 16px; padding: 20px 15px; text-align: center; cursor: pointer; transition: all 0.3s; border: 2px solid transparent; position: relative; overflow: hidden; }
-        .game-card::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); transition: left 0.5s; }
-        .game-card:hover::before { left: 100%; }
-        .game-card:hover { transform: translateY(-6px) scale(1.02); border-color: #667eea; box-shadow: 0 15px 35px rgba(102,126,234,0.3); }
-        .game-thumb { font-size: 3rem; margin-bottom: 12px; transition: transform 0.3s; }
-        .game-card:hover .game-thumb { transform: scale(1.15); }
-        .game-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 8px; }
-        .game-cat { display: inline-block; background: rgba(102,126,234,0.3); padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; text-transform: capitalize; }
-        .game-rating { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.5); padding: 2px 7px; border-radius: 10px; font-size: 0.65rem; }
-        .game-rating span { color: #ffd700; }
-        .footer { background: rgba(0,0,0,0.3); padding: 50px 30px 25px; margin-top: 40px; }
-        .footer-content { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 35px; }
-        .footer-section h3 { font-size: 1.1rem; margin-bottom: 15px; color: #667eea; }
-        .footer-section p, .footer-section a { color: rgba(255,255,255,0.6); font-size: 0.85rem; line-height: 1.7; text-decoration: none; display: block; }
-        .footer-section a:hover { color: #667eea; }
-        .social-links { display: flex; gap: 12px; margin-top: 12px; }
-        .social-link { width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.3s; }
+        .suggestion-item { padding: 12px 20px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: background 0.2s; }
+        .suggestion-item:hover { background: rgba(102, 126, 234, 0.2); }
+        .suggestion-icon { font-size: 1.5rem; }
+        .suggestion-name { flex: 1; font-weight: 500; }
+        .suggestion-cat { font-size: 0.8rem; opacity: 0.6; padding: 4px 10px; background: rgba(255,255,255,0.1); border-radius: 15px; }
+        .section-title { text-align: center; font-size: 2rem; margin-bottom: 30px; }
+        .section-title span { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .categories-section, .featured-section, .games-section { padding: 50px 20px; max-width: 1400px; margin: 0 auto; }
+        .cat-grid { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+        .cat-btn { display: flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 50px; border: 2px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white; cursor: pointer; transition: all 0.3s; font-family: 'Poppins', sans-serif; font-size: 0.95rem; }
+        .cat-btn:hover, .cat-btn.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-color: transparent; transform: translateY(-2px); }
+        .cat-icon { font-size: 1.3rem; }
+        .cat-count { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 15px; font-size: 0.8rem; }
+        .featured-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; }
+        .featured-card { background: linear-gradient(145deg, #2d2d4d, #1a1a3e); border-radius: 20px; padding: 25px; cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden; border: 2px solid transparent; }
+        .featured-card:hover { transform: translateY(-8px); border-color: #667eea; box-shadow: 0 15px 40px rgba(102, 126, 234, 0.3); }
+        .featured-badge { position: absolute; top: 15px; right: 15px; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .featured-thumb { font-size: 4rem; margin: 20px 0; }
+        .featured-name { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; }
+        .featured-meta { display: flex; justify-content: space-between; font-size: 0.85rem; opacity: 0.7; }
+        .games-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
+        .game-card { background: linear-gradient(145deg, #2d2d4d, #1a1a3e); border-radius: 16px; padding: 20px 15px; text-align: center; cursor: pointer; transition: all 0.3s; border: 2px solid transparent; position: relative; overflow: hidden; }
+        .game-card:hover { transform: translateY(-5px) scale(1.02); border-color: #667eea; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3); }
+        .game-rating { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.3); padding: 3px 8px; border-radius: 10px; font-size: 0.75rem; }
+        .game-thumb { font-size: 3rem; margin: 15px 0; }
+        .game-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 5px; }
+        .game-cat { font-size: 0.8rem; opacity: 0.6; text-transform: capitalize; }
+        .footer { background: rgba(0,0,0,0.3); padding: 50px 20px 20px; margin-top: 50px; }
+        .footer-content { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; padding-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .footer-section h3 { margin-bottom: 15px; font-size: 1.2rem; }
+        .footer-section p { opacity: 0.7; line-height: 1.6; font-size: 0.9rem; }
+        .footer-section a { display: block; color: rgba(255,255,255,0.7); text-decoration: none; margin-bottom: 10px; transition: all 0.3s; }
+        .footer-section a:hover { color: #667eea; padding-left: 5px; }
+        .social-links { display: flex; gap: 15px; margin-top: 15px; }
+        .social-link { width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: all 0.3s; }
         .social-link:hover { background: #667eea; transform: translateY(-3px); }
-        .footer-bottom { text-align: center; padding-top: 30px; margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.4); font-size: 0.8rem; }
-        @media (max-width: 768px) { .header-content { flex-direction: column; gap: 12px; } .nav-links { gap: 12px; font-size: 0.85rem; } .hero h1 { font-size: 2rem; } .hero-stats { gap: 25px; } .games-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; } }
+        .footer-bottom { max-width: 1400px; margin: 0 auto; padding-top: 20px; text-align: center; opacity: 0.6; font-size: 0.85rem; }
+        .footer-legal { margin-top: 10px; display: flex; justify-content: center; gap: 20px; }
+        .footer-legal a { color: rgba(255,255,255,0.5); font-size: 0.8rem; }
+        @media (max-width: 768px) {
+            .nav-links { display: none; flex-direction: column; position: absolute; top: 100%; left: 0; right: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; gap: 10px; }
+            .nav-links.show { display: flex; }
+            .mobile-menu { display: flex; }
+            .hero h1 { font-size: 2.5rem; }
+            .stats { gap: 20px; }
+            .stat-number { font-size: 2rem; }
+            .games-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; }
+            .game-thumb { font-size: 2.5rem; }
+        }
     </style>
 </head>
 <body>
@@ -101,19 +115,31 @@
         <div class="header-content">
             <div class="logo"><span class="logo-icon">🎮</span><span class="logo-text">Cool Games</span><span class="logo-tag">FREE</span></div>
             <nav><ul class="nav-links"><li><a href="index.html" class="active">Home</a></li><li><a href="games.html">Games</a></li><li><a href="featured.html">Featured</a></li><li><a href="about.html">About</a></li><li><a href="contact.html">Contact</a></li></ul></nav>
+            <div class="mobile-menu" onclick="document.querySelector('.nav-links').classList.toggle('show')"><span></span><span></span><span></span></div>
         </div>
     </header>
-    <section class="hero" id="home">
-        <h1>🎮 The Best Free Online Games</h1>
-        <p>Play 70+ amazing games - all free, no downloads, instant play!</p>
-        <div class="hero-stats">
-            <div class="stat-item"><div class="stat-number">70+</div><div class="stat-label">Free Games</div></div>
-            <div class="stat-item"><div class="stat-number">100%</div><div class="stat-label">Free Forever</div></div>
-            <div class="stat-item"><div class="stat-number">24/7</div><div class="stat-label">Always Online</div></div>
-            <div class="stat-item"><div class="stat-number">0</div><div class="stat-label">Downloads</div></div>
+    <section class="hero">
+        <div class="hero-content">
+            <h1>🎮 Cool Games</h1>
+            <p>Play 60+ free online games instantly! No downloads needed.</p>
+            <div class="hero-buttons">
+                <a href="#games" class="btn btn-primary">🎮 Play Now</a>
+                <a href="#about" class="btn btn-secondary">ℹ️ About Us</a>
+            </div>
+            <div class="stats">
+                <div class="stat-item"><div class="stat-number">70+</div><div class="stat-label">Free Games</div></div>
+                <div class="stat-item"><div class="stat-number">100%</div><div class="stat-label">Free Forever</div></div>
+                <div class="stat-item"><div class="stat-number">24/7</div><div class="stat-label">Always Online</div></div>
+                <div class="stat-item"><div class="stat-number">0</div><div class="stat-label">Downloads</div></div>
+            </div>
         </div>
     </section>
-    <section class="ad-section"><div class="ad-container"><ins class="adsbygoogle" style="display:block; width:728px; height:90px; margin:0 auto;" data-ad-client="ca-pub-2848704978790894" data-ad-slot=""></ins></div></section>
+    <section class="ad-section">
+        <div class="ad-container">
+            <div class="ad-label">Advertisement</div>
+            <ins class="adsbygoogle" style="display:block; width:728px; height:90px; margin:0 auto;" data-ad-client="ca-pub-2848704978790894" data-ad-slot=""></ins>
+        </div>
+    </section>
     <section class="search-section">
         <div class="search-container"><span class="search-icon">🔍</span><input type="text" class="search-input" id="searchInput" placeholder="Search games... (try 'Snake', 'Puzzle', 'Racing')" oninput="filterGames()" autocomplete="off"><div class="search-suggestions" id="searchSuggestions"></div></div>
     </section>
@@ -131,17 +157,21 @@
     <section class="featured-section" id="featured">
         <h2 class="section-title">⭐ <span>Featured</span> Games</h2>
         <div class="featured-grid">
-            <div class="featured-card" onclick="playGame('egg-shooter.html', 'Egg Blaster')"><span class="featured-badge">🔥 HOT</span><div class="featured-thumb">🥚</div><div class="featured-name">Egg Blaster</div><div class="featured-meta"><span>Action</span><span class="featured-rating">⭐ 9.8</span></div></div>
-            <div class="featured-card" onclick="playGame('snake.html', 'Snake')"><span class="featured-badge">✨ NEW</span><div class="featured-thumb">🐍</div><div class="featured-name">Snake Classic</div><div class="featured-meta"><span>Classic</span><span class="featured-rating">⭐ 9.6</span></div></div>
-            <div class="featured-card" onclick="playGame('darts.html', 'Darts')"><span class="featured-badge">🎯 POPULAR</span><div class="featured-thumb">🎯</div><div class="featured-name">Darts Championship</div><div class="featured-meta"><span>Sports</span><span class="featured-rating">⭐ 9.7</span></div></div>
+            <div class="featured-card" onclick="playGame('egg-shooter.html', 'Egg Blaster')"><span class="featured-badge" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">🔥 HOT</span><div class="featured-thumb">🥚</div><div class="featured-name">Egg Blaster</div><div class="featured-meta"><span>Action</span><span class="featured-rating">⭐ 9.8</span></div></div>
+            <div class="featured-card" onclick="playGame('snake.html', 'Snake')"><span class="featured-badge" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">✨ NEW</span><div class="featured-thumb">🐍</div><div class="featured-name">Snake Classic</div><div class="featured-meta"><span>Classic</span><span class="featured-rating">⭐ 9.6</span></div></div>
+            <div class="featured-card" onclick="playGame('darts.html', 'Darts')"><span class="featured-badge" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">🎯 POPULAR</span><div class="featured-thumb">🎯</div><div class="featured-name">Darts Championship</div><div class="featured-meta"><span>Sports</span><span class="featured-rating">⭐ 9.7</span></div></div>
         </div>
     </section>
-    <section class="ad-section"><div class="ad-container"><ins class="adsbygoogle" style="display:block; width:300px; height:250px; margin:0 auto;" data-ad-client="ca-pub-2848704978790894" data-ad-slot=""></ins></div></section>
     <section class="games-section">
         <h2 class="section-title">🎲 All <span>Games</span></h2>
         <div class="games-grid" id="gamesGrid"></div>
     </section>
-    <section class="ad-section"><div class="ad-container"><ins class="adsbygoogle" style="display:block; width:728px; height:90px; margin:0 auto;" data-ad-client="ca-pub-2848704978790894" data-ad-slot=""></ins></div></section>
+    <section class="ad-section">
+        <div class="ad-container">
+            <div class="ad-label">Advertisement</div>
+            <ins class="adsbygoogle" style="display:block; width:728px; height:90px; margin:0 auto;" data-ad-client="ca-pub-2848704978790894" data-ad-slot=""></ins>
+        </div>
+    </section>
     <footer class="footer" id="about">
         <div class="footer-content">
             <div class="footer-section"><h3>🎮 Cool Games</h3><p>The best free online gaming experience. Play 60+ games directly in your browser!</p><div class="social-links"><a href="#" class="social-link">📺</a><a href="#" class="social-link">📸</a><a href="#" class="social-link">🐦</a></div></div>
@@ -158,73 +188,43 @@
             { name: "Snake Classic", icon: "🐍", category: "classic", url: "snake.html", rating: 4.7 },
             { name: "Connect Four", icon: "🎮", category: "puzzle", url: "connect-four.html", rating: 4.5 },
             { name: "Alien Attack", icon: "👾", category: "action", url: "space-invaders.html", rating: 4.6 },
-            { name: "Doodle Hopper", icon: "🐸", category: "puzzle", url: "doodle-jump.html", rating: 4.8 },
-            { name: "Memory Match", icon: "🃏", category: "puzzle", url: "memory-match.html", rating: 4.4 },
-            { name: "Block Stack", icon: "🧱", category: "puzzle", url: "blockstack.html", rating: 4.5 },
-            { name: "Ball Blast", icon: "🔴", category: "action", url: "ball-blast.html", rating: 4.9 },
-            { name: "Gold Miner", icon: "⛏️", category: "puzzle", url: "gold-miner.html", rating: 4.6 },
-            { name: "Fish Eat Fish", icon: "🐟", category: "action", url: "fish-eat-fish.html", rating: 4.5 },
+            { name: "Candy Match", icon: "🍬", category: "puzzle", url: "candy-crush.html", rating: 4.4 },
+            { name: "Basketball Pro", icon: "🏀", category: "sports", url: "basketball.html", rating: 4.6 },
+            { name: "Block Breaker", icon: "🧱", category: "classic", url: "breakout.html", rating: 4.5 },
             { name: "Bubble Shooter", icon: "🫧", category: "puzzle", url: "bubble-shooter.html", rating: 4.7 },
-            { name: "Dino Dash", icon: "🦖", category: "action", url: "t-rex-runner.html", rating: 4.4 },
-            { name: "Flappy Wings", icon: "🐦", category: "classic", url: "flappy-bird.html", rating: 4.8 },
-            { name: "Spiral Leap", icon: "🌀", category: "puzzle", url: "helix-jump.html", rating: 4.6 },
-            { name: "Pong Classic", icon: "🏓", category: "sports", url: "pong.html", rating: 4.3 },
-            { name: "2048 Puzzle", icon: "🔢", category: "puzzle", url: "2048.html", rating: 4.7 },
-            { name: "Knife Hit", icon: "🔪", category: "action", url: "knife-hit.html", rating: 4.8 },
-            { name: "Black Hole Battle", icon: "🕳️", category: "action", url: "hole-io.html", rating: 4.9 },
-            { name: "Candy Match Mania", icon: "🍬", category: "puzzle", url: "candy-crush.html", rating: 4.7 },
-            { name: "Fruit Blade", icon: "🍉", category: "action", url: "fruit-ninja.html", rating: 4.8 },
-            { name: "Stickman Run", icon: "🏃", category: "action", url: "stickman-run.html", rating: 4.5 },
+            { name: "Ping Pong", icon: "🏓", category: "sports", url: "pong.html", rating: 4.3 },
+            { name: "Flappy Wings", icon: "🐦", category: "action", url: "flappy-bird.html", rating: 4.2 },
+            { name: "Chess Master", icon: "♟️", category: "puzzle", url: "chess.html", rating: 4.6 },
+            { name: "Archery Challenge", icon: "🏹", category: "sports", url: "archery.html", rating: 4.5 },
+            { name: "Tetris Climax", icon: "🟦", category: "classic", url: "tetris.html", rating: 4.8 },
+            { name: "Pac-Venture", icon: "👻", category: "classic", url: "pac-man.html", rating: 4.4 },
+            { name: "Fishing Frenzy", icon: "🎣", category: "sports", url: "fishing.html", rating: 4.3 },
             { name: "Tower Defense", icon: "🏰", category: "strategy", url: "tower-defense.html", rating: 4.6 },
-            { name: "Zombie Hunter", icon: "🧟", category: "action", url: "zombie-hunter.html", rating: 4.7 },
-            { name: "Bird Siege", icon: "🐦", category: "action", url: "angry-birds.html", rating: 4.8 },
-            { name: "Brick Breaker", icon: "🧱", category: "action", url: "brick-breaker.html", rating: 4.4 },
-            { name: "Bowling", icon: "🎳", category: "sports", url: "bowling.html", rating: 4.5 },
-            { name: "Tennis", icon: "🎾", category: "sports", url: "tennis.html", rating: 4.6 },
-            { name: "Golf", icon: "⛳", category: "sports", url: "golf.html", rating: 4.7 },
-            { name: "Basketball", icon: "🏀", category: "sports", url: "basketball.html", rating: 4.8 },
-            { name: "Soccer", icon: "⚽", category: "sports", url: "soccer.html", rating: 4.9 },
-            { name: "Archery", icon: "🏹", category: "action", url: "archery.html", rating: 4.6 },
-            { name: "Tic Tac Toe", icon: "⭕", category: "puzzle", url: "tic-tac-toe.html", rating: 4.3 },
-            { name: "Simon Says", icon: "🟢", category: "puzzle", url: "simon-says.html", rating: 4.4 },
-            { name: "Whack a Mole", icon: "🔨", category: "action", url: "whack-a-mole.html", rating: 4.5 },
-            { name: "Darts", icon: "🎯", category: "sports", url: "darts.html", rating: 4.9 },
-            { name: "Minesweeper", icon: "💣", category: "puzzle", url: "minesweeper.html", rating: 4.6 },
-            { name: "Sudoku", icon: "🔢", category: "puzzle", url: "sudoku.html", rating: 4.7 },
+            { name: "Mine Sweeper", icon: "💣", category: "puzzle", url: "minesweeper.html", rating: 4.5 },
+            { name: "Doodle Jump", icon: "⬆️", category: "classic", url: "doodle-jump.html", rating: 4.7 },
+            { name: "Helicopter Rescue", icon: "🚁", category: "action", url: "helicopter.html", rating: 4.4 },
+            { name: "Car Parking", icon: "🅿️", category: "puzzle", url: "parking.html", rating: 4.3 },
+            { name: "Brick Smash", icon: "🔨", category: "puzzle", url: "brick-breaker.html", rating: 4.5 },
+            { name: "Word Search", icon: "🔤", category: "puzzle", url: "wordsearch.html", rating: 4.2 },
+            { name: "Balloon Pop", icon: "🎈", category: "action", url: "balloon-pop.html", rating: 4.1 },
+            { name: "Tug of War", icon: "💪", category: "sports", url: "tug-of-war.html", rating: 4.0 },
+            { name: "Bowling Master", icon: "🎳", category: "sports", url: "bowling.html", rating: 4.6 },
+            { name: "Cricket Striker", icon: "🏏", category: "sports", url: "cricket.html", rating: 4.4 },
+            { name: "Trivia Quest", icon: "❓", category: "puzzle", url: "trivia.html", rating: 4.3 },
+            { name: "Piano Tiles", icon: "🎹", category: "music", url: "piano.html", rating: 4.5 },
+            { name: "Typing Speed", icon: "⌨️", category: "puzzle", url: "typing.html", rating: 4.2 },
+            { name: "Math Challenge", icon: "🔢", category: "puzzle", url: "math.html", rating: 4.4 },
+            { name: "Spot the Difference", icon: "🔍", category: "puzzle", url: "spotdifference.html", rating: 4.3 },
+            { name: "Jigsaw Puzzle", icon: "🧩", category: "puzzle", url: "jigsaw.html", rating: 4.5 },
+            { name: "Simon Says", icon: "🎯", category: "classic", url: "simon.html", rating: 4.4 },
+            { name: "Memory Match", icon: "🧠", category: "puzzle", url: "memory.html", rating: 4.6 },
             { name: "Racing", icon: "🏎️", category: "racing", url: "racing.html", rating: 4.8 },
-            { name: "Ping Pong", icon: "🏓", category: "sports", url: "ping-pong.html", rating: 4.5 },
-            { name: "Boxing", icon: "🥊", category: "action", url: "boxing.html", rating: 4.6 },
-            { name: "Cricket", icon: "🏏", category: "sports", url: "cricket.html", rating: 4.7 },
-            { name: "Baseball", icon: "⚾", category: "sports", url: "baseball.html", rating: 4.5 },
-            { name: "Pool", icon: "🎱", category: "sports", url: "pool.html", rating: 4.8 },
-            { name: "Air Hockey", icon: "🏒", category: "sports", url: "air-hockey.html", rating: 4.6 },
-            { name: "Chess", icon: "♟️", category: "puzzle", url: "chess.html", rating: 4.7 },
-            { name: "Hockey", icon: "🏒", category: "sports", url: "hockey.html", rating: 4.5 },
-            { name: "Checkers", icon: "🎯", category: "puzzle", url: "checkers.html", rating: 4.4 },
-            { name: "Volleyball", icon: "🏐", category: "sports", url: "volleyball.html", rating: 4.6 },
-            { name: "Ludo", icon: "🎲", category: "classic", url: "ludo.html", rating: 4.5 },
-            { name: "Breakout", icon: "🧱", category: "action", url: "breakout.html", rating: 4.6 },
             { name: "Monster Truck", icon: "🚗", category: "racing", url: "monster-truck.html", rating: 4.7 },
             { name: "Motorbike", icon: "🏍️", category: "racing", url: "motorbike.html", rating: 4.8 },
             { name: "Boat Racing", icon: "🚤", category: "racing", url: "boat-racing.html", rating: 4.6 },
             { name: "Highway Rider", icon: "🏍️", category: "racing", url: "highway-rider.html", rating: 4.7 },
             { name: "Drift Racing", icon: "🏎️", category: "racing", url: "drift-racing.html", rating: 4.8 },
-            { name: "Frogger", icon: "🐸", category: "classic", url: "frogger.html", rating: 4.5 },
-            { name: "Ghost Maze", icon: "👻", category: "classic", url: "pac-man.html", rating: 4.9 },
-            { name: "Block Stacker", icon: "🧱", category: "classic", url: "tetris.html", rating: 4.8 },
-            { name: "Asteroids", icon: "🚀", category: "classic", url: "asteroids.html", rating: 4.6 },
-            { name: "Space Buggy", icon: "🚀", category: "classic", url: "galaga.html", rating: 4.7 },
-            { name: "Helicopter", icon: "🚁", category: "action", url: "helicopter.html", rating: 4.5 },
-            { name: "Lucky Reels", icon: "🎰", category: "classic", url: "slot-machine.html", rating: 4.4 },
-            { name: "Ball Bounce", icon: "🎾", category: "action", url: "ball-bounce.html", rating: 4.8 },
-            { name: "Rocket Pack", icon: "🚀", category: "action", url: "jetpack.html", rating: 4.9 },
-            { name: "Rainbow Runner", icon: "🔄", category: "puzzle", url: "color-switch.html", rating: 4.7 },
-            { name: "Penguin Slide", icon: "🐧", category: "sports", url: "penguin-slide.html", rating: 4.6 },
-            { name: "Fruit Slasher", icon: "🍉", category: "action", url: "fruit-slasher.html", rating: 4.9 },
-            { name: "Balloon Pop", icon: "🎈", category: "action", url: "balloon-pop.html", rating: 4.5 },
             { name: "Space Hurdles", icon: "🛸", category: "racing", url: "space-hurdles.html", rating: 4.7 },
-            { name: "Knife Hit", icon: "🗡️", category: "action", url: "knife-hit.html", rating: 4.8 },
-            { name: "ZigZag", icon: "⬛", category: "puzzle", url: "zigzag.html", rating: 4.6 },
             { name: "Stack Tower", icon: "🧱", category: "puzzle", url: "stack-cube.html", rating: 4.7 },
             { name: "Temple Dash", icon: "🏃", category: "action", url: "tomb-runner.html", rating: 4.8 },
             { name: "Video Game Karaoke", icon: "🎤", category: "music", url: "karaoke.html", rating: 4.9 },
@@ -232,7 +232,7 @@
             { name: "Block Builder", icon: "🧱", category: "adventure", url: "minecraft.html", rating: 4.7 },
             { name: "Sing Along Challenge", icon: "🎤", category: "music", url: "singalong.html", rating: 4.9 },
             { name: "3D Racing", icon: "🏎️", category: "racing", url: "racing3d.html", rating: 4.9 },
-            { name: "3D Tower Defense", icon: "⚔️", category: "strategy", url: "towerdefense3d.html", rating: 4.8 },
+            { name: "3D Tower Defense", icon: "⚔️", category: "strategy", url: "towerdefense3d.html", rating: 4.8 }
         ];
         let currentCat = 'all';
         window.addEventListener('load', () => { setTimeout(() => { document.getElementById('loader').classList.add('hidden'); }, 800); });
@@ -269,7 +269,6 @@
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.register('sw.js').then(reg => console.log('SW registered')).catch(err => console.log('SW registration failed:', err));
         }
-        (adsbygoogle = window.adsbygoogle || []).push({});
         (adsbygoogle = window.adsbygoogle || []).push({});
         (adsbygoogle = window.adsbygoogle || []).push({});
     </script>
