@@ -3,359 +3,442 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="google-site-verification" content="LFolYFY1ySO4aIcMbyo8EdJKYLqHW9MS6_B1y7e5MPQ" />
-    <title>Jetpack Joy | Cool Games</title>
+    <title>🚀 Jetpack Joyride Pro - Cool Games 64</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Poppins', sans-serif; background: linear-gradient(180deg, #0f0f1a, #1a1a2e); min-height: 100vh; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
-        .header { display: flex; justify-content: space-between; width: 100%; max-width: 400px; padding: 15px; }
-        .score-box { background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 15px; color: white; font-weight: bold; }
-        #gameCanvas { border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
-        .instructions { color: rgba(255,255,255,0.5); margin-top: 10px; font-size: 0.85rem; }
-        .back-btn { position: fixed; top: 20px; left: 20px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 10px 20px; border-radius: 25px; text-decoration: none; font-weight: 600; }
-    
-        /* Mobile Touch Controls */
-        .touch-controls {
-            display: none;
-            position: fixed;
-            bottom: 20px;
-            left: 0;
-            right: 0;
-            padding: 10px;
-            z-index: 1000;
-        }
-        @media (pointer: coarse) {
-            .touch-controls { display: flex !important; }
-            body { padding-bottom: 120px !important; }
-        }
-        .dpad {
-            display: grid;
-            grid-template-columns: repeat(3, 60px);
-            grid-template-rows: repeat(3, 60px);
-            gap: 5px;
-            margin: 0 auto;
-        }
-        .dpad-btn {
-            background: rgba(255,255,255,0.2);
-            border: 2px solid rgba(255,255,255,0.4);
-            border-radius: 10px;
-            color: white;
-            font-size: 24px;
+        body {
+            background: linear-gradient(180deg, #87CEEB 0%, #98D8C8 100%);
+            min-height: 100vh;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: manipulation;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden;
         }
-        .dpad-btn:active {
-            background: rgba(255,255,255,0.4);
+        .hud {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            background: rgba(0,0,0,0.4);
+            z-index: 100;
         }
-        .dpad-center { background: rgba(0,0,0,0.2); }
-        @media (max-width: 500px) {
-            .dpad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); }
-            .dpad-btn { font-size: 20px; }
+        .hud-item {
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
         }
-    
-    
-        .tap-area {
+        .hud-item span { color: #ffd700; }
+        #gameCanvas {
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 999;
-            display: none;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
         }
-        @media (pointer: coarse) {
-            .tap-area { display: block; }
+        .overlay.hidden { display: none; }
+        .overlay h1 {
+            font-size: 36px;
+            color: #ff6b6b;
+            text-shadow: 0 0 30px rgba(255,107,107,0.8);
+            margin-bottom: 10px;
         }
-        .tap-btn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 80px; height: 80px;
-            background: rgba(255,255,255,0.3);
-            border: 3px solid rgba(255,255,255,0.6);
-            border-radius: 50%;
+        .overlay p { color: white; margin-bottom: 25px; }
+        .btn {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff4757 100%);
             color: white;
-            font-size: 14px;
-            z-index: 1001;
-            display: none;
+            border: none;
+            padding: 15px 50px;
+            font-size: 18px;
+            font-weight: 700;
+            border-radius: 30px;
             cursor: pointer;
+            box-shadow: 0 10px 30px rgba(255,107,107,0.4);
+        }
+        .btn:hover { transform: scale(1.05); }
+        .touch-area {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 50;
         }
         @media (pointer: coarse) {
-            .tap-btn { display: flex; align-items: center; justify-content: center; }
+            .touch-area { display: block; }
         }
-
+        @media (pointer: fine) {
+            .touch-area { display: none; }
+        }
     </style>
 </head>
 <body>
-    <a href="index.html" class="back-btn">← Back</a>
-    <div class="header">
-        <div class="score-box">Score: <span id="score">0</span></div>
-        <div class="score-box">Fuel: <span id="fuel">100</span>%</div>
+    <div class="hud" id="hud" style="display: none;">
+        <div class="hud-item">Distance: <span id="dist">0</span>m</div>
+        <div class="hud-item">Coins: <span id="coins">0</span> 💰</div>
+        <div class="hud-item">Best: <span id="best">0</span>m</div>
     </div>
-    <canvas id="gameCanvas" width="400" height="600"></canvas>
-    <p class="instructions">Hold SPACE or CLICK to fly up! Collect fuel to keep going!</p>
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreEl = document.getElementById('score');
-        const fuelEl = document.getElementById('fuel');
-        
-        let player = { x: 100, y: 300, vy: 0, size: 25 };
-        let obstacles = [];
-        let fuels = [];
-        let particles = [];
-        let score = 0;
-        let fuel = 100;
-        let gameOver = false;
-        let thrusting = false;
-        
-        document.addEventListener('mousedown', () => thrusting = true);
-        document.addEventListener('mouseup', () => thrusting = false);
-        document.addEventListener('keydown', e => { if (e.code === 'Space') thrusting = true; });
-        document.addEventListener('keyup', e => { if (e.code === 'Space') thrusting = false; });
-        
-        canvas.addEventListener('touchstart', e => { thrusting = true; e.preventDefault(); });
-        canvas.addEventListener('touchend', e => { thrusting = false; });
-        
-        function createObstacle() {
-            let gap = 150 + Math.random() * 50;
-            let y = -50;
-            obstacles.push({
-                x: 400,
-                y: y,
-                width: 60,
-                gap: gap,
-                speed: 4 + score / 50
-            });
+    
+    <canvas id="gameCanvas" width="400" height="550"></canvas>
+    <div class="touch-area" id="touchArea"></div>
+    
+    <div class="overlay" id="startScreen">
+        <h1>🚀 JETPACK JOYRIDE</h1>
+        <p>Tap & hold to fly! Avoid obstacles!</p>
+        <button class="btn" onclick="startGame()">START</button>
+    </div>
+    <div class="overlay hidden" id="gameOverScreen">
+        <h1>💥 CRASH!</h1>
+        <p id="finalDist">Distance: 0m</p>
+        <button class="btn" onclick="startGame()">TRY AGAIN</button>
+    </div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+    const w = Math.min(window.innerWidth - 10, 400);
+    const h = Math.min(window.innerHeight - 100, 550);
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+let player, obstacles, coins, particles;
+let distance, coinCount, best, gameState, gameLoop;
+let jetting = false;
+let bgOffset = 0;
+let shake = 0;
+
+class Particle {
+    constructor(x, y, color, size, vx, vy, life) {
+        this.x=x; this.y=y; this.color=color; this.size=size;
+        this.vx=vx; this.vy=vy; this.life=life; this.maxLife=life;
+    }
+    update() { this.x+=this.vx; this.y+=this.vy; this.life--; }
+    draw() {
+        ctx.globalAlpha=this.life/this.maxLife;
+        ctx.fillStyle=this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size*(this.life/this.maxLife), 0, Math.PI*2);
+        ctx.fill();
+        ctx.globalAlpha=1;
+    }
+}
+let eParticles = [];
+
+function eSpawn(x, y, color, count) {
+    for(let i=0; i<count; i++) {
+        eParticles.push(new Particle(x, y, color, 3+Math.random()*4, (Math.random()-0.5)*8, (Math.random()-0.5)*8-2, 30+Math.random()*20));
+    }
+}
+
+function init() {
+    player = { x: 80, y: 275, vy: 0 };
+    obstacles = [];
+    coins = [];
+    eParticles = [];
+    distance = 0;
+    coinCount = 0;
+    shake = 0;
+    jetting = false;
+    gameState = 'playing';
+    
+    // Spawn initial obstacles
+    for (let i = 0; i < 5; i++) {
+        spawnObstacle(300 + i * 200);
+    }
+    // Spawn initial coins
+    for (let i = 0; i < 8; i++) {
+        spawnCoin();
+    }
+}
+
+function spawnObstacle(x) {
+    let type = Math.random();
+    if (type < 0.4) {
+        // Top stalactite
+        obstacles.push({ x, y: 0, w: 30 + Math.random() * 20, h: 80 + Math.random() * 100, type: 'top' });
+    } else if (type < 0.8) {
+        // Bottom stalagmite
+        obstacles.push({ x, y: canvas.height - (80 + Math.random() * 100), w: 30 + Math.random() * 20, h: 80 + Math.random() * 100, type: 'bottom' });
+    } else {
+        // Floating obstacle
+        obstacles.push({ x, y: 100 + Math.random() * (canvas.height - 200), w: 40, h: 40, type: 'float' });
+    }
+}
+
+function spawnCoin() {
+    coins.push({
+        x: 300 + coins.length * 100 + Math.random() * 50,
+        y: 50 + Math.random() * (canvas.height - 100),
+        collected: false,
+        pulse: Math.random() * Math.PI * 2
+    });
+}
+
+function update() {
+    if (gameState !== 'playing') return;
+    
+    // Player jetpack
+    if (jetting || keys.up || window.tU) {
+        player.vy -= 0.6;
+        // Jetpack flame
+        if (Math.random() < 0.5) {
+            eSpawn(player.x - 15, player.y + 15, '#ff9500', 2);
+            eSpawn(player.x - 15, player.y + 15, '#ff6600', 1);
         }
-        
-        function createFuel() {
-            if (Math.random() < 0.3) {
-                fuels.push({
-                    x: Math.random() * 350 + 25,
-                    y: Math.random() * 400 + 100,
-                    size: 20,
-                    collected: false
-                });
+    } else {
+        player.vy += 0.25; // Gravity
+    }
+    
+    player.vy = Math.max(-8, Math.min(8, player.vy));
+    player.y += player.vy;
+    
+    // Boundaries
+    if (player.y < 0) { player.y = 0; player.vy = 0; }
+    if (player.y > canvas.height - 30) { player.y = canvas.height - 30; player.vy = 0; }
+    
+    // Move world
+    obstacles.forEach(o => { o.x -= 4; });
+    coins.forEach(c => { c.x -= 4; });
+    
+    // Distance
+    distance += 4;
+    document.getElementById('dist').textContent = Math.floor(distance / 10);
+    
+    // Spawn new
+    if (obstacles.length < 6 && obstacles[obstacles.length-1].x < canvas.width) {
+        spawnObstacle(obstacles[obstacles.length-1].x + 180 + Math.random() * 80);
+    }
+    if (coins.length < 8 && coins[coins.length-1] && coins[coins.length-1].x < canvas.width) {
+        spawnCoin();
+    }
+    
+    // Remove old
+    obstacles = obstacles.filter(o => o.x > -100);
+    coins = coins.filter(c => c.x > -50 && !c.collected);
+    
+    // Coin collection
+    coins.forEach(c => {
+        c.pulse += 0.1;
+        if (!c.collected) {
+            let dx = c.x - player.x;
+            let dy = c.y - player.y;
+            if (dx*dx + dy*dy < 1200) {
+                c.collected = true;
+                coinCount++;
+                eSpawn(c.x, c.y, '#ffd700', 12);
             }
         }
-        
-        function createParticle(x, y, color) {
-            for (let i = 0; i < 5; i++) {
-                particles.push({
-                    x: x, y: y,
-                    vx: (Math.random() - 0.5) * 8,
-                    vy: (Math.random() - 0.5) * 8,
-                    life: 30,
-                    color: color
-                });
-            }
+    });
+    document.getElementById('coins').textContent = coinCount;
+    
+    // Collision
+    obstacles.forEach(o => {
+        if (player.x + 20 > o.x && player.x - 20 < o.x + o.w &&
+            player.y + 15 > o.y && player.y - 15 < o.y + o.h) {
+            gameOver();
         }
+    });
+    
+    // Particles
+    eParticles = eParticles.filter(p => { p.update(); return p.life > 0; });
+    
+    if (shake > 0) shake *= 0.9;
+}
+
+function draw() {
+    ctx.save();
+    if (shake > 0.5) {
+        ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
+    }
+    
+    // Sky gradient
+    let sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    sky.addColorStop(0, '#87CEEB');
+    sky.addColorStop(1, '#98D8C8');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Clouds (parallax)
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    for (let i = 0; i < 6; i++) {
+        let cx = ((i * 120 - distance * 0.1) % (canvas.width + 100)) - 50;
+        let cy = 50 + (i % 3) * 80;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+        ctx.arc(cx + 35, cy - 10, 35, 0, Math.PI * 2);
+        ctx.arc(cx + 70, cy, 30, 0, Math.PI * 2);
+        ctx.arc(cx + 35, cy + 10, 25, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // Ground
+    ctx.fillStyle = '#5c4033';
+    ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(0, canvas.height - 40, canvas.width, 10);
+    
+    // Ceiling
+    ctx.fillStyle = '#5c4033';
+    ctx.fillRect(0, 0, canvas.width, 30);
+    
+    // Obstacles
+    obstacles.forEach(o => {
+        let grad = ctx.createLinearGradient(o.x, 0, o.x + o.w, 0);
+        grad.addColorStop(0, '#666');
+        grad.addColorStop(0.5, '#888');
+        grad.addColorStop(1, '#555');
+        ctx.fillStyle = grad;
         
-        function draw() {
-            // Background
-            ctx.fillStyle = '#0f0f1a';
-            ctx.fillRect(0, 0, 400, 600);
-            
-            // Stars
-            ctx.fillStyle = 'rgba(255,255,255,0.5)';
-            for (let i = 0; i < 50; i++) {
-                ctx.beginPath();
-                ctx.arc(Math.random() * 400, Math.random() * 600, 1, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            
-            // Obstacles
-            obstacles.forEach(o => {
-                ctx.fillStyle = '#e74c3c';
-                ctx.fillRect(o.x, 0, o.width, o.y);
-                ctx.fillRect(o.x, o.y + o.gap, o.width, 600 - o.y - o.gap);
-                
-                // Glow
-                ctx.shadowColor = '#e74c3c';
-                ctx.shadowBlur = 20;
-                ctx.fillRect(o.x, 0, o.width, o.y);
-                ctx.fillRect(o.x, o.y + o.gap, o.width, 600 - o.y - o.gap);
-                ctx.shadowBlur = 0;
-            });
-            
-            // Fuel
-            fuels.forEach(f => {
-                if (!f.collected) {
-                    ctx.fillStyle = '#2ecc71';
-                    ctx.beginPath();
-                    ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.shadowColor = '#2ecc71';
-                    ctx.shadowBlur = 15;
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-                    
-                    ctx.fillStyle = 'white';
-                    ctx.font = 'bold 14px Poppins';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('⛽', f.x, f.y + 5);
-                }
-            });
-            
-            // Particles
-            particles.forEach(p => {
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = p.life / 30;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.globalAlpha = 1;
-            });
-            
-            // Player
-            ctx.fillStyle = '#3498db';
+        if (o.type === 'top') {
             ctx.beginPath();
-            ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+            ctx.moveTo(o.x, 0);
+            ctx.lineTo(o.x + o.w/2, o.h);
+            ctx.lineTo(o.x + o.w, 0);
             ctx.fill();
-            ctx.shadowColor = '#3498db';
-            ctx.shadowBlur = 20;
+        } else if (o.type === 'bottom') {
+            ctx.beginPath();
+            ctx.moveTo(o.x, canvas.height);
+            ctx.lineTo(o.x + o.w/2, o.y);
+            ctx.lineTo(o.x + o.w, canvas.height);
+            ctx.fill();
+        } else {
+            ctx.fillRect(o.x, o.y, o.w, o.h);
+            // Danger stripes
+            ctx.fillStyle = '#ff4444';
+            ctx.fillRect(o.x + 5, o.y + 5, o.w - 10, 5);
+            ctx.fillRect(o.x + 5, o.y + o.h - 10, o.w - 10, 5);
+        }
+    });
+    
+    // Coins
+    coins.forEach(c => {
+        if (!c.collected) {
+            let scale = 1 + Math.sin(c.pulse) * 0.2;
+            ctx.fillStyle = '#ffd700';
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, 15 * scale, 0, Math.PI * 2);
             ctx.fill();
             ctx.shadowBlur = 0;
             
-            // Jetpack flame
-            if (thrusting && fuel > 0) {
-                let gradient = ctx.createLinearGradient(player.x, player.y + player.size, player.x, player.y + player.size + 30);
-                gradient.addColorStop(0, '#f39c12');
-                gradient.addColorStop(1, '#e74c3c');
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.moveTo(player.x - 8, player.y + player.size);
-                ctx.lineTo(player.x, player.y + player.size + 20 + Math.random() * 10);
-                ctx.lineTo(player.x + 8, player.y + player.size);
-                ctx.fill();
-            }
-            
-            // Game Over
-            if (gameOver) {
-                ctx.fillStyle = 'rgba(0,0,0,0.8)';
-                ctx.fillRect(0, 0, 400, 600);
-                ctx.fillStyle = '#ff6b6b';
-                ctx.font = 'bold 40px Poppins';
-                ctx.textAlign = 'center';
-                ctx.fillText('💥 CRASH!', 200, 260);
-                ctx.fillStyle = 'white';
-                ctx.font = '24px Poppins';
-                ctx.fillText('Score: ' + score, 200, 320);
-                ctx.font = '18px Poppins';
-                ctx.fillStyle = '#ffd700';
-                ctx.fillText('Click to Restart', 200, 370);
-            }
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('💰', c.x, c.y);
         }
-        
-        function update() {
-            if (gameOver) return;
-            
-            // Physics
-            if (thrusting && fuel > 0) {
-                player.vy -= 0.8;
-                fuel -= 0.5;
-                createParticle(player.x, player.y + player.size, '#f39c12');
-            } else {
-                player.vy += 0.3;
-            }
-            player.vy = Math.max(-10, Math.min(player.vy, 10));
-            player.y += player.vy;
-            
-            // Fuel recharge when not thrusting
-            if (!thrusting && fuel < 100) fuel += 0.2;
-            fuelEl.textContent = Math.floor(fuel);
-            
-            // Boundaries
-            if (player.y < player.size) { player.y = player.size; player.vy = 0; }
-            if (player.y > 600 - player.size) { gameOver = true; }
-            
-            // Obstacles
-            obstacles.forEach((o, i) => {
-                o.x -= o.speed;
-                if (o.x + o.width < 0) {
-                    obstacles.splice(i, 1);
-                    score++;
-                    scoreEl.textContent = score;
-                }
-                
-                // Collision
-                if (player.x + player.size > o.x && player.x - player.size < o.x + o.width) {
-                    if (player.y - player.size < o.y || player.y + player.size > o.y + o.gap) {
-                        gameOver = true;
-                    }
-                }
-            });
-            
-            // Fuel collection
-            fuels.forEach((f, i) => {
-                if (!f.collected) {
-                    let dx = player.x - f.x;
-                    let dy = player.y - f.y;
-                    if (Math.sqrt(dx*dx + dy*dy) < player.size + f.size) {
-                        f.collected = true;
-                        fuel = Math.min(100, fuel + 30);
-                        createParticle(f.x, f.y, '#2ecc71');
-                    }
-                }
-            });
-            
-            // Particles
-            particles.forEach((p, i) => {
-                p.x += p.vx;
-                p.y += p.vy;
-                p.life--;
-                if (p.life <= 0) particles.splice(i, 1);
-            });
-            
-            // Spawn
-            if (Math.random() < 0.02) createObstacle();
-            createFuel();
-        }
-        
-        canvas.addEventListener('click', () => {
-            if (gameOver) {
-                gameOver = false;
-                player.y = 300;
-                player.vy = 0;
-                obstacles = [];
-                fuels = [];
-                particles = [];
-                score = 0;
-                fuel = 100;
-                scoreEl.textContent = 0;
-            }
-        });
-        
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
-        
-        gameLoop();
+    });
     
-        // Tap anywhere to click
-        document.addEventListener('touchstart', (e) => {
-            if(e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
-                const touch = e.touches[0];
-                const clickEvent = new MouseEvent('click', {
-                    bubbles: true,
-                    clientX: touch.clientX,
-                    clientY: touch.clientY
-                });
-                e.target.dispatchEvent(clickEvent);
-            }
-        }, true);
-        
-        // Space/action button for mobile
-        window.tapSpace = false;
+    // Player (character with jetpack)
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    
+    // Jetpack
+    ctx.fillStyle = '#444';
+    ctx.fillRect(-18, -5, 10, 25);
+    
+    // Jetpack flame
+    if (jetting || keys.up || window.tU) {
+        ctx.fillStyle = '#ff9500';
+        ctx.shadowColor = '#ff6600';
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.moveTo(-18, 20);
+        ctx.lineTo(-13, 35 + Math.random() * 10);
+        ctx.lineTo(-8, 20);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+    
+    // Body
+    ctx.fillStyle = '#3498db';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 15, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Head
+    ctx.fillStyle = '#f4c59a';
+    ctx.beginPath();
+    ctx.arc(0, -18, 12, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Goggles
+    ctx.fillStyle = '#333';
+    ctx.fillRect(-10, -20, 20, 6);
+    ctx.fillStyle = '#00ccff';
+    ctx.fillRect(-8, -19, 6, 4);
+    ctx.fillRect(2, -19, 6, 4);
+    
+    ctx.restore();
+    
+    // Particles
+    eParticles.forEach(p => p.draw());
+    
+    ctx.restore();
+}
 
-    </script>
+function gameOver() {
+    gameState = 'over';
+    shake = 20;
+    eSpawn(player.x, player.y, '#ff4444', 40);
+    
+    if (distance > best) {
+        best = distance;
+        localStorage.setItem('jetpackBest', best);
+    }
+    
+    document.getElementById('finalDist').textContent = 'Distance: ' + Math.floor(distance / 10) + 'm';
+    clearInterval(gameLoop);
+    setTimeout(() => {
+        document.getElementById('gameOverScreen').classList.remove('hidden');
+    }, 500);
+}
 
-    <button class="tap-btn" ontouchstart="window.tapSpace=true" ontouchend="window.tapSpace=false">TAP</button>
+function startGame() {
+    document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('gameOverScreen').classList.add('hidden');
+    document.getElementById('hud').style.display = 'flex';
+    
+    init();
+    if (gameLoop) clearInterval(gameLoop);
+    gameLoop = setInterval(() => { update(); draw(); }, 1000/60);
+}
 
+// Touch controls - tap anywhere to jet
+const touchArea = document.getElementById('touchArea');
+touchArea.addEventListener('touchstart', e => { e.preventDefault(); jetting = true; });
+touchArea.addEventListener('touchend', e => { e.preventDefault(); jetting = false; });
+
+// Keyboard
+document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') keys.up = true;
+    if (e.key === 'Enter') startGame();
+});
+document.addEventListener('keyup', e => {
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') keys.up = false;
+});
+
+// Canvas click for jet
+canvas.addEventListener('mousedown', () => jetting = true);
+canvas.addEventListener('mouseup', () => jetting = false);
+canvas.addEventListener('touchstart', e => { e.preventDefault(); jetting = true; });
+canvas.addEventListener('touchend', e => { e.preventDefault(); jetting = false; });
+
+best = parseInt(localStorage.getItem('jetpackBest') || '0');
+document.getElementById('best').textContent = Math.floor(best / 10);
+init();
+draw();
+</script>
 </body>
 </html>

@@ -85,6 +85,111 @@
             .tap-btn { display: flex; align-items: center; justify-content: center; }
         }
 
+    
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden;
+        }
+        .game-header {
+            font-size: 20px;
+            font-weight: 700;
+            color: #00ff88;
+            text-shadow: 0 0 15px rgba(0,255,136,0.5);
+            margin-bottom: 10px;
+        }
+        .score-display {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        .score-box {
+            background: rgba(0,0,0,0.5);
+            border: 2px solid rgba(0,255,136,0.3);
+            border-radius: 10px;
+            padding: 6px 14px;
+            text-align: center;
+        }
+        .score-label { font-size: 10px; color: rgba(255,255,255,0.6); text-transform: uppercase; }
+        .score-val { font-size: 18px; font-weight: 700; color: #00ff88; }
+        .game-wrapper { position: relative; }
+        #gameCanvas {
+            border-radius: 12px;
+            border: 3px solid #00ff88;
+            box-shadow: 0 0 30px rgba(0,255,136,0.3);
+        }
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+        }
+        .overlay.hidden { display: none; }
+        .overlay h2 {
+            font-size: 28px;
+            color: #00ff88;
+            text-shadow: 0 0 20px rgba(0,255,136,0.6);
+            margin-bottom: 8px;
+        }
+        .overlay p { color: rgba(255,255,255,0.7); margin-bottom: 15px; }
+        .btn-epic {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: #0f0f1a;
+            border: none;
+            padding: 12px 35px;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(0,255,136,0.4);
+        }
+        .btn-epic:hover { transform: scale(1.05); }
+        .touch-controls {
+            display: none;
+            position: fixed;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            justify-content: center;
+            gap: 8px;
+        }
+        @media (pointer: coarse) {
+            .touch-controls { display: flex; }
+            body { padding-bottom: 100px; }
+        }
+        .dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 50px);
+            grid-template-rows: repeat(2, 50px);
+            gap: 4px;
+        }
+        .dpad-btn {
+            background: rgba(0,255,136,0.2);
+            border: 2px solid rgba(0,255,136,0.5);
+            border-radius: 10px;
+            color: #00ff88;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .dpad-btn:active { background: rgba(0,255,136,0.5); }
+
     </style>
 </head>
 <body>
@@ -355,6 +460,51 @@
         
         // Space/action button for mobile
         window.tapSpace = false;
+
+    
+    // EPIC PARTICLES
+    let eParticles = [];
+    class EParticle {
+        constructor(x, y, color, size, vx, vy, life) {
+            this.x=x; this.y=y; this.color=color; this.size=size;
+            this.vx=vx; this.vy=vy; this.life=life; this.maxLife=life;
+        }
+        update() {
+            this.x+=this.vx; this.y+=this.vy; this.vy+=0.1; this.life--;
+        }
+        draw() {
+            let a = this.life/this.maxLife;
+            ctx.globalAlpha=a;
+            ctx.fillStyle=this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size*a, 0, Math.PI*2);
+            ctx.fill();
+            ctx.globalAlpha=1;
+        }
+    }
+    function eSpawn(x, y, color, count) {
+        for(let i=0; i<count; i++) {
+            eParticles.push(new EParticle(x, y, color, 3+Math.random()*4, (Math.random()-0.5)*8, (Math.random()-0.5)*8-3, 30+Math.random()*20));
+        }
+    }
+
+    
+    window.tL=false; window.tR=false; window.tU=false; window.tD=false;
+    ['btnL','btnR','btnU','btnD'].forEach(id => {
+        let btn = document.getElementById(id);
+        if(!btn) return;
+        let key = {btnL:'tL',btnR:'tR',btnU:'tU',btnD:'tD'}[id];
+        btn.addEventListener('touchstart', e => { e.preventDefault(); window[key]=true; });
+        btn.addEventListener('touchend', e => { e.preventDefault(); window[key]=false; });
+        btn.addEventListener('mousedown', () => window[key]=true);
+        btn.addEventListener('mouseup', () => window[key]=false);
+    });
+    setInterval(() => {
+        if(window.tL) keys.left=true; else keys.left=false;
+        if(window.tR) keys.right=true; else keys.right=false;
+        if(window.tU) keys.up=true; else keys.up=false;
+        if(window.tD) keys.down=true; else keys.down=false;
+    }, 50);
 
     </script>
 
