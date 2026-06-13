@@ -128,28 +128,30 @@
   body.mobile .slot canvas { width: 25px; height: 25px; }
   body.mobile .slot .name { display: none; }
   body.mobile .slot .num { font-size: 9px; }
-  #lookPad { position: fixed; top: 0; right: 0; width: 58vw; height: 100vh; pointer-events: auto; touch-action: none; }
-  #movePad { position: fixed; left: 14px; bottom: 78px; width: 150px; height: 150px; pointer-events: auto; touch-action: none; }
+  #lookPad { position: fixed; top: 0; right: 0; width: 56vw; height: 100vh; pointer-events: auto; touch-action: none; }
+  #joyBase { position: fixed; left: 26px; bottom: 96px; width: 132px; height: 132px; border-radius: 50%;
+    background: rgba(18,24,34,.42); border: 2px solid rgba(255,255,255,.3); pointer-events: auto; touch-action: none; z-index: 9; }
+  #joyKnob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%;
+    background: rgba(109,179,63,.85); border: 2px solid rgba(255,255,255,.5); box-shadow: 0 3px 8px rgba(0,0,0,.4); }
   .touchBtn { position: absolute; width: 46px; height: 46px; border-radius: 12px; border: 2px solid rgba(255,255,255,.38);
-    background: rgba(18,24,34,.62); color: #fff; font-weight: 900; font-size: 15px; text-shadow: 1px 1px 2px #000;
+    background: rgba(18,24,34,.62); color: #fff; font-weight: 900; font-size: 13px; text-shadow: 1px 1px 2px #000;
     box-shadow: 0 3px 0 rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center;
     -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   .touchBtn:active, .touchBtn.down { background: rgba(109,179,63,.82); transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.35); }
-  .touchBtn.small { width: 50px; height: 36px; font-size: 11px; border-radius: 10px; }
-  .touchBtn.w { left: 52px; top: 0; }
-  .touchBtn.q { left: 0; top: 52px; }
-  .touchBtn.s { left: 52px; top: 104px; }
-  .touchBtn.d { left: 104px; top: 52px; }
-  .touchBtn.a { left: 52px; top: 52px; background: rgba(60,94,150,.68); }
-  #rightBtns { position: fixed; right: 12px; bottom: 76px; width: 164px; height: 218px; pointer-events: auto; touch-action: none; }
-  #rightBtns .break { right: 58px; bottom: 0; width: 78px; }
-  #rightBtns .place { right: 0; bottom: 44px; width: 78px; }
-  #rightBtns .up { right: 88px; bottom: 54px; }
-  #rightBtns .down { right: 88px; bottom: 106px; }
-  #rightBtns .fly { right: 0; bottom: 106px; }
-  #rightBtns .inv { right: 0; bottom: 156px; }
-  #rightBtns .craft { right: 58px; bottom: 156px; }
-  #rightBtns .view { right: 116px; bottom: 156px; }
+  .touchBtn.small { width: 52px; height: 32px; font-size: 11px; border-radius: 9px; position: relative; }
+  .touchBtn.big { width: 62px; height: 52px; font-size: 22px; }
+  .touchBtn.spell { width: 46px; height: 46px; font-size: 20px; border-radius: 50%; background: rgba(40,30,60,.7); }
+  #rightBtns { position: fixed; right: 12px; bottom: 84px; width: 200px; height: 210px; pointer-events: auto; touch-action: none; z-index: 9; }
+  #rightBtns .break { right: 70px; bottom: 0; }
+  #rightBtns .place { right: 0; bottom: 8px; }
+  #rightBtns .jump { right: 78px; bottom: 60px; width: 56px; height: 44px; }
+  #rightBtns .down { right: 134px; bottom: 60px; }
+  #rightBtns .fly  { right: 0; bottom: 64px; }
+  #rightBtns .s1 { right: 150px; bottom: 8px; }
+  #rightBtns .s2 { right: 150px; bottom: 62px; }
+  #rightBtns .s3 { right: 150px; bottom: 116px; }
+  #topBtns { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: auto; z-index: 9; }
+  #topBtns .touchBtn { position: relative; }
   #phoneHint { position: fixed; top: 10px; right: 10px; z-index: 9; display: none; color: #fff; font-size: 10px;
     padding: 6px 8px; background: rgba(18,24,34,.45); border-radius: 8px; text-shadow: 1px 1px 1px #000; pointer-events: none; }
   body.mobile #phoneHint { display: block; }
@@ -181,25 +183,26 @@
 <div id="hotbar" class="hidden"></div>
 
 <div id="mobileControls" class="hidden">
-  <div id="lookPad" aria-label="Look area"></div>
-  <div id="movePad" aria-label="Move controls">
-    <div class="touchBtn w" data-key="KeyW">W</div>
-    <div class="touchBtn q" data-key="KeyQ">Q</div>
-    <div class="touchBtn s" data-key="KeyS">S</div>
-    <div class="touchBtn d" data-key="KeyD">D</div>
-    <div class="touchBtn a" data-key="KeyA">A</div>
-  </div>
+  <div id="lookPad" aria-label="Look / tap to mine"></div>
+  <div id="joyBase"><div id="joyKnob"></div></div>
   <div id="rightBtns" aria-label="Action controls">
-    <div class="touchBtn small break" data-action="break">Break</div>
-    <div class="touchBtn small place" data-action="place">Place</div>
-    <div class="touchBtn up" data-key="KeyA">A</div>
-    <div class="touchBtn down" data-key="KeyB">B</div>
-    <div class="touchBtn small fly" data-action="fly">Fly</div>
-    <div class="touchBtn small inv" data-action="inv">Inv</div>
-    <div class="touchBtn small craft" data-action="craft">Craft</div>
-    <div class="touchBtn small view" data-action="view">View</div>
+    <div class="touchBtn big break" data-action="break">⛏️</div>
+    <div class="touchBtn big place" data-action="place">▦</div>
+    <div class="touchBtn jump" data-key="KeyA">JUMP</div>
+    <div class="touchBtn down" data-key="KeyB">DOWN</div>
+    <div class="touchBtn fly" data-action="fly">FLY</div>
+    <div class="touchBtn spell s1" data-action="fireball">🔥</div>
+    <div class="touchBtn spell s2" data-action="heal">✨</div>
+    <div class="touchBtn spell s3" data-action="lightning">⚡</div>
   </div>
-  <div id="phoneHint">Drag right side to look</div>
+  <div id="topBtns" aria-label="Menus">
+    <div class="touchBtn small" data-action="inv">Inv</div>
+    <div class="touchBtn small" data-action="craft">Craft</div>
+    <div class="touchBtn small" data-action="forge">Forge</div>
+    <div class="touchBtn small" data-action="warp">Warp</div>
+    <div class="touchBtn small" data-action="view">View</div>
+  </div>
+  <div id="phoneHint">Drag right = look · tap right = mine · joystick = move</div>
 </div>
 
 
@@ -3366,6 +3369,7 @@ const waterOverlay = document.getElementById('waterOverlay');
 const mobileControls = document.getElementById('mobileControls');
 let mobileMode = false;
 let mobilePlaying = false;
+let joyX = 0, joyY = 0;   // analog movement from the on-screen joystick (-1..1)
 function gameActive() { return locked || mobilePlaying; }
 const panels = {
   inv: document.getElementById('invPanel'),
@@ -3836,31 +3840,68 @@ function setupMobileControls() {
       else if (action === 'fly') { player.flying = !player.flying; player.vy = 0; }
       else if (action === 'inv') openPanel('inv');
       else if (action === 'craft') openPanel('craft');
+      else if (action === 'forge') openPanel('forge');
+      else if (action === 'warp') openPanel('warp');
       else if (action === 'view') { camView = camView === 'first' ? 'third' : 'first'; }
+      else if (action === 'fireball') castFireball();
+      else if (action === 'heal') castHeal();
+      else if (action === 'lightning') castLightning();
     }, { passive: false });
     const release = (e) => { e.preventDefault(); e.stopPropagation(); btn.classList.remove('down'); };
     btn.addEventListener('pointerup', release, { passive: false });
     btn.addEventListener('pointercancel', release, { passive: false });
   });
 
+  // ---- Joystick (analog movement) ----
+  const joyBase = document.getElementById('joyBase');
+  const joyKnob = document.getElementById('joyKnob');
+  if (joyBase) {
+    let joyId = null;
+    const R = 50;
+    const setKnob = (dx, dy) => { joyKnob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; };
+    const onMove = (e) => {
+      if (joyId === null) return; e.preventDefault();
+      const r = joyBase.getBoundingClientRect();
+      let dx = e.clientX - (r.left + r.width / 2);
+      let dy = e.clientY - (r.top + r.height / 2);
+      const len = Math.hypot(dx, dy) || 1;
+      if (len > R) { dx = dx / len * R; dy = dy / len * R; }
+      setKnob(dx, dy);
+      joyX = dx / R; joyY = dy / R;
+    };
+    const onEnd = (e) => { e.preventDefault(); joyId = null; joyX = 0; joyY = 0; setKnob(0, 0); };
+    joyBase.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); requestPlay(); joyId = e.pointerId; joyBase.setPointerCapture?.(e.pointerId); onMove(e); }, { passive: false });
+    joyBase.addEventListener('pointermove', onMove, { passive: false });
+    joyBase.addEventListener('pointerup', onEnd, { passive: false });
+    joyBase.addEventListener('pointercancel', onEnd, { passive: false });
+  }
+
+  // ---- Look pad: drag to look, quick tap to MINE the block at the crosshair ----
   const lookPad = document.getElementById('lookPad');
-  let looking = false, lastX = 0, lastY = 0;
+  let looking = false, lastX = 0, lastY = 0, startX = 0, startY = 0, startT = 0, dragged = 0;
   lookPad.addEventListener('pointerdown', (e) => {
-    e.preventDefault(); requestPlay(); looking = true; lastX = e.clientX; lastY = e.clientY; lookPad.setPointerCapture?.(e.pointerId);
+    e.preventDefault(); requestPlay(); looking = true;
+    lastX = startX = e.clientX; lastY = startY = e.clientY; startT = performance.now(); dragged = 0;
+    lookPad.setPointerCapture?.(e.pointerId);
   }, { passive: false });
   lookPad.addEventListener('pointermove', (e) => {
     if (!looking || uiOpen) return;
     e.preventDefault();
     const dx = e.clientX - lastX, dy = e.clientY - lastY;
     lastX = e.clientX; lastY = e.clientY;
+    dragged += Math.abs(dx) + Math.abs(dy);
     const sens = 0.0065;
     yaw -= dx * sens;
     pitch -= dy * sens;
     pitch = Math.max(-1.55, Math.min(1.55, pitch));
   }, { passive: false });
-  const endLook = (e) => { e.preventDefault(); looking = false; };
+  const endLook = (e) => {
+    e.preventDefault(); looking = false;
+    // a quick tap with little movement = mine the block you're looking at
+    if (dragged < 12 && (performance.now() - startT) < 300 && !uiOpen) breakBlock();
+  };
   lookPad.addEventListener('pointerup', endLook, { passive: false });
-  lookPad.addEventListener('pointercancel', endLook, { passive: false });
+  lookPad.addEventListener('pointercancel', (e) => { e.preventDefault(); looking = false; }, { passive: false });
 
   canvas.addEventListener('touchstart', (e) => { e.preventDefault(); requestPlay(); }, { passive: false });
 }
@@ -4250,8 +4291,8 @@ function updatePlayer(dt) {
   const fX = -sinY, fZ = -cosY;
   const rX = cosY,  rZ = -sinY;
 
-  const inF = (keys['KeyW'] ? 1 : 0) - (keys['KeyS'] ? 1 : 0);
-  const inR = (keys['KeyD'] ? 1 : 0) - ((keys['KeyQ'] || keys['ArrowLeft']) ? 1 : 0);
+  const inF = (keys['KeyW'] ? 1 : 0) - (keys['KeyS'] ? 1 : 0) - joyY;
+  const inR = (keys['KeyD'] ? 1 : 0) - ((keys['KeyQ'] || keys['ArrowLeft']) ? 1 : 0) + joyX;
 
   let mx = fX * inF + rX * inR;
   let mz = fZ * inF + rZ * inR;
@@ -4409,7 +4450,7 @@ function loop(now) {
     dirtySections.clear();
   }
 
-  if (locked) {
+  if (locked || mobilePlaying) {
     updatePlayer(dt);
     updateSelection();
     updateSky(dt);
