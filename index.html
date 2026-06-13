@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="google-adsense-account" content="ca-pub-2848704978790894">
 <title>VoxelCraft</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -200,6 +201,8 @@
     <div class="touchBtn small" data-action="craft">Craft</div>
     <div class="touchBtn small" data-action="forge">Forge</div>
     <div class="touchBtn small" data-action="warp">Warp</div>
+    <div class="touchBtn small" data-action="quake">Quake</div>
+    <div class="touchBtn small" data-action="flood">Flood</div>
     <div class="touchBtn small" data-action="view">View</div>
   </div>
   <div id="phoneHint">Drag right = look · tap right = mine · joystick = move</div>
@@ -353,7 +356,9 @@ const GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5,
       VINE_BLOCK = 96, HONEYCOMB = 97, CAKE = 98, ENDSTONE = 99, PURPUR = 100,
       MAGMA_BRICK = 101, AZALEA = 102, CHISELED_AEON = 103,
       PORTAL_EMBER = 104, PORTAL_VOID = 105, PORTAL_CLEFT = 106, PORTAL_SHADOW = 107,
-      PORTAL_ICERAHN = 108, PORTAL_HOME = 109, EMBERSTONE = 110, SHADOWSTONE = 111, VOIDSTONE = 112;
+      PORTAL_ICERAHN = 108, PORTAL_HOME = 109, EMBERSTONE = 110, SHADOWSTONE = 111, VOIDSTONE = 112,
+      NUKE = 113, PORTAL_AETHER = 114, AETHERSTONE = 115,
+      BLACKHOLE_EGG = 116, TSUNAMI_EGG = 117, QUICKSAND = 118;
 
 const T_GRASS_TOP = 0, T_GRASS_SIDE = 1, T_DIRT = 2, T_STONE = 3, T_SAND = 4,
       T_LOG_SIDE = 5, T_LOG_TOP = 6, T_LEAVES = 7, T_PLANKS = 8, T_GLASS = 9,
@@ -383,7 +388,9 @@ const T_GRASS_TOP = 0, T_GRASS_SIDE = 1, T_DIRT = 2, T_STONE = 3, T_SAND = 4,
       T_CAKE_TOP = 106, T_CAKE_SIDE = 107, T_ENDSTONE = 108, T_PURPUR = 109,
       T_MAGMA_BRICK = 110, T_AZALEA = 111, T_CHISELED_AEON = 112,
       T_PORTAL_EMBER = 113, T_PORTAL_VOID = 114, T_PORTAL_CLEFT = 115, T_PORTAL_SHADOW = 116,
-      T_PORTAL_ICERAHN = 117, T_PORTAL_HOME = 118, T_EMBERSTONE = 119, T_SHADOWSTONE = 120, T_VOIDSTONE = 121;
+      T_PORTAL_ICERAHN = 117, T_PORTAL_HOME = 118, T_EMBERSTONE = 119, T_SHADOWSTONE = 120, T_VOIDSTONE = 121,
+      T_NUKE = 122, T_PORTAL_AETHER = 123, T_AETHERSTONE = 124,
+      T_BLACKHOLE = 125, T_TSUNAMI = 126, T_QUICKSAND = 127;
 
 const same = (t) => ({ top: t, side: t, bottom: t });
 const BLOCKS = {
@@ -499,6 +506,12 @@ const BLOCKS = {
   [EMBERSTONE]:    { name: 'Emberstone',     tiles: same(T_EMBERSTONE), glow: true },
   [SHADOWSTONE]:   { name: 'Shadowstone',    tiles: same(T_SHADOWSTONE) },
   [VOIDSTONE]:     { name: 'Voidstone',      tiles: same(T_VOIDSTONE) },
+  [NUKE]:          { name: 'Nuke',           tiles: same(T_NUKE), glow: true },
+  [PORTAL_AETHER]: { name: 'Aetheria Portal',tiles: same(T_PORTAL_AETHER), glow: true, portal: 'aetheria' },
+  [AETHERSTONE]:   { name: 'Aetherstone',    tiles: same(T_AETHERSTONE), glow: true },
+  [BLACKHOLE_EGG]: { name: 'Black Hole Egg', tiles: same(T_BLACKHOLE), glow: true },
+  [TSUNAMI_EGG]:   { name: 'Tsunami Egg',    tiles: same(T_TSUNAMI), glow: true },
+  [QUICKSAND]:     { name: 'Quicksand',      tiles: same(T_QUICKSAND) },
 };
 let HOTBAR = [GRASS, DIRT, STONE, SAND, LOG, PLANKS, GLASS, BRICK, LAMP];
 const PLACEABLE = [
@@ -522,10 +535,13 @@ const PLACEABLE = [
   ROSE, TULIP, AZALEA, CAKE,
   PORTAL_EMBER, PORTAL_VOID, PORTAL_CLEFT, PORTAL_SHADOW, PORTAL_ICERAHN, PORTAL_HOME,
   EMBERSTONE, SHADOWSTONE, VOIDSTONE,
+  NUKE, PORTAL_AETHER, AETHERSTONE,
+  BLACKHOLE_EGG, TSUNAMI_EGG,
+  QUICKSAND,
 ];
 
 function seeThrough(t) { return t === AIR || t === GLASS || t === WATER; }
-function isSolid(t) { return t !== AIR && t !== WATER; }
+function isSolid(t) { return t !== AIR && t !== WATER && t !== QUICKSAND; }
 function inTransparentPass(t) { return t === GLASS || t === WATER; }
 
 // ============================================================
@@ -1645,6 +1661,76 @@ function buildTextures() {
       c = j(c, 6, rnd()); px(x, y, c[0], c[1], c[2]);
     }
   });
+  // ---- nuke: yellow/black hazard block with a danger core ----
+  paintTile(T_NUKE, 12201, (px, rnd, j) => {
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      // diagonal hazard stripes
+      const stripe = ((x + y) >> 1) % 2 === 0;
+      let c = stripe ? [240, 210, 40] : [24, 24, 24];
+      c = j(c, 8, rnd()); px(x, y, c[0], c[1], c[2]);
+    }
+    // central danger trefoil-ish core (original mark)
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const dd = Math.hypot(x - 7.5, y - 7.5);
+      if (dd < 2) { px(x, y, 20, 20, 20); }
+      else if (dd < 5) {
+        const a = Math.atan2(y - 7.5, x - 7.5);
+        const sect = ((a + Math.PI) / (Math.PI * 2) * 3) % 1;
+        if (sect < 0.55) { const c = j([255, 60, 40], 12, rnd()); px(x, y, c[0], c[1], c[2]); }
+      }
+    }
+  });
+  // ---- aether portal: radiant white-cyan swirl ----
+  paintTile(T_PORTAL_AETHER, 12301, portalPainter([200, 245, 255], [130, 210, 240], [80, 130, 160]));
+  // ---- aetherstone: luminous pale stone with gold flecks ----
+  paintTile(T_AETHERSTONE, 12401, (px, rnd, j) => {
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      let c = [232, 236, 244];
+      if (rnd() < 0.14) c = [210, 218, 232];
+      c = j(c, 5, rnd()); px(x, y, c[0], c[1], c[2]);
+    }
+    for (let i = 0; i < 8; i++) { const ox = (rnd() * 16) | 0, oy = (rnd() * 16) | 0; const c = j([248, 224, 120], 12, rnd()); px(ox, oy, c[0], c[1], c[2]); }
+  });
+  // ---- black hole egg: dark core with a purple swirling ring ----
+  paintTile(T_BLACKHOLE, 12501, (px, rnd, j) => {
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const dd = Math.hypot(x - 7.5, y - 7.5);
+      let c;
+      if (dd < 3.5) c = [6, 4, 10];                       // event horizon
+      else if (dd < 6) {                                  // accretion swirl
+        const a = Math.atan2(y - 7.5, x - 7.5);
+        const sw = Math.sin(a * 3 + dd);
+        c = sw > 0 ? [150, 70, 230] : [80, 30, 150];
+      } else c = [18, 12, 26];
+      c = j(c, 8, rnd()); px(x, y, c[0], c[1], c[2]);
+    }
+  });
+  // ---- tsunami egg: a curling wave ----
+  paintTile(T_TSUNAMI, 12601, (px, rnd, j) => {
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      // water gradient, lighter at top (foam)
+      let c = y < 4 ? [220, 240, 250] : (y < 9 ? [70, 150, 230] : [38, 96, 190]);
+      // a curling crest line
+      const crest = Math.sin(x * 0.6) * 2 + 5;
+      if (Math.abs(y - crest) < 1.2) c = [235, 248, 255];
+      c = j(c, 7, rnd()); px(x, y, c[0], c[1], c[2]);
+    }
+  });
+  // ---- quicksand: wet tan sand with concentric sinking ripples ----
+  paintTile(T_QUICKSAND, 12701, (px, rnd, j) => {
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      let c = [196, 168, 110];
+      if (rnd() < 0.18) c = [178, 150, 96];
+      // damp, darker patches
+      if (rnd() < 0.08) c = [150, 124, 78];
+      c = j(c, 7, rnd()); px(x, y, c[0], c[1], c[2]);
+    }
+    // concentric ripple rings hinting it's a sinking pit
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const dd = Math.hypot(x - 7.5, y - 7.5);
+      if (Math.abs((dd % 3) - 1.5) < 0.35) { const c = j([214, 188, 132], 6, Math.random()); px(x, y, c[0], c[1], c[2]); }
+    }
+  });
 }
 
 let atlasTexture = null;
@@ -1661,10 +1747,13 @@ function makeAtlasTexture() {
 // World — typed-array chunks, fast infinite terrain
 // ============================================================
 const CHUNK = 16;
-const IS_MOBILE_DEVICE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const IS_MOBILE_DEVICE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  || (navigator.maxTouchPoints > 1)
+  || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+  || window.innerWidth < 900;
 const START_RADIUS = IS_MOBILE_DEVICE ? 4 : 6;   // solid area generated before play starts (no void at spawn)
-const RENDER_RADIUS = IS_MOBILE_DEVICE ? 6 : 8;     // keep a wide area loaded so there is no visible void
-const MAX_CHUNKS_PER_FRAME = IS_MOBILE_DEVICE ? 3 : 5;
+const RENDER_RADIUS = IS_MOBILE_DEVICE ? 5 : 8;     // keep a wide area loaded so there is no visible void
+const MAX_CHUNKS_PER_FRAME = IS_MOBILE_DEVICE ? 2 : 3;
 const H = 256;
 const SEC_H = 32, SECTIONS = H / SEC_H;
 const SURFACE_BASE = 128;
@@ -1688,6 +1777,7 @@ const DIMS = {
   cleft:       { name: 'The Cleft',    chunks: new Map(), colCache: new Map(), edits: {}, sky: 0x0a2024, fog: 80, bright: 0.62, dayNight: false, baseH: 96, ampH: 60 },
   shadowlands: { name: 'Shadow Lands', chunks: new Map(), colCache: new Map(), edits: {}, sky: 0x140e1c, fog: 60, bright: 0.4, dayNight: false, baseH: 80, ampH: 22 },
   icerahn:     { name: 'Icerahn',      chunks: new Map(), colCache: new Map(), edits: {}, sky: 0x9fc3e0, fog: 90, bright: 0.92, dayNight: false, baseH: 100, ampH: 28 },
+  aetheria:    { name: 'Aetheria',     chunks: new Map(), colCache: new Map(), edits: {}, sky: 0xbfe4ff, fog: 120, bright: 1.0, dayNight: false, floating: true },
 };
 const SAVE_KEY = 'voxelcraft_ultrafast_save_v1';
 // Sandbox-safe storage: some embedded viewers block localStorage entirely
@@ -1742,6 +1832,15 @@ DIMS.voidreach.feature = (x, y, z, h) => {
   const r = hash3(x * 0.5 + 9, y * 0.5, z * 0.5);
   if (r < 0.02) return PURPUR;
   if (r < 0.03) return CRYSTAL;
+  return null;
+};
+DIMS.aetheria.surf = AETHERSTONE; DIMS.aetheria.sub = MARBLE; DIMS.aetheria.deep = CALCITE;
+DIMS.aetheria.feature = (x, y, z, h) => {
+  const r = hash3(x * 0.5 + 21, y * 0.5 + 13, z * 0.5);
+  if (r < 0.02) return GLOWSTONE;
+  if (r < 0.035) return CRYSTAL;
+  if (r < 0.05) return PURPUR;
+  if (r < 0.07) return GOLD_ORE;
   return null;
 };
 
@@ -1912,6 +2011,29 @@ function vn3(x, y, z) {
   const y0 = x00 + (x10 - x00) * v, y1 = x01 + (x11 - x01) * v;
   return y0 + (y1 - y0) * w;
 }
+// deterministic volcano sites on a coarse grid (more common now)
+const VOLCANO_T = 0.6;    // lower = more volcanoes
+function volcanoInfo(x, z) {
+  const G = 200;
+  const gx = Math.floor(x / G), gz = Math.floor(z / G);
+  if (hash2(gx * 7.3 + 1.1, gz * 7.3 + 2.7) < VOLCANO_T) return null;
+  const cxp = gx * G + 45 + hash2(gx * 3.1 + 4, gz * 3.1 + 9) * 110;
+  const czp = gz * G + 45 + hash2(gx * 5.7 + 2, gz * 5.7 + 6) * 110;
+  const d = Math.hypot(x - cxp, z - czp);
+  const R = 44;
+  return d <= R ? { d, R, cx: cxp, cz: czp } : null;
+}
+// deterministic city sites on a coarse grid (more common now)
+const CITY_T = 0.62;     // lower = more cities
+function cityInfo(x, z) {
+  const G = 260;
+  const gx = Math.floor(x / G), gz = Math.floor(z / G);
+  if (hash2(gx * 9.1 + 5, gz * 9.1 + 7) < CITY_T) return null;
+  const cxp = gx * G + 130, czp = gz * G + 130;
+  const S = 78;
+  return (Math.abs(x - cxp) <= S && Math.abs(z - czp) <= S) ? { cx: cxp, cz: czp, S } : null;
+}
+
 function caveNoise(x, y, z) {
   return vn3(x * 0.11, y * 0.16, z * 0.11) * 0.62 +
          vn3(x * 0.055 + 7.3, y * 0.085 + 3.1, z * 0.055 + 1.7) * 0.38;
@@ -1934,7 +2056,25 @@ function terrainInfo(x, z) {
   else if (bNoise < 0.37) biome = 'desert';
   else if (bNoise > 0.63) biome = 'forest';
   else biome = 'plains';
-  const info = { h, biome };
+  let lavaTop = 0;
+  // ---- volcano: a basalt cone with a lava-filled summit crater ----
+  const v = volcanoInfo(x, z);
+  if (v) {
+    const coneAt = dd => SURFACE_BASE + 12 + Math.max(0, (1 - dd / v.R)) * 62;
+    const craterR = 11;
+    let surf = coneAt(v.d);
+    if (v.d < craterR) {
+      const rimY = coneAt(craterR);
+      surf = rimY - (1 - v.d / craterR) * 15;     // dip into a bowl
+      lavaTop = Math.floor(rimY - 2);             // molten lake near the rim
+    }
+    const ch2 = Math.floor(Math.max(h, surf));
+    if (ch2 >= h) { h = Math.min(H - 14, ch2); biome = 'volcano'; if (lavaTop) lavaTop = Math.min(H - 13, lavaTop); }
+    else lavaTop = 0;
+  }
+  // ---- city: flatten to a buildable plate ----
+  if (biome !== 'volcano' && cityInfo(x, z)) { h = SURFACE_BASE; biome = 'city'; }
+  const info = { h, biome, lavaTop };
   colCache.set(key, info);
   return info;
 }
@@ -1996,6 +2136,71 @@ function carveSphere(cx, cy, cz, r) {
   }
 }
 
+// fill a single volcano column: basalt cone, magma veins, summit lava lake
+function genVolcanoColumn(ch, lx, lz, x, z, h, lavaTop) {
+  const data = ch.data, counts = ch.counts, base = di(lx, 0, lz);
+  for (let y = 0; y <= h; y++) {
+    let t;
+    if (y === 0) t = BEDROCK;
+    else if (y >= h - 1) t = (hash3(x, y, z) < 0.22 ? MAGMA : BASALT);
+    else if (y > h - 7) t = (hash3(x * 0.5, y, z * 0.5) < 0.18 ? MAGMA : BASALT);
+    else if (y < 30) t = (hash3(x, y, z) < 0.3 ? DEEPSLATE : STONE);
+    else t = (hash3(x * 0.3, y * 0.3, z * 0.3) < 0.10 ? MAGMA : STONE);
+    data[base + y] = t; counts[(y / SEC_H) | 0]++;
+  }
+  if (lavaTop > h) {
+    for (let y = h + 1; y <= lavaTop && y < H - 2; y++) { data[base + y] = LAVA; counts[(y / SEC_H) | 0]++; }
+  }
+}
+
+// fill a single city column: streets, plazas, and hollow brick/glass buildings
+function genCityColumn(ch, lx, lz, x, z, h) {
+  const data = ch.data, counts = ch.counts, base = di(lx, 0, lz);
+  const set = (y, t) => { data[base + y] = t; counts[(y / SEC_H) | 0]++; };
+  for (let y = 0; y < h; y++) {
+    let t = y === 0 ? BEDROCK : (y < 30 ? (hash3(x, y, z) < 0.3 ? DEEPSLATE : STONE) : (y < h - 4 ? oreFor(x, y, z, h) : DIRT));
+    set(y, t);
+  }
+  const CELL = 11;
+  const lcx = ((x % CELL) + CELL) % CELL, lcz = ((z % CELL) + CELL) % CELL;
+  const street = lcx < 3 || lcz < 3;
+  if (street) {
+    set(h, COBBLE);                       // road surface
+    // street lamps at block corners
+    if (lcx === 0 && lcz === 0) { set(h + 1, COBBLE); set(h + 2, COBBLE); set(h + 3, SEA_LANTERN); }
+    return;
+  }
+  // building footprint (8x8 inside the cell)
+  const gx = Math.floor(x / CELL), gz = Math.floor(z / CELL);
+  const r = hash2(gx * 3.7 + 1, gz * 3.7 + 8);
+  const isShop = hash2(gx * 2.3 + 7, gz * 2.3 + 4) < 0.34;     // some buildings are shops
+  const wools = [WOOL_RED, WOOL_ORANGE, WOOL_YELLOW, WOOL_GREEN, WOOL_BLUE, WOOL_PURPLE, WOOL_PINK];
+  const mats = [STONE_BRICKS, BRICK, QUARTZ_BLOCK, TERRACOTTA, MARBLE, DARK_PLANKS];
+  const bh = isShop ? (4 + Math.floor(hash2(gx * 5.1 + 2, gz * 5.1 + 3) * 3))      // shops: 4..6 tall
+                    : (7 + Math.floor(hash2(gx * 5.1 + 2, gz * 5.1 + 3) * 12));    // towers: 7..18
+  const wall = isShop ? wools[(r * wools.length) | 0] : mats[(r * mats.length) | 0];
+  set(h, STONE_BRICKS);                   // foundation
+  const onEdge = (lcx === 3 || lcx === 10 || lcz === 3 || lcz === 10);
+  const frontSide = (lcz === 3);          // the -Z side is the storefront/entrance
+  const doorCol = (frontSide && (lcx === 6 || lcx === 7));
+  for (let y = h + 1; y <= h + bh; y++) {
+    if (y === h + bh) { set(y, isShop ? wall : wall); if (isShop && lcx === 6 && lcz === 6) set(y + 1, SEA_LANTERN); continue; } // roof (+ shop sign light)
+    if (onEdge) {
+      if (doorCol && y <= h + 2) continue;                   // doorway
+      if (isShop) {
+        // big glass storefront on the front, wool elsewhere
+        const storefront = frontSide && y <= h + 3 && !(lcx === 3 || lcx === 10);
+        set(y, storefront ? GLASS : wall);
+      } else {
+        const isWindow = ((y - h) % 3 === 2) && !(lcx === 3 && lcz === 3) && !(lcx === 10 && lcz === 10);
+        set(y, isWindow ? GLASS : wall);
+      }
+    } else {
+      if ((y - h) % 4 === 0) set(y, STONE_BRICKS);           // interior floor slabs
+    }
+  }
+}
+
 function generateChunk(cx, cz) {
   const existing = chunks.get(ck(cx, cz));
   if (existing) return existing;
@@ -2021,7 +2226,9 @@ function generateChunk(cx, cz) {
   for (let lx = 0; lx < CHUNK; lx++) {
     for (let lz = 0; lz < CHUNK; lz++) {
       const x = cx * CHUNK + lx, z = cz * CHUNK + lz;
-      const { h, biome } = terrainInfo(x, z);
+      const { h, biome, lavaTop } = terrainInfo(x, z);
+      if (biome === 'volcano') { genVolcanoColumn(ch, lx, lz, x, z, h, lavaTop); continue; }
+      if (biome === 'city') { genCityColumn(ch, lx, lz, x, z, h); continue; }
       const beach = h <= SEA_LEVEL + 1;
       const underLake = h < SEA_LEVEL;
       const base = di(lx, 0, lz);
@@ -2034,11 +2241,16 @@ function generateChunk(cx, cz) {
             const threshold = 0.665 - Math.min(depth, 10) * 0.006;
             if (caveNoise(x, y, z) > threshold) continue;
           }
+          const qsPatch = biome === 'desert' && hash2(Math.floor(x / 5) * 5 + 13, Math.floor(z / 5) * 5 + 13) > 0.88;
           if (y === h) {
             if (biome === 'desert' || beach) t = SAND;
             else if (biome === 'mountain' && h >= SURFACE_BASE + 28) t = SNOW;
             else if (biome === 'mountain' && h >= SURFACE_BASE + 21) t = STONE;
             else t = GRASS;
+            // quicksand pits in the desert surface
+            if (qsPatch) t = QUICKSAND;
+          } else if (qsPatch && depth <= 5) {
+            t = QUICKSAND;          // deep pit — sink several blocks before hitting solid ground
           } else if (depth <= 3) {
             if (biome === 'desert' || beach) t = SAND;
             else if (biome === 'mountain' && h >= SURFACE_BASE + 21) t = STONE;
@@ -2078,7 +2290,8 @@ function generateChunk(cx, cz) {
   if (hash2(cx * 13.7, cz * 9.9) > 0.88) {
     let x = x0 + 4 + hash2(cx * 17.3, cz * 31.7) * (CHUNK - 8);
     let z = z0 + 4 + hash2(cx * 47.9, cz * 11.3) * (CHUNK - 8);
-    let y = terrainInfo(Math.floor(x), Math.floor(z)).h - 9;
+    const si = terrainInfo(Math.floor(x), Math.floor(z));
+    let y = (si.biome === 'volcano' || si.biome === 'city' ? SURFACE_BASE : si.h) - 9;
     let ang = hash2(cx * 3.1, cz * 7.7) * Math.PI * 2;
     let pitchA = -0.55 - hash2(cx * 9.7, cz * 5.3) * 0.3;
     for (let stepNo = 0; stepNo < 160 && y > 10; stepNo++) {
@@ -2318,6 +2531,25 @@ let portalCharge = 0;        // builds up while standing on a portal
 let portalCooldown = 0;      // grace period right after travelling
 let pendingPortalTarget = null;
 
+// free chunks (data + meshes) that are far from the player so the rendered set stays bounded
+function unloadFarChunks() {
+  const pcx = Math.floor(player.x / CHUNK), pcz = Math.floor(player.z / CHUNK);
+  const maxD = RENDER_RADIUS + 3;
+  for (const [key, ch] of chunks) {
+    if (Math.abs(ch.cx - pcx) > maxD || Math.abs(ch.cz - pcz) > maxD) {
+      for (let s = 0; s < SECTIONS; s++) {
+        const sec = ch.sections[s];
+        if (sec) {
+          if (sec.meshO) { scene.remove(sec.meshO); sec.meshO.geometry.dispose(); }
+          if (sec.meshT) { scene.remove(sec.meshT); sec.meshT.geometry.dispose(); }
+          ch.sections[s] = null;
+        }
+      }
+      chunks.delete(key);
+    }
+  }
+}
+
 function clearActiveDimMeshes() {
   for (const ch of chunks.values()) {
     for (let s = 0; s < SECTIONS; s++) {
@@ -2344,6 +2576,11 @@ function travelTo(dimId) {
   // remember where we were so a return portal can drop us back near home
   DIMS[currentDim].lastPos = { x: player.x, y: player.y, z: player.z };
   clearActiveDimMeshes();
+  if (typeof clearCars === 'function') clearCars();
+  if (typeof clearEmbers === 'function') clearEmbers();
+  if (lavaBombs && lavaBombs.length) { for (const b of lavaBombs) { scene.remove(b.mesh); b.mesh.geometry.dispose(); b.mesh.material.dispose(); } lavaBombs.length = 0; }
+  removeBlackHole();
+  tsunami = null; flood = null; quakeTimer = 0;
 
   currentDim = dimId;
   const d = DIMS[dimId];
@@ -2635,6 +2872,529 @@ function explodeTNT(x0, y0, z0) {
           if (t === TNT && !(x2 === x && y2 === y && z2 === z)) { queue.push([x2, y2, z2]); }
           setBlock(x2, y2, z2, AIR);
         }
+  }
+}
+
+// Nuke — carves the biggest crater the engine can handle without freezing.
+// (A literal 1000-wide / 1000-tall crater is impossible: the world is only 256 tall,
+//  and ~250 million block edits would crash the browser. This is the safe maximum.)
+const NUKE_RADIUS = IS_MOBILE_DEVICE ? 28 : 42;
+function detonateNuke(x0, y0, z0) {
+  const R = NUKE_RADIUS, R2 = R * R;
+  // carve a hemisphere-ish crater: full sphere below the blast, open dome above
+  for (let dx = -R; dx <= R; dx++)
+    for (let dz = -R; dz <= R; dz++) {
+      const horiz = dx * dx + dz * dz;
+      if (horiz > R2) continue;
+      // depth of the crater at this column (deepest at the centre)
+      const reach = Math.sqrt(R2 - horiz);
+      const topY = Math.min(H - 2, Math.floor(y0 + reach * 0.55));
+      const botY = Math.max(1, Math.floor(y0 - reach));
+      for (let y = botY; y <= topY; y++) {
+        const t = getBlock(x0 + dx, y, z0 + dz);
+        if (t === AIR || t === BEDROCK) continue;
+        setBlock(x0 + dx, y, z0 + dz, AIR);
+      }
+    }
+  // obliterate every mob in the blast
+  for (let i = mobs.length - 1; i >= 0; i--) {
+    const m = mobs[i];
+    if (Math.hypot(m.x - x0, m.y - y0, m.z - z0) <= R + 4) removeMob(i);
+  }
+  // hurt the player if they're standing in it
+  if (Math.hypot(player.x - x0, player.y - y0, player.z - z0) <= R) hurt(18);
+  SFX.explode();
+  // bright flash
+  flashScreen();
+  flashMsg('💥 NUKE');
+}
+function flashScreen() {
+  let f = document.getElementById('nukeFlash');
+  if (!f) {
+    f = document.createElement('div');
+    f.id = 'nukeFlash';
+    f.style.cssText = 'position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:20;transition:opacity .5s;';
+    document.body.appendChild(f);
+  }
+  f.style.transition = 'none'; f.style.opacity = '0.95';
+  setTimeout(() => { f.style.transition = 'opacity .6s'; f.style.opacity = '0'; }, 30);
+}
+
+// ---- Black hole: realistic accretion disk + photon ring, pulls in matter as spiralling debris ----
+let blackHole = null;
+const bhDebris = [];
+const BH_DEBRIS_MAX = IS_MOBILE_DEVICE ? 40 : 90;
+
+function debrisColor(t) {
+  // deterministic varied colour per block type so debris looks like torn-off material
+  const h = (t * 2654435761) >>> 0;
+  return ((h & 0x7f7f7f) | 0x404040);
+}
+function spawnDebris(x, y, z, t, center) {
+  if (bhDebris.length >= BH_DEBRIS_MAX) return;
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), new THREE.MeshBasicMaterial({ color: debrisColor(t) }));
+  const pos = new THREE.Vector3(x + 0.5, y + 0.5, z + 0.5);
+  m.position.copy(pos);
+  scene.add(m);
+  // give it an orbital (tangential) velocity so it spirals inward like an accretion stream
+  const toC = new THREE.Vector3(center.x - pos.x, center.y - pos.y, center.z - pos.z);
+  const dist = toC.length() || 1;
+  const radial = toC.clone().multiplyScalar(1 / dist);
+  const tang = new THREE.Vector3(-radial.z, 0, radial.x).normalize();
+  const vel = tang.multiplyScalar(6 + Math.random() * 4).addScaledVector(radial, 2);
+  bhDebris.push({ mesh: m, vel, life: 2.2 + Math.random() });
+}
+function clearDebris() {
+  for (const d of bhDebris) { scene.remove(d.mesh); d.mesh.geometry.dispose(); d.mesh.material.dispose(); }
+  bhDebris.length = 0;
+}
+function updateDebris(dt, b) {
+  for (let i = bhDebris.length - 1; i >= 0; i--) {
+    const d = bhDebris[i]; d.life -= dt;
+    const p = d.mesh.position;
+    const tx = b.x - p.x, ty = b.y - p.y, tz = b.z - p.z;
+    const dist = Math.hypot(tx, ty, tz) || 1;
+    // inverse-square gravity toward the singularity
+    const g = Math.min(140, 90 / (dist * dist)) * dt;
+    d.vel.x += tx / dist * g * 30 * dt; d.vel.y += ty / dist * g * 30 * dt; d.vel.z += tz / dist * g * 30 * dt;
+    p.x += d.vel.x * dt; p.y += d.vel.y * dt; p.z += d.vel.z * dt;
+    d.mesh.rotation.x += dt * 6; d.mesh.rotation.y += dt * 5;
+    const s = Math.max(0.05, Math.min(1, dist / 6));
+    d.mesh.scale.setScalar(s);
+    if (dist < 1.6 || d.life <= 0) { scene.remove(d.mesh); d.mesh.geometry.dispose(); d.mesh.material.dispose(); bhDebris.splice(i, 1); }
+  }
+}
+
+function spawnBlackHole(x, y, z) {
+  if (blackHole) removeBlackHole();
+  const g = new THREE.Group();
+  // event horizon — pure black sphere
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(2.0, 20, 20), new THREE.MeshBasicMaterial({ color: 0x000000 })));
+  // photon ring — thin bright halo hugging the horizon
+  const photon = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.14, 10, 36), new THREE.MeshBasicMaterial({ color: 0xfff4d0 }));
+  g.add(photon);
+  // accretion disk — concentric glowing rings, hot (white/blue) inside, cooler (orange) outside
+  const disk = new THREE.Group();
+  const rings = [
+    [3.2, 0.55, 0xffffff], [4.0, 0.5, 0x9fd0ff], [4.9, 0.42, 0xffd27a],
+    [5.9, 0.34, 0xff9a3c], [7.0, 0.26, 0xd8521f],
+  ];
+  for (const [r, t, col] of rings) {
+    const m = new THREE.Mesh(new THREE.TorusGeometry(r, t, 8, 40), new THREE.MeshBasicMaterial({ color: col }));
+    m.rotation.x = Math.PI / 2;
+    disk.add(m);
+  }
+  disk.rotation.x = 0.42;   // tilt the disk for a 3D look
+  g.add(disk);
+  g.position.set(x + 0.5, y + 0.5, z + 0.5);
+  scene.add(g);
+  blackHole = { x: x + 0.5, y: y + 0.5, z: z + 0.5, life: 14, carveR: 2, maxR: IS_MOBILE_DEVICE ? 9 : 13, mesh: g, disk, photon };
+  SFX.explode();
+  flashMsg('🕳️ Black hole!');
+}
+function removeBlackHole() {
+  if (!blackHole) return;
+  scene.remove(blackHole.mesh);
+  blackHole.mesh.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+  blackHole = null;
+  clearDebris();
+}
+function updateBlackHole(dt) {
+  if (!blackHole) { if (bhDebris.length) clearDebris(); return; }
+  const b = blackHole; b.life -= dt;
+  b.disk.rotation.z += dt * 5;       // disk spins fast
+  b.photon.rotation.z += dt * 2;
+  b.mesh.rotation.y += dt * 0.6;
+  // inverse-square pull on the player
+  const dxp = b.x - player.x, dyp = b.y - player.y, dzp = b.z - player.z;
+  const dist = Math.hypot(dxp, dyp, dzp) || 1;
+  if (dist < 48) {
+    const pull = Math.min(40, 220 / (dist * dist)) * dt;
+    player.x += dxp / dist * pull; player.z += dzp / dist * pull; player.vy += dyp / dist * pull;
+    if (dist < 3) hurt(12);
+  }
+  // pull + consume mobs
+  for (let i = mobs.length - 1; i >= 0; i--) {
+    const m = mobs[i]; const d = Math.hypot(m.x - b.x, m.y - b.y, m.z - b.z) || 1;
+    if (d < 48) { const f = Math.min(60, 260 / (d * d)) * dt; m.x += (b.x - m.x) / d * f; m.z += (b.z - m.z) / d * f; m.y += (b.y - m.y) / d * f; if (d < 3) removeMob(i); }
+  }
+  // tear off blocks while growing — each removed block flings inward as debris
+  if (b.carveR < b.maxR) {
+    b.carveR += dt * 3.5;
+    const R = Math.min(b.maxR, Math.floor(b.carveR)), R2 = R * R, inner = (R - 1.7) * (R - 1.7);
+    let edits = 0;
+    const center = b;
+    for (let dx = -R; dx <= R && edits < 600; dx++)
+      for (let dy = -R; dy <= R && edits < 600; dy++)
+        for (let dz = -R; dz <= R && edits < 600; dz++) {
+          const dd = dx * dx + dy * dy + dz * dz;
+          if (dd > R2) continue;
+          const wx = (b.x + dx) | 0, wy = (b.y + dy) | 0, wz = (b.z + dz) | 0;
+          const t = getBlock(wx, wy, wz);
+          if (t !== AIR && t !== BEDROCK) {
+            if (dd > inner && Math.random() < 0.06) spawnDebris(wx, wy, wz, t, center);  // only the frontier flings debris
+            setBlock(wx, wy, wz, AIR); edits++;
+          }
+        }
+  }
+  updateDebris(dt, b);
+  if (b.life <= 0) removeBlackHole();
+}
+
+// ---- Tsunami: a moving wall of water that floods the land, then drains away ----
+let tsunami = null;
+function spawnTsunami(x, z) {
+  const dx = -Math.sin(yaw), dz = -Math.cos(yaw);
+  tsunami = { x: x + 0.5, z: z + 0.5, dirX: dx, dirZ: dz, life: 8, front: 0, height: 9, phase: 'surge', placed: [], drainIdx: 0, linger: 7, drainAcc: 0 };
+  SFX.splash();
+  flashMsg('🌊 Tsunami!');
+}
+function updateTsunami(dt) {
+  if (!tsunami) return;
+  const w = tsunami;
+  if (w.phase === 'surge') {
+    w.life -= dt;
+    w.front += 9 * dt;
+    const half = IS_MOBILE_DEVICE ? 16 : 26;
+    const px = -w.dirZ, pz = w.dirX;
+    const cx = w.x + w.dirX * w.front, cz = w.z + w.dirZ * w.front;
+    let cols = 0, cap = IS_MOBILE_DEVICE ? 60 : 110;
+    for (let s = -half; s <= half && cols < cap; s++) {
+      const wx = Math.floor(cx + px * s), wz = Math.floor(cz + pz * s);
+      const surf = surfaceYAt(wx, wz);
+      const topY = Math.max(surf, SEA_LEVEL) + w.height;
+      for (let y = surf; y <= topY && y < H - 2; y++) {
+        if (getBlock(wx, y, wz) === AIR) { setBlock(wx, y, wz, WATER); w.placed.push(wx, y, wz); }
+      }
+      cols++;
+    }
+    if (w.life <= 0) w.phase = 'linger';
+  } else if (w.phase === 'linger') {
+    // water sits and floods the land for a while before receding
+    w.linger -= dt;
+    if (w.linger <= 0) { w.phase = 'drain'; flashMsg('🌊 The water recedes…'); }
+  } else {
+    // drain gradually at a steady rate (frame-rate independent) so the water recedes, not vanishes
+    const rate = IS_MOBILE_DEVICE ? 1800 : 2800;   // cells removed per second
+    w.drainAcc += dt;
+    let budget = Math.floor(w.drainAcc * rate);
+    if (budget > 0) {
+      w.drainAcc -= budget / rate;
+      let n = 0;
+      while (w.drainIdx < w.placed.length && n < budget) {
+        const wx = w.placed[w.drainIdx], wy = w.placed[w.drainIdx + 1], wz = w.placed[w.drainIdx + 2];
+        w.drainIdx += 3; n++;
+        if (getBlock(wx, wy, wz) === WATER) setBlock(wx, wy, wz, AIR);
+      }
+      if (w.drainIdx >= w.placed.length) tsunami = null;
+    }
+  }
+}
+
+// ---- Earthquake: screen shake, ground fissures, and falling damage ----
+let quakeTimer = 0, quakeHurtAcc = 0;
+function triggerEarthquake() {
+  quakeTimer = 7; quakeHurtAcc = 0;
+  SFX.explode(); flashMsg('🌐 Earthquake!');
+  const px = Math.floor(player.x), pz = Math.floor(player.z);
+  // tear open several fissures around the player
+  for (let i = 0; i < 7; i++) {
+    let fx = px + (Math.random() * 60 - 30 | 0), fz = pz + (Math.random() * 60 - 30 | 0);
+    const len = 8 + (Math.random() * 14 | 0), horiz = Math.random() < 0.5;
+    for (let s = 0; s < len; s++) {
+      const wx = horiz ? fx + s : fx, wz = horiz ? fz : fz + s;
+      const surf = surfaceYAt(wx, wz);
+      for (let y = surf; y > surf - 7 && y > 1; y--) setBlock(wx, y, wz, AIR);
+      // a little crumbled rubble at the lip
+      if (Math.random() < 0.3) setBlock(wx + (horiz ? 0 : 1), surf, wz + (horiz ? 1 : 0), COBBLE);
+    }
+  }
+}
+function updateQuake(dt) {
+  if (quakeTimer <= 0) return;
+  quakeTimer -= dt;
+  quakeHurtAcc += dt;
+  if (quakeHurtAcc >= 1.4) { quakeHurtAcc = 0; if (!player.flying) hurt(2); }   // shaken about
+  // camera shake is applied in the loop (needs the camera after updatePlayer)
+}
+
+// ---- Flood: water rises across the area around the player, holds, then drains ----
+let flood = null;
+function triggerFlood() {
+  flood = {
+    cx: Math.floor(player.x), cz: Math.floor(player.z),
+    R: IS_MOBILE_DEVICE ? 26 : 42, level: SEA_LEVEL, target: SEA_LEVEL + 9,
+    phase: 'rise', hold: 8, riseAcc: 0, placed: [], drainIdx: 0, drainAcc: 0,
+  };
+  SFX.splash(); flashMsg('🌊 Flood rising!');
+}
+function floodFillLayer(f, y) {
+  const R2 = f.R * f.R;
+  for (let dx = -f.R; dx <= f.R; dx++)
+    for (let dz = -f.R; dz <= f.R; dz++) {
+      if (dx * dx + dz * dz > R2) continue;
+      const wx = f.cx + dx, wz = f.cz + dz;
+      if (getBlock(wx, y, wz) === AIR && y < H - 2) { setBlock(wx, y, wz, WATER); f.placed.push(wx, y, wz); }
+    }
+}
+function updateFlood(dt) {
+  if (!flood) return;
+  const f = flood;
+  if (f.phase === 'rise') {
+    f.riseAcc += dt;
+    if (f.riseAcc >= 0.5) {
+      f.riseAcc = 0;
+      if (f.level < f.target) { f.level++; floodFillLayer(f, f.level); }
+      else f.phase = 'hold';
+    }
+  } else if (f.phase === 'hold') {
+    f.hold -= dt;
+    if (f.hold <= 0) { f.phase = 'drain'; flashMsg('🌊 Flood receding…'); }
+  } else {
+    const rate = IS_MOBILE_DEVICE ? 1600 : 2600;
+    f.drainAcc += dt;
+    let budget = Math.floor(f.drainAcc * rate);
+    if (budget > 0) {
+      f.drainAcc -= budget / rate;
+      let n = 0;
+      while (f.drainIdx < f.placed.length && n < budget) {
+        const wx = f.placed[f.drainIdx], wy = f.placed[f.drainIdx + 1], wz = f.placed[f.drainIdx + 2];
+        f.drainIdx += 3; n++;
+        if (getBlock(wx, wy, wz) === WATER) setBlock(wx, wy, wz, AIR);
+      }
+      if (f.drainIdx >= f.placed.length) flood = null;
+    }
+  }
+}
+
+// ---- Volcano eruptions: erupting craters fling arcing lava bombs ----
+let lavaBombs = [];
+let eruptTimer = 12 + Math.random() * 10;
+function nearestVolcano(px, pz) {
+  const G = 200, pgx = Math.floor(px / G), pgz = Math.floor(pz / G);
+  let best = null, bestD = 1e9;
+  for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+    const gx = pgx + a, gz = pgz + b;
+    if (hash2(gx * 7.3 + 1.1, gz * 7.3 + 2.7) < VOLCANO_T) continue;
+    const cxp = gx * G + 45 + hash2(gx * 3.1 + 4, gz * 3.1 + 9) * 110;
+    const czp = gz * G + 45 + hash2(gx * 5.7 + 2, gz * 5.7 + 6) * 110;
+    const d = Math.hypot(px - cxp, pz - czp);
+    if (d < bestD) { bestD = d; best = { x: cxp, z: czp, d }; }
+  }
+  return best;
+}
+function spawnLavaBomb(x, y, z, vx, vy, vz) {
+  if (lavaBombs.length >= (IS_MOBILE_DEVICE ? 24 : 48)) return;
+  const m = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff7a1a }));
+  m.position.set(x, y, z); scene.add(m);
+  lavaBombs.push({ mesh: m, x, y, z, vx, vy, vz, life: 7 });
+}
+function eruptVolcano(v) {
+  const topY = surfaceYAt(Math.floor(v.x), Math.floor(v.z));   // first open cell above the crater lava
+  const n = IS_MOBILE_DEVICE ? 4 : 7;
+  for (let i = 0; i < n; i++) {
+    const ang = Math.random() * Math.PI * 2, sp = 5 + Math.random() * 8;
+    spawnLavaBomb(v.x, topY + 4, v.z, Math.cos(ang) * sp, 10 + Math.random() * 7, Math.sin(ang) * sp);
+  }
+  // lava rivers pour down the slopes (start beyond the crater rim, on the descending cone)
+  const streams = IS_MOBILE_DEVICE ? 2 : 4;
+  for (let i = 0; i < streams; i++) {
+    const a = Math.random() * Math.PI * 2, rr = 15 + Math.random() * 9;
+    lavaFlowFrom(Math.floor(v.x + Math.cos(a) * rr), Math.floor(v.z + Math.sin(a) * rr));
+  }
+  SFX.explode(); flashMsg('🌋 Eruption!');
+}
+// trace a lava river that follows the steepest descent down the volcano slope
+function lavaFlowFrom(sx, sz) {
+  let x = sx, z = sz;
+  const steps = IS_MOBILE_DEVICE ? 26 : 44;
+  for (let step = 0; step < steps; step++) {
+    const sy = surfaceYAt(x, z, SURFACE_BASE + 50);
+    if (sy >= H - 2 || sy < 2) break;
+    setBlock(x, sy, z, LAVA);
+    let best = null, bestY = sy + 0.5;
+    for (const [ox, oz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+      const ny = surfaceYAt(x + ox, z + oz, sy);
+      if (ny < bestY) { bestY = ny; best = [x + ox, z + oz]; }
+    }
+    if (!best) break;
+    x = best[0]; z = best[1];
+  }
+}
+function disasterActive() { return quakeTimer > 0 || !!flood || lavaBombs.length > 0; }
+
+// ---- City traffic: cars drive along the streets ----
+let cars = [];
+let carTimer = 2;
+function clearCars() { for (const c of cars) { scene.remove(c.mesh); c.mesh.geometry.dispose(); c.mesh.material.dispose(); } cars.length = 0; }
+function spawnCar() {
+  const CELL = 11;
+  const along = Math.random() < 0.5;
+  const cross = along ? player.z : player.x;
+  const lane = Math.floor(cross / CELL) * CELL + 1;
+  const start = (along ? player.x : player.z) + (Math.random() < 0.5 ? -55 : 55);
+  const speed = (6 + Math.random() * 5) * (Math.random() < 0.5 ? 1 : -1);
+  const colors = [0xd03030, 0x3060d0, 0xe8e8e8, 0x202028, 0xe0c020, 0x30a060];
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.65, 1.7), new THREE.MeshBasicMaterial({ color: colors[Math.random() * colors.length | 0] }));
+  let x, z, vx, vz;
+  if (along) { x = start; z = lane + 0.5; vx = speed; vz = 0; mesh.rotation.y = Math.PI / 2; }
+  else { x = lane + 0.5; z = start; vx = 0; vz = speed; }
+  mesh.position.set(x, SURFACE_BASE + 1, z); scene.add(mesh);
+  cars.push({ mesh, x, z, vx, vz, life: 16 });
+}
+function trafficFactor() {
+  const t = timeOfDay;
+  if (t < 0.18 || t > 0.80) return 0.25;                 // night: sparse traffic
+  let f = 0.65;
+  f += 0.45 * Math.exp(-((t - 0.27) * (t - 0.27)) / 0.0015);   // morning rush
+  f += 0.45 * Math.exp(-((t - 0.66) * (t - 0.66)) / 0.0015);   // evening rush
+  return Math.min(1.4, f);
+}
+function updateCityTraffic(dt) {
+  if (currentDim !== 'overworld') { if (cars.length) clearCars(); return; }
+  const factor = trafficFactor();
+  carTimer -= dt;
+  if (carTimer <= 0) {
+    carTimer = 2.2 / factor;
+    const cap = Math.round((IS_MOBILE_DEVICE ? 4 : 8) * factor);
+    if (cityInfo(Math.floor(player.x), Math.floor(player.z)) && cars.length < cap) spawnCar();
+  }
+  const quaking = quakeTimer > 0;
+  for (let i = cars.length - 1; i >= 0; i--) {
+    const c = cars[i]; c.life -= dt;
+    if (quaking) {
+      // earthquake: cars stall and judder in the chaos
+      c.crashed = true;
+      c.mesh.rotation.z = (Math.random() - 0.5) * 0.4;
+      c.mesh.rotation.x = (Math.random() - 0.5) * 0.3;
+    } else if (!c.crashed) {
+      // brake for the player if they step into the road ahead
+      const near = Math.hypot(c.x - player.x, c.z - player.z) < 4.5;
+      if (!near) { c.x += c.vx * dt; c.z += c.vz * dt; }
+    }
+    const sy = surfaceYAt(Math.floor(c.x), Math.floor(c.z), SURFACE_BASE + 2);
+    c.mesh.position.set(c.x, sy + 0.5, c.z);
+    // crashed cars clear out a bit sooner once the quake passes
+    if (c.life <= 0 || (c.crashed && !quaking && c.life < 6) || Math.hypot(c.x - player.x, c.z - player.z) > 95) {
+      scene.remove(c.mesh); c.mesh.geometry.dispose(); c.mesh.material.dispose(); cars.splice(i, 1);
+    }
+  }
+}
+function updateLavaBombs(dt) {
+  for (let i = lavaBombs.length - 1; i >= 0; i--) {
+    const b = lavaBombs[i]; b.life -= dt;
+    b.vy -= 22 * dt;
+    b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
+    b.mesh.position.set(b.x, b.y, b.z);
+    const gx = Math.floor(b.x), gy = Math.floor(b.y), gz = Math.floor(b.z);
+    const hitBlock = gy >= 1 && gy < H && isSolid(getBlock(gx, gy, gz));
+    if (hitBlock || b.y < 1 || b.life <= 0) {
+      if (gy >= 1 && gy < H - 1) {
+        const sy = surfaceYAt(gx, gz, gy);
+        if (sy < H - 2) setBlock(gx, sy, gz, LAVA);
+        // scatter a little magma/lava around the impact
+        for (const [ox, oz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          if (Math.random() < 0.5) { const s2 = surfaceYAt(gx + ox, gz + oz, sy); if (getBlock(gx + ox, s2, gz + oz) === AIR && s2 < H - 2) setBlock(gx + ox, s2, gz + oz, MAGMA); }
+        }
+        if (Math.hypot(player.x - b.x, player.z - b.z) < 3) hurt(6);
+      }
+      scene.remove(b.mesh); b.mesh.geometry.dispose(); b.mesh.material.dispose(); lavaBombs.splice(i, 1);
+    }
+  }
+}
+// ---- Ash clouds and falling embers from erupting volcanoes ----
+let embers = [];
+let ashfall = null;
+const EMBER_MAX = IS_MOBILE_DEVICE ? 16 : 32;
+function spawnEmber(x, y, z, floorY) {
+  if (embers.length >= EMBER_MAX) return;
+  const col = Math.random() < 0.5 ? 0xff7a1a : (Math.random() < 0.5 ? 0x3a2a2a : 0xffae3c);
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.18), new THREE.MeshBasicMaterial({ color: col }));
+  m.position.set(x, y, z); scene.add(m);
+  embers.push({ mesh: m, x, y, z, vx: (Math.random() - 0.5) * 2, vy: -2 - Math.random() * 3, vz: (Math.random() - 0.5) * 2, life: 4 + Math.random() * 3, floorY: floorY });
+}
+function clearEmbers() {
+  for (const e of embers) { scene.remove(e.mesh); e.mesh.geometry.dispose(); e.mesh.material.dispose(); }
+  embers.length = 0;
+  if (ashfall) { scene.remove(ashfall.cloud); ashfall.cloud.geometry.dispose(); ashfall.cloud.material.dispose(); ashfall = null; }
+}
+function startAshfall(v) {
+  if (ashfall) { scene.remove(ashfall.cloud); ashfall.cloud.geometry.dispose(); ashfall.cloud.material.dispose(); }
+  const top = terrainInfo(Math.floor(v.x), Math.floor(v.z)).h;
+  const cloud = new THREE.Mesh(new THREE.SphereGeometry(22, 16, 12), new THREE.MeshBasicMaterial({ color: 0x2a2630, transparent: true, opacity: 0.55 }));
+  cloud.scale.y = 0.4;
+  cloud.position.set(v.x, top + 22, v.z);
+  scene.add(cloud);
+  ashfall = { x: v.x, z: v.z, top, timer: 9, cloud };
+}
+function updateEmbersAsh(dt) {
+  // drifting / falling embers (no per-ember ground scan — use a cached floor)
+  for (let i = embers.length - 1; i >= 0; i--) {
+    const e = embers[i]; e.life -= dt; e.vy -= 4 * dt;
+    e.x += e.vx * dt; e.y += e.vy * dt; e.z += e.vz * dt;
+    e.mesh.position.set(e.x, e.y, e.z);
+    if (e.life <= 0 || e.y <= e.floorY) { scene.remove(e.mesh); e.mesh.geometry.dispose(); e.mesh.material.dispose(); embers.splice(i, 1); }
+  }
+  if (ashfall) {
+    ashfall.timer -= dt;
+    ashfall.cloud.rotation.y += dt * 0.15;
+    ashfall.cloud.material.opacity = Math.max(0, 0.55 * (ashfall.timer / 9));
+    // rain a few embers over the area near the player
+    if (Math.hypot(player.x - ashfall.x, player.z - ashfall.z) < 80 && embers.length < EMBER_MAX && Math.random() < 0.6) {
+      const a = Math.random() * Math.PI * 2, r = Math.random() * 36;
+      spawnEmber(ashfall.x + Math.cos(a) * r, ashfall.top + 18 + Math.random() * 8, ashfall.z + Math.sin(a) * r, ashfall.top - 28);
+    }
+    if (ashfall.timer <= 0) { scene.remove(ashfall.cloud); ashfall.cloud.geometry.dispose(); ashfall.cloud.material.dispose(); ashfall = null; }
+  }
+}
+function updateEruptions(dt) {
+  if (currentDim === 'overworld') {
+    eruptTimer -= dt;
+    if (eruptTimer <= 0) {
+      eruptTimer = 22 + Math.random() * 20;
+      const v = nearestVolcano(player.x, player.z);
+      if (v && v.d < 170) { eruptVolcano(v); startAshfall(v); }
+    }
+  }
+  updateLavaBombs(dt);
+  updateEmbersAsh(dt);
+}
+
+// ---- Ambient disasters: quakes/floods that strike on their own ----
+let ambientTimer = 40 + Math.random() * 30;
+function updateAmbientDisasters(dt) {
+  if (currentDim !== 'overworld') return;
+  ambientTimer -= dt;
+  if (ambientTimer <= 0) {
+    ambientTimer = 75 + Math.random() * 70;
+    const r = Math.random();
+    if (r < 0.45 && quakeTimer <= 0) triggerEarthquake();
+    else if (r < 0.7 && !flood) triggerFlood();
+  }
+}
+
+// ---- City NPCs: citizens wander the streets ----
+let citizenTimer = 3;
+function updateCitySpawns(dt) {
+  if (currentDim !== 'overworld') return;
+  citizenTimer -= dt;
+  if (citizenTimer > 0) return;
+  citizenTimer = 4;
+  const inCity = cityInfo(Math.floor(player.x), Math.floor(player.z));
+  let citizens = 0;
+  for (const m of mobs) if (m.kind === 'citizen') citizens++;
+  const cap = IS_MOBILE_DEVICE ? 4 : 7;
+  if (inCity && citizens < cap) {
+    for (let i = 0; i < 2 && citizens + i < cap; i++) {
+      const a = Math.random() * Math.PI * 2, r = 6 + Math.random() * 20;
+      let sx = player.x + Math.cos(a) * r, sz = player.z + Math.sin(a) * r;
+      const CELL = 11;   // snap onto a road lane so they appear on the street, not inside a building
+      if (Math.random() < 0.5) sx = Math.floor(sx / CELL) * CELL + 1; else sz = Math.floor(sz / CELL) * CELL + 1;
+      makeMob('citizen', sx, sz);
+    }
+  } else if (!inCity && citizens > 0) {
+    // despawn citizens once you leave the city
+    for (let i = mobs.length - 1; i >= 0; i--) if (mobs[i].kind === 'citizen' && Math.hypot(mobs[i].x - player.x, mobs[i].z - player.z) > 60) removeMob(i);
   }
 }
 
@@ -2972,6 +3732,11 @@ const RECIPES = [
   { name: 'Shadow Portal x1',  cost: { [OBSIDIAN]: 4, [COAL_ORE]: 4, [REDSTONE_ORE]: 2 }, give: { [PORTAL_SHADOW]: 1 } },
   { name: 'Icerahn Portal x1', cost: { [OBSIDIAN]: 4, [DIAMOND_ORE]: 2, [LAPIS_ORE]: 2 }, give: { [PORTAL_ICERAHN]: 1 } },
   { name: 'Home Portal x1',    cost: { [OBSIDIAN]: 4, [GOLD_ORE]: 2 }, give: { [PORTAL_HOME]: 1 } },
+  { name: 'Aetheria Portal x1',cost: { [OBSIDIAN]: 4, [GOLD_ORE]: 3, [DIAMOND_ORE]: 1 }, give: { [PORTAL_AETHER]: 1 } },
+  { name: 'Nuke x1',           cost: { [REDSTONE_ORE]: 8, [GOLD_ORE]: 4, [DIAMOND_ORE]: 2 }, give: { [NUKE]: 1 } },
+  { name: 'Black Hole Egg x1', cost: { [OBSIDIAN]: 6, [AEONIUM_ORE]: 3, [DIAMOND_ORE]: 2 }, give: { [BLACKHOLE_EGG]: 1 } },
+  { name: 'Tsunami Egg x1',    cost: { [LAPIS_ORE]: 6, [DIAMOND_ORE]: 2, [GOLD_ORE]: 2 }, give: { [TSUNAMI_EGG]: 1 } },
+  { name: 'Quicksand x4',      cost: { [SAND]: 4, [GRAVEL]: 2 }, give: { [QUICKSAND]: 4 } },
   { name: 'Polished Stone x4', cost: { [STONE]: 4 }, give: { [POLISHED_STONE]: 4 }, table: true },
   { name: 'Chiseled Stone x2', cost: { [POLISHED_STONE]: 2 }, give: { [CHISELED]: 2 }, table: true },
   { name: 'Glowstone x1', cost: { [GOLD_ORE]: 1, [COAL_ORE]: 2 }, give: { [GLOWSTONE]: 1 }, table: true },
@@ -3288,6 +4053,20 @@ function breakBlock() {
   if (hit.type === TNT && has('tnt')) {
     explodeTNT(hit.x, hit.y, hit.z);
     SFX.explode();
+    return;
+  }
+  if (hit.type === NUKE) {
+    detonateNuke(hit.x, hit.y, hit.z);
+    return;
+  }
+  if (hit.type === BLACKHOLE_EGG) {
+    setBlock(hit.x, hit.y, hit.z, AIR);
+    spawnBlackHole(hit.x, hit.y, hit.z);
+    return;
+  }
+  if (hit.type === TSUNAMI_EGG) {
+    setBlock(hit.x, hit.y, hit.z, AIR);
+    spawnTsunami(hit.x, hit.z);
     return;
   }
   // vein miner — break the whole connected ore body
@@ -3615,7 +4394,7 @@ function warpTo(dimId) {
 function renderWarp() {
   const list = document.getElementById('warpList');
   list.innerHTML = '';
-  const order = ['overworld', 'emberreach', 'voidreach', 'cleft', 'shadowlands', 'icerahn'];
+  const order = ['overworld', 'emberreach', 'voidreach', 'cleft', 'shadowlands', 'icerahn', 'aetheria'];
   const blurb = {
     overworld: 'Home — grass, oceans, caves.',
     emberreach: 'Fiery underworld of basalt & lava. Ember Imps.',
@@ -3623,6 +4402,7 @@ function renderWarp() {
     cleft: 'Crystal canyons of marble & amethyst. Cleft Crawlers.',
     shadowlands: 'Dim realm of shadowstone. Shadow Stalkers.',
     icerahn: 'Frozen world — home of the Rimewraith boss. ⚠️',
+    aetheria: 'Radiant floating sky-isles of light & gold. ✨',
   };
   for (const id of order) {
     const d = DIMS[id];
@@ -3791,6 +4571,8 @@ document.addEventListener('keydown', (e) => {
   if (e.code === 'KeyX') { if (rank('xray')) aeonSightPulse(); else castHeal(); }
   if (e.code === 'KeyH') castHeal();
   if (e.code === 'KeyN') castLightning();
+  if (e.code === 'KeyG') triggerEarthquake();    // G = earthquake
+  if (e.code === 'KeyJ') triggerFlood();          // J = flood
   if (e.code.startsWith('Digit')) {
     const n = parseInt(e.code.slice(5), 10);
     if (n >= 1 && n <= HOTBAR.length) { selected = n - 1; updateHotbar(); }
@@ -3842,6 +4624,8 @@ function setupMobileControls() {
       else if (action === 'craft') openPanel('craft');
       else if (action === 'forge') openPanel('forge');
       else if (action === 'warp') openPanel('warp');
+      else if (action === 'quake') triggerEarthquake();
+      else if (action === 'flood') triggerFlood();
       else if (action === 'view') { camView = camView === 'first' ? 'third' : 'first'; }
       else if (action === 'fireball') castFireball();
       else if (action === 'heal') castHeal();
@@ -3933,19 +4717,26 @@ function buildHotbarDOM() {
 function updateHotbar() {
   [...hotbarEl.children].forEach((s, i) => s.classList.toggle('active', i === selected));
 }
+let _hudEls = null;
 function updateStatusBars() {
-  document.getElementById('healthTxt').textContent = Math.ceil(health) + '/20';
-  document.getElementById('hungerTxt').textContent = Math.ceil(hunger) + '/20';
-  document.getElementById('healthBar').style.width = (Math.max(0, health) / 20 * 100) + '%';
-  document.getElementById('hungerBar').style.width = (Math.max(0, hunger) / 20 * 100) + '%';
+  if (!_hudEls) {
+    _hudEls = {};
+    for (const id of ['healthTxt','hungerTxt','healthBar','hungerBar','armorTxt','armorBar','lvlTxt','xpTxt','xpBar','manaTxt','manaBar'])
+      _hudEls[id] = document.getElementById(id);
+  }
+  const E = _hudEls;
+  E.healthTxt.textContent = Math.ceil(health) + '/20';
+  E.hungerTxt.textContent = Math.ceil(hunger) + '/20';
+  E.healthBar.style.width = (Math.max(0, health) / 20 * 100) + '%';
+  E.hungerBar.style.width = (Math.max(0, hunger) / 20 * 100) + '%';
   const ap = armorPoints();
-  document.getElementById('armorTxt').textContent = Math.round(ap) + '/20';
-  document.getElementById('armorBar').style.width = (Math.min(20, ap) / 20 * 100) + '%';
-  document.getElementById('lvlTxt').textContent = level;
-  document.getElementById('xpTxt').textContent = xp + '/' + xpNeeded;
-  document.getElementById('xpBar').style.width = (Math.min(1, xp / xpNeeded) * 100) + '%';
-  document.getElementById('manaTxt').textContent = Math.floor(mana) + '/' + maxMana();
-  document.getElementById('manaBar').style.width = (mana / maxMana() * 100) + '%';
+  E.armorTxt.textContent = Math.round(ap) + '/20';
+  E.armorBar.style.width = (Math.min(20, ap) / 20 * 100) + '%';
+  E.lvlTxt.textContent = level;
+  E.xpTxt.textContent = xp + '/' + xpNeeded;
+  E.xpBar.style.width = (Math.min(1, xp / xpNeeded) * 100) + '%';
+  E.manaTxt.textContent = Math.floor(mana) + '/' + maxMana();
+  E.manaBar.style.width = (mana / maxMana() * 100) + '%';
 }
 function hurt(amount) {
   if (creativeMode || hurtCooldown > 0) return;
@@ -3995,12 +4786,21 @@ const MOB_TYPES = {
   cleftcrawler:{ color: 0x3a8088, head: 0x7adcd4, w: 0.7, h: 0.5, hp: 12, xp: 16, hostile: true, dim: 'cleft',       drop: AMETHYST, dmg: 3, speed: 2.0, body: 'spider' },
   shadowstalker:{color: 0x2a1f3a, head: 0x6a3f8a, w: 0.5, h: 1.2, hp: 16, xp: 20, hostile: true, dim: 'shadowlands', drop: SHADOWSTONE, dmg: 4, speed: 3.0 },
   frostwraith: { color: 0xa8d4f0, head: 0xe0f4ff, w: 0.5, h: 1.0, hp: 14, xp: 18, hostile: true, dim: 'icerahn',     drop: CRYSTAL, dmg: 3, speed: 2.4 },
+  lumen:       { color: 0xfff0b0, head: 0xfffce0, w: 0.5, h: 0.7, hp: 10, xp: 14, hostile: false, dim: 'aetheria',   drop: GOLD_ORE },
+  aetherseraph:{ color: 0xe8d070, head: 0xfff4c0, w: 0.6, h: 1.3, hp: 20, xp: 26, hostile: true, dim: 'aetheria',    drop: GLOWSTONE, dmg: 4, speed: 2.6 },
+  // city dwellers (spawned only near cities, not in the normal overworld pool)
+  citizen:     { color: 0x4a6ea8, head: 0xd9b08c, w: 0.5, h: 1.0, hp: 10, xp: 4, hostile: false, dim: 'city', drop: null, speed: 1.4 },
   // boss (Icerahn) — original entity, NOT a copy of any existing character
   rimewraith:  { color: 0x6ea8e0, head: 0xcde8ff, w: 1.2, h: 2.4, hp: 120, xp: 200, hostile: true, dim: 'icerahn', drop: CRYSTAL, dmg: 7, speed: 2.2, boss: true },
 };
 
-function surfaceYAt(x, z) {
+function surfaceYAt(x, z, hintY) {
   const xi = Math.floor(x), zi = Math.floor(z);
+  // fast path: scan a small window around a known height (used by mobs every frame)
+  if (hintY != null) {
+    const top = Math.min(H - 2, (hintY | 0) + 4), bot = Math.max(2, (hintY | 0) - 16);
+    for (let y = top; y >= bot; y--) if (isSolid(getBlock(xi, y, zi))) return y + 1;
+  }
   for (let y = H - 4; y > 1; y--) if (isSolid(getBlock(xi, y, zi))) return y + 1;
   return SURFACE_BASE;
 }
@@ -4171,7 +4971,7 @@ function respawnMobsForDim() {
   const dim = currentDim;
   const pool = Object.keys(MOB_TYPES).filter(k => MOB_TYPES[k].dim === dim && !MOB_TYPES[k].boss);
   if (!pool.length) return;
-  const count = dim === 'overworld' ? 10 : 7;
+  const count = dim === 'overworld' ? (IS_MOBILE_DEVICE ? 5 : 8) : (IS_MOBILE_DEVICE ? 4 : 6);
   for (let i = 0; i < count; i++) {
     const kind = pool[Math.floor(Math.random() * pool.length)];
     const a = Math.random() * Math.PI * 2, r = 12 + Math.random() * 26;
@@ -4250,20 +5050,44 @@ function updateMobs(dt) {
         if (rank('thorns')) m.hp -= rank('thorns');
       }
     } else {
-      m.think -= dt;
-      if (m.think <= 0) { m.think = 1 + Math.random() * 3; m.dir += (Math.random() - 0.5) * 1.8; }
+      const panic = !cfg.hostile && disasterActive();
+      if (panic) {
+        m.dir = Math.atan2(-dxp, -dzp);      // flee away from the danger
+        m.panic = 1; m.stop = false;
+        if (m.inside) { m.inside = false; m.group.visible = true; }   // bolt out of buildings
+      } else if (cfg.dim === 'city') {
+        m.panic = 0;
+        if (m.dwell > 0) {
+          m.dwell -= dt; m.stop = true;
+          if (m.dwell <= 0 && m.inside) { m.inside = false; m.group.visible = true; }   // step back outside
+        } else {
+          m.stop = false;
+          m.think -= dt;
+          if (m.think <= 0) {
+            m.think = 2 + Math.random() * 3;
+            if (Math.random() < 0.4) { m.inside = true; m.group.visible = false; m.dwell = 3 + Math.random() * 3; }  // duck into a building
+            else m.dir += (Math.random() - 0.5) * 2.4;   // change course along the street
+          }
+        }
+      } else {
+        m.panic = 0; m.stop = false;
+        m.think -= dt;
+        if (m.think <= 0) { m.think = 1 + Math.random() * 3; m.dir += (Math.random() - 0.5) * 1.8; }
+      }
     }
 
-    const sp = aggro ? (cfg.speed || 1.6) : (cfg.hostile ? 0.9 : 0.7);
+    const sp = aggro ? (cfg.speed || 1.6) : (m.panic ? 3.4 : (m.stop ? 0 : (cfg.hostile ? 0.9 : (cfg.speed || 0.7))));
     const nx = m.x + Math.sin(m.dir) * sp * dt;
     const nz = m.z + Math.cos(m.dir) * sp * dt;
     // keep them on the surface of whatever dimension we're in
     const groundBelow = isSolid(getBlock(Math.floor(nx), Math.floor(m.y - 0.2), Math.floor(nz)));
     let moved = false;
-    if (groundBelow || surfaceYAt(nx, nz) !== SURFACE_BASE) { m.x = nx; m.z = nz; moved = true; }
+    const stepSurf = surfaceYAt(nx, nz, m.y);
+    const blockedByWall = stepSurf < H && stepSurf > m.y + 1.6;     // can't scale walls/buildings
+    if (!blockedByWall && (groundBelow || stepSurf !== SURFACE_BASE)) { m.x = nx; m.z = nz; moved = true; }
     else { m.dir += 1.5; }
     // snap to ground (gravity-ish)
-    const sy = surfaceYAt(m.x, m.z);
+    const sy = surfaceYAt(m.x, m.z, m.y);
     m.y += (sy - m.y) * Math.min(1, dt * 8);
 
     // walking animation — swing limbs while moving
@@ -4302,6 +5126,7 @@ function updatePlayer(dt) {
   const feet = getBlock(Math.floor(player.x), Math.floor(player.y + 0.3), Math.floor(player.z));
   const head = getBlock(Math.floor(player.x), Math.floor(player.y + EYE), Math.floor(player.z));
   const inWater = (feet === WATER || head === WATER) && !player.flying;
+  const inQuicksand = (feet === QUICKSAND || head === QUICKSAND) && !player.flying;
   waterOverlay.classList.toggle('hidden', head !== WATER);
   if (hurtCooldown > 0) hurtCooldown -= dt;
   if (feet === LAVA || head === LAVA) hurt(3);
@@ -4311,6 +5136,7 @@ function updatePlayer(dt) {
   let speed = player.flying ? (ctrl ? FLY_FAST : FLY_SPEED)
                             : (ctrl ? SPRINT : WALK) * bootMul * moveMultiplier();
   if (inWater) speed *= 0.6;
+  if (inQuicksand) speed *= 0.28;
 
   const gravity = BASE_GRAVITY * (has('moon') ? 0.3 : 1);
   const jumpV = BASE_JUMP * (has('jump') ? 1.45 : 1);
@@ -4343,6 +5169,17 @@ function updatePlayer(dt) {
     player.y += dy;
     if (collides(player.x, player.y, player.z)) player.y -= dy;
     player.vy = 0;
+  } else if (inQuicksand) {
+    // sink slowly; hold jump to struggle out little by little
+    player.vy += gravity * 0.10 * dt;
+    if (keys['KeyA'] || keys['Space']) player.vy = Math.min(player.vy + 18 * dt, 1.4);
+    player.vy = Math.max(player.vy, -1.1);   // slow maximum sink rate
+    const dy = player.vy * dt;
+    player.y += dy;
+    if (collides(player.x, player.y, player.z)) { player.y -= dy; player.vy = 0; }
+    player.onGround = false;
+    airJumpsUsed = 0;
+    if (head === QUICKSAND) hurt(1);          // suffocates if fully submerged
   } else if (inWater) {
     player.vy += gravity * 0.28 * dt;
     if (keys['KeyA'] || keys['Space']) player.vy = Math.min(player.vy + 36 * dt, 3.6);
@@ -4436,18 +5273,26 @@ function updateSelection() {
 }
 
 let last = performance.now();
+let hudAcc = 0;
+let unloadAcc = 0;
 function loop(now) {
   const dt = Math.min((now - last) / 1000, 0.05);
   last = now;
 
   ensureChunksAround(player.x, player.z, RENDER_RADIUS, MAX_CHUNKS_PER_FRAME);
 
+  unloadAcc += dt;
+  if (unloadAcc >= 1.0) { unloadAcc = 0; unloadFarChunks(); }
+
   if (dirtySections.size) {
+    const cap = IS_MOBILE_DEVICE ? 3 : 6;   // spread meshing across frames so moving doesn't hitch
+    let n = 0;
     for (const key of dirtySections) {
       const p = key.split(',');
       rebuildSection(+p[0], +p[1], +p[2]);
+      dirtySections.delete(key);
+      if (++n >= cap) break;
     }
-    dirtySections.clear();
   }
 
   if (locked || mobilePlaying) {
@@ -4456,12 +5301,27 @@ function loop(now) {
     updateSky(dt);
     updateMobs(dt);
     updateProjectiles(dt);
+    updateBlackHole(dt);
+    updateTsunami(dt);
+    updateQuake(dt);
+    updateFlood(dt);
+    updateEruptions(dt);
+    updateAmbientDisasters(dt);
+    updateCitySpawns(dt);
+    updateCityTraffic(dt);
+    if (quakeTimer > 0) {
+      const m = 0.35 * Math.min(1, quakeTimer / 2);
+      camera.position.x += (Math.random() - 0.5) * m;
+      camera.position.y += (Math.random() - 0.5) * m;
+      camera.position.z += (Math.random() - 0.5) * m;
+    }
     // mana regen
     manaRegenAcc += dt * (4 + rank('mana') * 1.5);
     if (manaRegenAcc >= 1) { mana = Math.min(maxMana(), mana + Math.floor(manaRegenAcc)); manaRegenAcc -= Math.floor(manaRegenAcc); }
     // x-ray pulse fade
     if (xrayTimer > 0) { xrayTimer -= dt; if (xrayTimer <= 0) clearXray(); }
-    updateHud();
+    hudAcc += dt;
+    if (hudAcc >= 0.14) { hudAcc = 0; updateHud(); }
   }
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
