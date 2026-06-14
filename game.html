@@ -2,14 +2,23 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f141b">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 <meta name="google-adsense-account" content="ca-pub-2848704978790894">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2848704978790894" crossorigin="anonymous"></script>
 <title>VoxelCraft</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #87b9e6;
-    font-family: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif; user-select: none; }
+    font-family: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif; user-select: none;
+    -webkit-user-select: none; touch-action: none; overscroll-behavior: none;
+    position: fixed; top: 0; left: 0; -webkit-tap-highlight-color: transparent; }
   #game { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
 
   #crosshair { position: fixed; top: 50%; left: 50%; width: 22px; height: 22px;
@@ -66,8 +75,17 @@
   #controls .k { color: #ffe27a; font-weight: bold; text-align: right; }
   #note { margin-top: 16px; font-size: 11px; color: #9fb2c9; max-width: 580px; padding: 0 16px 14px; }
   .hidden { display: none !important; }
-  #loading { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center;
-    justify-content: center; color: #fff; background: #1a2433; font-size: 18px; letter-spacing: 1px; }
+  #loading { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; color: #e7edf3; background: radial-gradient(circle at 50% 40%, #1c2740, #0c1018 70%);
+    font-family: 'Trebuchet MS','Segoe UI',system-ui,sans-serif; text-align: center; padding: 20px; }
+  #loading img { width: 112px; height: 112px; border-radius: 22px; box-shadow: 0 8px 30px rgba(0,0,0,.5); margin-bottom: 18px;
+    animation: loadpulse 1.6s ease-in-out infinite; }
+  #loading .lt { font-size: 26px; font-weight: 800; letter-spacing: 1px; color: #8fd45f; margin-bottom: 6px; }
+  #loading .ls { font-size: 14px; color: #9fb0c0; max-width: 320px; margin-bottom: 16px; }
+  #loading .spin { width: 34px; height: 34px; border: 4px solid rgba(255,255,255,.15); border-top-color: #8fd45f;
+    border-radius: 50%; animation: loadspin .8s linear infinite; }
+  @keyframes loadspin { to { transform: rotate(360deg); } }
+  @keyframes loadpulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 
   /* ---- Panels (Inventory / Market / Dressing Room) ---- */
   .panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
@@ -167,7 +185,12 @@
 </style>
 </head>
 <body>
-<div id="loading">Ultra-fast loading... small first chunk, infinite world streams in as you move.</div>
+<div id="loading">
+  <img src="icon-192.png" alt="VoxelCraft">
+  <div class="lt">VoxelCraft</div>
+  <div class="ls">Building your world… the first area loads fast, then the infinite world streams in as you explore.</div>
+  <div class="spin"></div>
+</div>
 <canvas id="game"></canvas>
 <div id="waterOverlay" class="hidden"></div>
 <div id="crosshair" class="hidden"></div>
@@ -5283,17 +5306,27 @@ function updateSelection() {
 let last = performance.now();
 let hudAcc = 0;
 let unloadAcc = 0;
+let lastFx = 0, lastFz = 0, loopSeeded = false;
 function loop(now) {
   const dt = Math.min((now - last) / 1000, 0.05);
   last = now;
 
-  ensureChunksAround(player.x, player.z, RENDER_RADIUS, MAX_CHUNKS_PER_FRAME);
+  // seed the movement tracker once so the first frame isn't read as a teleport
+  if (!loopSeeded) { lastFx = player.x; lastFz = player.z; loopSeeded = true; }
+  // how fast is the player moving? (blocks/second) — load more aggressively while moving
+  const speed = Math.hypot(player.x - lastFx, player.z - lastFz) / Math.max(dt, 0.001);
+  lastFx = player.x; lastFz = player.z;
+  const moving = speed > 5, fast = speed > 16;
+  const genLimit = fast ? (IS_MOBILE_DEVICE ? 6 : 12) : moving ? (IS_MOBILE_DEVICE ? 4 : 8) : (IS_MOBILE_DEVICE ? 2 : 4);
+  const meshCap = fast ? (IS_MOBILE_DEVICE ? 7 : 16) : moving ? (IS_MOBILE_DEVICE ? 5 : 11) : (IS_MOBILE_DEVICE ? 3 : 6);
+
+  ensureChunksAround(player.x, player.z, RENDER_RADIUS, genLimit);
 
   unloadAcc += dt;
   if (unloadAcc >= 1.0) { unloadAcc = 0; unloadFarChunks(); }
 
   if (dirtySections.size) {
-    const cap = IS_MOBILE_DEVICE ? 3 : 6;   // spread meshing across frames so moving doesn't hitch
+    const cap = meshCap;   // mesh more per frame while moving so terrain keeps up
     let n = 0;
     for (const key of dirtySections) {
       const p = key.split(',');
