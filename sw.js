@@ -1,8 +1,8 @@
 // VoxelCraft service worker — network-first for pages so updates always show,
 // cache-first for static assets, with offline fallback.
-const CACHE = 'voxelcraft-v2';
+const CACHE = 'voxelcraft-v3';
 const ASSETS = [
-  './', './index.html', './game.html', './guide.html', './changelog.html',
+  './', './index.html', './guide.html', './changelog.html',
   './about.html', './privacy.html', './manifest.json',
   './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png',
   'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
@@ -40,7 +40,7 @@ self.addEventListener('fetch', (e) => {
         try { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); } catch (_) {}
         return res;
       } catch (_) {
-        return (await caches.match(req)) || (await caches.match('./index.html')) || (await caches.match('./game.html'));
+        return (await caches.match(req)) || (await caches.match('./index.html')) || (await caches.match());
       }
     })());
     return;

@@ -2,7 +2,7 @@
   "name": "VoxelCraft \u2014 Voxel Sandbox Game",
   "short_name": "VoxelCraft",
   "description": "A free voxel sandbox game. Mine, build, explore endless worlds, travel between dimensions, and survive volcanoes, earthquakes and floods.",
-  "start_url": "./game.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
