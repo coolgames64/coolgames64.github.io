@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WDP28XG3BK"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-8P8HGEP724"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  gtag('config', 'G-WDP28XG3BK');
+  gtag('config', 'G-8P8HGEP724');
 </script>
 
 <meta charset="UTF-8">
@@ -62,6 +62,8 @@
   .barOuter { height: 12px; border: 2px solid rgba(0,0,0,.55); background: rgba(12,14,20,.7); border-radius: 3px; overflow: hidden; }
   .barInner { height: 100%; width: 100%; background: linear-gradient(90deg, #c94848, #ff7777); }
   #hungerBar { background: linear-gradient(90deg, #c98b2f, #ffd166); }
+  .hearts { display: flex; flex-wrap: wrap; gap: 2px; margin: 3px 0 6px; }
+  .hearts svg { width: 17px; height: 17px; filter: drop-shadow(1px 1px 1px rgba(0,0,0,.6)); }
 
   #overlay { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column;
     align-items: center; justify-content: center; text-align: center; color: #fff;
@@ -244,7 +246,7 @@
   width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;
   background:rgba(20,22,28,.6);border:2px solid rgba(0,0,0,.5);border-radius:6px;font-size:18px;">🔊</div>
 <div id="statusBars" class="hidden">
-  <div class="barLabel"><span>Health</span><span id="healthTxt">20/20</span></div><div class="barOuter"><div id="healthBar" class="barInner"></div></div>
+  <div class="barLabel"><span>Health</span></div><div id="hearts" class="hearts"></div>
   <div class="barLabel"><span>Hunger</span><span id="hungerTxt">20/20</span></div><div class="barOuter"><div id="hungerBar" class="barInner"></div></div>
   <div class="barLabel"><span>Armour</span><span id="armorTxt">0/20</span></div><div class="barOuter"><div id="armorBar" class="barInner" style="background:linear-gradient(90deg,#7d8aa0,#c8d4e8);width:0%"></div></div>
   <div class="barLabel"><span>XP · Lv <span id="lvlTxt">1</span></span><span id="xpTxt">0/40</span></div><div class="barOuter"><div id="xpBar" class="barInner" style="background:linear-gradient(90deg,#7bd24a,#c6ff7a);width:0%"></div></div>
@@ -625,7 +627,7 @@ const PLACEABLE = [
 ];
 
 function seeThrough(t) { return t === AIR || t === GLASS || t === WATER; }
-function isSolid(t) { return t !== AIR && t !== WATER && t !== QUICKSAND; }
+function isSolid(t) { return t !== AIR && t !== WATER && t !== QUICKSAND && t !== ROSE && t !== TULIP && t !== AZALEA; }
 function inTransparentPass(t) { return t === GLASS || t === WATER; }
 
 // ============================================================
@@ -1835,7 +1837,7 @@ const IS_MOBILE_DEVICE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAge
   || (navigator.maxTouchPoints > 1)
   || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
   || window.innerWidth < 900;
-const START_RADIUS = IS_MOBILE_DEVICE ? 4 : 6;   // solid area generated before play starts (no void at spawn)
+const START_RADIUS = IS_MOBILE_DEVICE ? 2 : 3;   // small area generated before play starts; rest streams in as you move
 const RENDER_RADIUS = IS_MOBILE_DEVICE ? 5 : 8;     // keep a wide area loaded so there is no visible void
 const MAX_CHUNKS_PER_FRAME = IS_MOBILE_DEVICE ? 2 : 3;
 const H = 256;
@@ -2128,12 +2130,12 @@ function terrainInfo(x, z) {
   const key = x + ',' + z;
   const cached = colCache.get(key);
   if (cached) return cached;
-  const relief = fbm((x + 1000) * 0.045, (z + 1000) * 0.045);
-  const mNoise = fbm((x - 800) * 0.02,  (z - 800) * 0.02);
+  const relief = fbm((x + 1000) * 0.028, (z + 1000) * 0.028);
+  const mNoise = fbm((x - 800) * 0.016,  (z - 800) * 0.016);
   const bNoise = fbm((x + 500) * 0.013, (z + 500) * 0.013);
-  let h = SURFACE_BASE + (relief - 0.5) * 26;
+  let h = SURFACE_BASE + (relief - 0.5) * 34;
   let mt = 0;
-  if (mNoise > 0.60) { mt = (mNoise - 0.60) * 75; h += mt; }
+  if (mNoise > 0.62) { mt = Math.pow((mNoise - 0.62) / 0.38, 1.5) * 110; h += mt; }
   h = Math.max(SURFACE_BASE - 20, Math.min(H - 16, Math.floor(h)));
   let biome;
   if (mt > 6) biome = 'mountain';
@@ -2375,7 +2377,7 @@ function generateChunk(cx, cz) {
     let x = x0 + 4 + hash2(cx * 17.3, cz * 31.7) * (CHUNK - 8);
     let z = z0 + 4 + hash2(cx * 47.9, cz * 11.3) * (CHUNK - 8);
     const si = terrainInfo(Math.floor(x), Math.floor(z));
-    let y = (si.biome === 'volcano' || si.biome === 'city' ? SURFACE_BASE : si.h) - 9;
+    let y = Math.min(si.h, SURFACE_BASE) - 9;
     let ang = hash2(cx * 3.1, cz * 7.7) * Math.PI * 2;
     let pitchA = -0.55 - hash2(cx * 9.7, cz * 5.3) * 0.3;
     for (let stepNo = 0; stepNo < 160 && y > 10; stepNo++) {
@@ -2401,6 +2403,14 @@ function generateChunk(cx, cz) {
         const p = biome === 'forest' ? 0.045 : 0.009;
         if (r > 1 - p) placeTree(x, h, z);
         else if (r < 0.006) setBlock(x, h + 1, z, HAY_BALE);
+        else {
+          // scattered flowers & flowering bushes across the grass
+          const fr = hash2(x * 41.7 + 5, z * 19.3 + 9);
+          if (fr > 0.90) {
+            const pick = hash2(x * 7.1 + 3, z * 13.7 + 8);
+            setBlock(x, h + 1, z, pick < 0.42 ? ROSE : pick < 0.78 ? TULIP : AZALEA);
+          }
+        }
       } else if (surf === SAND && biome === 'desert') {
         if (r > 0.988) placeCactus(x, h, z);
       }
@@ -2472,7 +2482,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87b9e6);
-const FOG_FAR = START_RADIUS * CHUNK - 10;          // hide the loaded-area boundary in fog
+const FOG_FAR = (IS_MOBILE_DEVICE ? 5 : 7) * CHUNK - 12;          // view distance (world streams in to fill it)
 scene.fog = new THREE.Fog(0x87b9e6, FOG_FAR * 0.45, FOG_FAR);
 
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 1200);
@@ -4053,19 +4063,22 @@ function collides(px, py, pz) {
 }
 
 function spawnPlayer() {
-  for (let r = 0; r < 24; r++) {
+  let fallback = null;
+  for (let r = 0; r < 28; r++) {
     for (let dx = -r; dx <= r; dx++) {
       for (let dz = -r; dz <= r; dz++) {
         if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
         const info = terrainInfo(dx, dz);
-        if (info.h > SEA_LEVEL + 1 && info.biome !== 'mountain') {
-          player.x = dx + 0.5; player.z = dz + 0.5;
-          player.y = info.h + 1.2; player.vy = 0;
-          return;
-        }
+        if (info.h <= SEA_LEVEL + 1 || info.biome === 'mountain' || info.biome === 'volcano' || info.biome === 'city') continue;
+        // prefer a flat-ish spot so you don't start jammed against a slope
+        const flat = Math.abs(terrainInfo(dx + 1, dz).h - info.h) <= 2 && Math.abs(terrainInfo(dx - 1, dz).h - info.h) <= 2
+                  && Math.abs(terrainInfo(dx, dz + 1).h - info.h) <= 2 && Math.abs(terrainInfo(dx, dz - 1).h - info.h) <= 2;
+        if (flat) { player.x = dx + 0.5; player.z = dz + 0.5; player.y = info.h + 1.2; player.vy = 0; return; }
+        if (!fallback) fallback = { dx, dz, h: info.h };
       }
     }
   }
+  if (fallback) { player.x = fallback.dx + 0.5; player.z = fallback.dz + 0.5; player.y = fallback.h + 1.2; player.vy = 0; return; }
   player.x = 0.5; player.z = 0.5;
   player.y = terrainInfo(0, 0).h + 1.2; player.vy = 0;
 }
@@ -4802,16 +4815,39 @@ function updateHotbar() {
   [...hotbarEl.children].forEach((s, i) => s.classList.toggle('active', i === selected));
 }
 let _hudEls = null;
+// Build a row of Minecraft-style hearts (each heart = 2 HP, supports half-hearts).
+const _heartSVG = (state) => {
+  // state: 'full' | 'half' | 'empty'
+  const path = 'M8 14.5C8 14.5 1.5 10.4 1.5 5.9C1.5 3.9 3 2.5 4.8 2.5C6 2.5 7.2 3.2 8 4.4C8.8 3.2 10 2.5 11.2 2.5C13 2.5 14.5 3.9 14.5 5.9C14.5 10.4 8 14.5 8 14.5Z';
+  const empty = '#3a1620', fill = '#ff3b46';
+  if (state === 'empty')
+    return `<svg viewBox="0 0 16 16"><path d="${path}" fill="${empty}" stroke="#1a0a0e" stroke-width="1"/></svg>`;
+  if (state === 'half')
+    return `<svg viewBox="0 0 16 16"><path d="${path}" fill="${empty}" stroke="#1a0a0e" stroke-width="1"/>`
+         + `<clipPath id="hl"><rect x="0" y="0" width="8" height="16"/></clipPath>`
+         + `<path d="${path}" fill="${fill}" stroke="#1a0a0e" stroke-width="1" clip-path="url(#hl)"/></svg>`;
+  return `<svg viewBox="0 0 16 16"><path d="${path}" fill="${fill}" stroke="#1a0a0e" stroke-width="1"/></svg>`;
+};
+function renderHearts(cur, max) {
+  const el = _hudEls.hearts; if (!el) return;
+  const slots = Math.max(1, Math.ceil(max / 2));
+  const c = Math.max(0, Math.round(cur));
+  let html = '';
+  for (let i = 0; i < slots; i++) {
+    const base = i * 2;
+    html += _heartSVG(c >= base + 2 ? 'full' : c > base ? 'half' : 'empty');
+  }
+  if (el._html !== html) { el.innerHTML = html; el._html = html; }
+}
 function updateStatusBars() {
   if (!_hudEls) {
     _hudEls = {};
-    for (const id of ['healthTxt','hungerTxt','healthBar','hungerBar','armorTxt','armorBar','lvlTxt','xpTxt','xpBar','manaTxt','manaBar'])
+    for (const id of ['hearts','hungerTxt','hungerBar','armorTxt','armorBar','lvlTxt','xpTxt','xpBar','manaTxt','manaBar'])
       _hudEls[id] = document.getElementById(id);
   }
   const E = _hudEls;
-  E.healthTxt.textContent = Math.ceil(health) + '/20';
+  renderHearts(health, maxHealth());
   E.hungerTxt.textContent = Math.ceil(hunger) + '/20';
-  E.healthBar.style.width = (Math.max(0, health) / 20 * 100) + '%';
   E.hungerBar.style.width = (Math.max(0, hunger) / 20 * 100) + '%';
   const ap = armorPoints();
   E.armorTxt.textContent = Math.round(ap) + '/20';
@@ -5238,11 +5274,17 @@ function updatePlayer(dt) {
 
   const dx = mx * speed * dt;
   player.x += dx;
-  if (collides(player.x, player.y, player.z)) player.x -= dx;
+  if (collides(player.x, player.y, player.z)) {
+    if (player.onGround && !player.flying && (mx || mz) && !collides(player.x, player.y + 1.05, player.z)) player.y += 1.05;  // auto step-up over 1-block rises
+    else player.x -= dx;
+  }
 
   const dz = mz * speed * dt;
   player.z += dz;
-  if (collides(player.x, player.y, player.z)) player.z -= dz;
+  if (collides(player.x, player.y, player.z)) {
+    if (player.onGround && !player.flying && (mx || mz) && !collides(player.x, player.y + 1.05, player.z)) player.y += 1.05;
+    else player.z -= dz;
+  }
 
   if (player.flying) {
     let vy = 0;
